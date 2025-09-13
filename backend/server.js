@@ -1,39 +1,39 @@
-// import express, { json, Request, Response } from 'express';
-// import { PrismaClient } from './generated/prisma';
-// import cors from 'cors';
-// import helmet from 'helmet';
-// import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
 
-require('dotenv').config();
-const express = require('express');
-const { PrismaClient } = require('./generated/prisma');
-const cors = require('cors');
-const helmet = require('helmet');
-const Joi = require('joi');
+dotenv.config(); // ⚠️ doit être en tout premier
 
-// dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
-//Configuring CORS
-app.use(cors({
-    origin: process.env.FRONTEND_API_URL,
-    credentials: true
-}));
-//Using helmet to prevent from security threat
+
+// Middlewares
+app.use(
+  cors({
+    origin: process.env.FRONTEND_API_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
 app.use(helmet());
-//Using the json format
 app.use(express.json());
 
-app.listen(PORT, () => {
-    console.log(`🚀 CORS-enabled web server running on http://localhost:${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🌐 CORS origin: ${process.env.REACT_APP_API_URL || 'http://localhost:3001'}`);
-
-    if (process.env.NODE_ENV === 'development') {
-        console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-    }
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
 });
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🌐 CORS origin: ${process.env.FRONTEND_API_URL}`);
+});
+
 
 //Health check endpoint
 app.get('/api/health', (req, res) => {
