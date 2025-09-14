@@ -167,12 +167,14 @@ export default function StockPage() {
       {/* Sidebar */}
 <aside className="w-60 bg-[#1E2A47] text-white p-8">
   <h2 className="text-xl font-semibold mb-8">Gym Warehouse</h2>
-  <nav className="space-y-4 text-sm opacity-90">
-    <div className="font-medium">Stock</div>
-    <Link to="/membres" className="block text-[#AAB4C3] hover:text-white">
+  <nav className="space-y-4 text-sm">
+    <div className="font-medium text-white">Stock</div>
+    <Link to="/membres" className="block text-[#AAB4C3] hover:text-white transition-colors">
       Membres
     </Link>
-    <div className="text-[#AAB4C3]">Commandes</div>
+    <Link to="/commandes" className="block text-[#AAB4C3] hover:text-white transition-colors">
+      Commandes
+    </Link>
   </nav>
 </aside>
 

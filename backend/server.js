@@ -34,15 +34,6 @@ app.listen(PORT, () => {
   console.log(`🌐 CORS origin: ${process.env.FRONTEND_API_URL}`);
 });
 
-
-//Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
 //Graceful shutdown
 const gracefulShutdown = async () => {
     console.log('🛑 Shutting down server...');
@@ -85,6 +76,7 @@ app.post('/api/users', async (req, res) => {
         res.status(500).json({ error: 'Failed to create user' });
     }
 });
+
 //Fetch all users
 app.get('/api/users', async (req, res) => {
     try {
@@ -109,6 +101,7 @@ app.get('/api/users', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
+
 //Fetch a single user
 app.get('/api/users/:id', async (req, res) => {
     try {
@@ -128,6 +121,7 @@ app.get('/api/users/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch user' });
     }
 });
+
 //Updating a user
 app.put('/api/users/:id', async (req, res) => {
     try {
@@ -152,6 +146,7 @@ app.put('/api/users/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to update user' });
     }
 });
+
 //Delete a user
 app.delete('/api/users/:id', async (req, res) => {
     try {
@@ -171,7 +166,6 @@ app.delete('/api/users/:id', async (req, res) => {
 // ---------------- Product routes ----------------
 // ------------------------------------------------
 //Create a product
-//TODO assert that the informations are correct
 app.post('/api/products', async (req, res) => { 
     try {
         const { name, description, quantity, price, trainerPrice, cost, isActive } = req.body;
@@ -194,6 +188,7 @@ app.post('/api/products', async (req, res) => {
         res.status(500).json({ error: 'Failed to create product' });
     }
 });
+
 //Fetch all products
 app.get('/api/products', async (req, res) => {
     try {
@@ -219,6 +214,7 @@ app.get('/api/products', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch products' });
     }
 });
+
 //Fetch a single product
 app.get('/api/products/:id', async (req, res) => {
     try {
@@ -237,6 +233,7 @@ app.get('/api/products/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch product' });
     }
 });
+
 //Updating a product
 app.put('/api/products/:id', async (req, res) => {
     try {
@@ -262,6 +259,7 @@ app.put('/api/products/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to update product' });
     }
 });
+
 //Delete a product
 app.delete('/api/products/:id', async (req, res) => {
     try {
@@ -278,20 +276,23 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // -----------------------------------------------
-// ----------------- User routes -----------------
+// ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
 app.post('/api/orders', async (req, res) => {
     try {
         const { clientId, paymentMethod, notes, products } = req.body;
+        
         //Finding the user
         const user = await prisma.user.findUnique({
             where: { id: clientId },
         });
+        
         //Check if the user exists
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+        
         //Finding the products
         const productIds = products.map(p => p.productId);
         const dbProducts = await prisma.product.findMany({
@@ -300,19 +301,22 @@ app.post('/api/orders', async (req, res) => {
                 isActive: true,
             }
         });
+        
         //Check if the products are active
         if (dbProducts.length !== productIds.length) {
             return res.status(400).json({ error: 'Some products not found or inactive' });
         }
+        
         //Check if stock is available
         for (const orderProduct of products) {
             const dbProduct = dbProducts.find(p => p.id === orderProduct.productId);
             if (dbProduct.quantity < orderProduct.quantity) {
                 return res.status(400).json({
-                    error: 'Insufficient stock for product: ${dbProduct.name}. Available: ${dbProduct.quantity}, Requested: ${orderProduct.quantity}'
+                    error: `Insufficient stock for product: ${dbProduct.name}. Available: ${dbProduct.quantity}, Requested: ${orderProduct.quantity}`
                 });
             }
         }
+        
         //Calculate order details
         const orderDetails = products.map(orderProduct => {
             const dbProduct = dbProducts.find(p => p.id === orderProduct.productId);
@@ -323,16 +327,17 @@ app.post('/api/orders', async (req, res) => {
             const totalPrice = unitPrice * orderProduct.quantity;
 
             return {
-                productId: orderProduct.id,
+                productId: orderProduct.productId,
                 quantity: orderProduct.quantity,
                 unitPrice: unitPrice,
                 totalPrice: totalPrice
             };
         });
+        
         //Calculate total amount
         const totalAmount = orderDetails.reduce((sum, detail) => sum + detail.totalPrice, 0);
 
-        const result = prisma.$transaction(async (prisma) => {
+        const result = await prisma.$transaction(async (prisma) => {
             //Create the order
             const order = await prisma.order.create({
                 data: {
@@ -371,10 +376,22 @@ app.post('/api/orders', async (req, res) => {
             //Update product quantities
             for (const orderProduct of products) {
                 await prisma.product.update({
-                    where: { id: orderProduct.id },
+                    where: { id: orderProduct.productId },
                     data: {
                         quantity: {
                             decrement: orderProduct.quantity
+                        }
+                    }
+                });
+            }
+
+            //Update user balance if paying with account
+            if (paymentMethod === 'ACCOUNT_DEBIT') {
+                await prisma.user.update({
+                    where: { id: clientId },
+                    data: {
+                        balance: {
+                            decrement: totalAmount
                         }
                     }
                 });
@@ -392,14 +409,36 @@ app.post('/api/orders', async (req, res) => {
         });
     }
 });
+
 //Fetch all orders
 app.get('/api/orders', async (req, res) => {
     try {
         const orders = await prisma.order.findMany({
-            orderBy: { id: 'asc' },
+            orderBy: { id: 'desc' },
             include: {
-                products: true,
-            },
+                client: {
+                    select: {
+                        id: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true
+                    }
+                },
+                products: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                price: true,
+                                trainerPrice: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         res.json(orders);
@@ -408,12 +447,35 @@ app.get('/api/orders', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch orders' });
     }
 });
+
 //Fetch a single order
 app.get('/api/orders/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const order = await prisma.order.findUnique({
             where: { id: Number(id) },
+            include: {
+                client: {
+                    select: {
+                        id: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true
+                    }
+                },
+                products: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         if (!order) {
@@ -426,16 +488,14 @@ app.get('/api/orders/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch order' });
     }
 });
-//Update an order
 
 // Hard delete an order
 app.delete('/api/orders/:id/hard', async (req, res) => {
     try {
         const { id } = req.params;
-
         const { restoreStock = true, reason } = req.body;
 
-        const existingOrder = prisma.order.findUnique({
+        const existingOrder = await prisma.order.findUnique({
             where: { id: Number(id) },
             include: {
                 products: {
@@ -455,7 +515,7 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        const result = prisma.$transaction(async (prisma) => {
+        const result = await prisma.$transaction(async (prisma) => {
             //Restore the stock
             if (restoreStock) {
                 for (const orderDetail of existingOrder.products) {
@@ -469,10 +529,12 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                     });
                 }
             }
+            
             //Delete OrderDetails
             await prisma.orderDetail.deleteMany({
                 where: { orderId: Number(id) }
             });
+            
             //Delete Order
             await prisma.order.delete({
                 where: { id: Number(id) }
@@ -507,6 +569,3 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
         });
     }
 });
-
-// TODO add joi
-// TODO assert that the email, name, surname and phone number are correct and everything are good

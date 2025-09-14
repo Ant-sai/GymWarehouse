@@ -222,28 +222,18 @@ export default function MembersPage() {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-60 bg-[#1E2A47] text-white p-8">
-        <h2 className="text-xl font-semibold mb-8">Gym Warehouse</h2>
-        <nav className="space-y-4 text-sm">
-          <Link 
-            to="/stock"
-            className="block text-[#AAB4C3] hover:text-white transition-colors"
-          >
-            Stock
-          </Link>
-          
-          <Link 
-            to="/membres"
-            className="block font-medium text-white"
-          >
-            Membres
-          </Link>
-          
-          <div className="text-[#AAB4C3]">
-            Commandes
-          </div>
-        </nav>
-      </aside>
+<aside className="w-60 bg-[#1E2A47] text-white p-8">
+  <h2 className="text-xl font-semibold mb-8">Gym Warehouse</h2>
+  <nav className="space-y-4 text-sm">
+    <Link to="/stock" className="block text-[#AAB4C3] hover:text-white transition-colors">
+      Stock
+    </Link>
+    <div className="font-medium text-white">Membres</div>
+    <Link to="/commandes" className="block text-[#AAB4C3] hover:text-white transition-colors">
+      Commandes
+    </Link>
+  </nav>
+</aside>
 
       {/* Main */}
       <main className="flex-1 p-12">
