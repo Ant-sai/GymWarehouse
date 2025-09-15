@@ -40,6 +40,21 @@ export type Order = {
   }>;
 };
 
+// Type pour les produits restaurés lors de l'annulation
+type RestoredProduct = {
+  productName: string;
+  quantity: number;
+};
+
+// Type pour la réponse de l'API lors de l'annulation
+type CancelOrderResponse = {
+  data: {
+    stockRestored: boolean;
+    restoredProducts: RestoredProduct[];
+    balanceRestored: number;
+  };
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -53,6 +68,15 @@ export default function OrdersPage() {
   const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "CREDITCARD" | "ACCOUNT_DEBIT">("CASH");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  
+  // Variables pour le formulaire de modification
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editForm, setEditForm] = useState({
+    quantity: "",
+    price: "",
+    trainerPrice: "",
+  });
 
   // Charger toutes les données au montage
   useEffect(() => {
@@ -188,6 +212,87 @@ export default function OrdersPage() {
     }
   }
 
+  async function handleCancelOrder(order: Order) {
+    try {
+      const response = await fetch(`http://localhost:3000/api/orders/${order.id}/hard`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restoreStock: true,
+          reason: "Annulation demandée"
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // Retirer la commande de la liste locale
+      setOrders(orders.filter(o => o.id !== order.id));
+      
+      // Recharger les données pour avoir les stocks à jour
+      fetchProducts();
+      fetchUsers();
+
+    } catch (err) {
+      console.error('Erreur lors de l\'annulation:', err);
+    }
+  }
+
+  // Fonction pour modifier un produit
+  async function handleEditProduct(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!editingProduct) return;
+    
+    setSaving(true);
+    
+    try {
+      const response = await fetch(`http://localhost:3000/api/products/${editingProduct.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          quantity: Number(editForm.quantity),
+          price: Number(editForm.price),
+          trainerPrice: Number(editForm.trainerPrice),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      const updatedProduct = await response.json();
+
+      // Mettre à jour le state local
+      setProducts((prev) => 
+        prev.map(p => p.id === editingProduct.id ? updatedProduct : p)
+      );
+      
+      // Réinitialiser le formulaire
+      setShowEditForm(false);
+      setEditingProduct(null);
+      setEditForm({ quantity: "", price: "", trainerPrice: "" });
+      
+    } catch (err) {
+      console.error('Erreur lors de la modification du produit:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Fonction pour ouvrir le formulaire de modification
+  function openEditForm(product: Product) {
+    setEditingProduct(product);
+    setEditForm({
+      quantity: product.quantity.toString(),
+      price: product.price.toString(),
+      trainerPrice: product.trainerPrice?.toString() || "",
+    });
+    setShowEditForm(true);
+  }
+
   const getFullName = (user: User | undefined) => {
     if (!user) return "Utilisateur inconnu";
     const parts = [user.firstName, user.lastName].filter(Boolean);
@@ -288,12 +393,22 @@ export default function OrdersPage() {
                     <div className="text-2xl font-bold text-green-600">
                       {Number(order.totalAmount).toFixed(2)}€
                     </div>
-                    <div className={`px-3 py-1 rounded text-sm font-medium ${order.paymentMethod === "ACCOUNT_DEBIT"
+                    <div className={`px-3 py-1 rounded text-sm font-medium mb-2 ${
+                      order.paymentMethod === "ACCOUNT_DEBIT"
                         ? "bg-purple-100 text-purple-800"
                         : "bg-gray-100 text-gray-800"
-                      }`}>
+                    }`}>
                       {getPaymentMethodLabel(order.paymentMethod)}
                     </div>
+                    
+                    {/* Bouton d'annulation */}
+                    <button
+                      onClick={() => handleCancelOrder(order)}
+                      className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+                      title="Annuler cette commande (restaure stocks et solde)"
+                    >
+                      🗑️ Annuler
+                    </button>
                   </div>
                 </div>
 
@@ -301,8 +416,20 @@ export default function OrdersPage() {
                   <h4 className="font-medium mb-2">Produits:</h4>
                   <div className="space-y-1">
                     {order.products?.map((item, index) => (
-                      <div key={index} className="flex justify-between text-sm">
-                        <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
+                      <div key={index} className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
+                          <button 
+                            onClick={() => openEditForm(item.product)} 
+                            className="p-1 hover:bg-blue-50 rounded"
+                            title="Modifier ce produit"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        </div>
                         <span>{Number(item.totalPrice).toFixed(2)}€</span>
                       </div>
                     )) || <div className="text-gray-500">Aucun produit</div>}
@@ -461,7 +588,7 @@ export default function OrdersPage() {
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
                 >
-                  Annuler
+                  Fermer
                 </button>
                 <button
                   onClick={handleCreateOrder}
@@ -472,6 +599,79 @@ export default function OrdersPage() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Modal modification produit */}
+        {showEditForm && editingProduct && (
+          <div className="fixed inset-0 flex items-center justify-center z-40">
+            <div className="absolute inset-0 bg-black/30" onClick={() => setShowEditForm(false)} />
+            <form
+              onSubmit={handleEditProduct}
+              className="relative bg-white rounded-lg p-6 w-[480px] shadow-lg z-50"
+            >
+              <h3 className="text-xl font-semibold mb-4 text-black">Modifier {editingProduct.name}</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Quantité *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.quantity}
+                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    required
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Prix *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    required
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Prix Entraîneur *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editForm.trainerPrice}
+                    onChange={(e) => setEditForm({ ...editForm, trainerPrice: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    required
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditForm(false)}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={saving}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Modification..." : "Modifier"}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </main>

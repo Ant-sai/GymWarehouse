@@ -10,6 +10,7 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
+
 // Middlewares
 app.use(
   cors({
@@ -279,13 +280,21 @@ app.delete('/api/products/:id', async (req, res) => {
 // ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
+//Create an order - Version corrigée
 app.post('/api/orders', async (req, res) => {
     try {
         const { clientId, paymentMethod, notes, products } = req.body;
         
+        // Validation des données d'entrée
+        if (!clientId || !paymentMethod || !products || !Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ 
+                error: 'Données manquantes: clientId, paymentMethod et products sont requis' 
+            });
+        }
+        
         //Finding the user
         const user = await prisma.user.findUnique({
-            where: { id: clientId },
+            where: { id: Number(clientId) },
         });
         
         //Check if the user exists
@@ -294,7 +303,7 @@ app.post('/api/orders', async (req, res) => {
         }
         
         //Finding the products
-        const productIds = products.map(p => p.productId);
+        const productIds = products.map(p => Number(p.productId));
         const dbProducts = await prisma.product.findMany({
             where: {
                 id: { in: productIds },
@@ -309,8 +318,11 @@ app.post('/api/orders', async (req, res) => {
         
         //Check if stock is available
         for (const orderProduct of products) {
-            const dbProduct = dbProducts.find(p => p.id === orderProduct.productId);
-            if (dbProduct.quantity < orderProduct.quantity) {
+            const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
+            if (!dbProduct) {
+                return res.status(400).json({ error: `Product ${orderProduct.productId} not found` });
+            }
+            if (dbProduct.quantity < Number(orderProduct.quantity)) {
                 return res.status(400).json({
                     error: `Insufficient stock for product: ${dbProduct.name}. Available: ${dbProduct.quantity}, Requested: ${orderProduct.quantity}`
                 });
@@ -319,16 +331,18 @@ app.post('/api/orders', async (req, res) => {
         
         //Calculate order details
         const orderDetails = products.map(orderProduct => {
-            const dbProduct = dbProducts.find(p => p.id === orderProduct.productId);
+            const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
 
-            const unitPrice = user.role === 'TRAINER' && dbProduct.trainerPrice
-                ? dbProduct.trainerPrice : dbProduct.price;
+            const unitPrice = user.role === 'TRAINER' && dbProduct.trainerPrice > 0
+                ? Number(dbProduct.trainerPrice) 
+                : Number(dbProduct.price);
             
-            const totalPrice = unitPrice * orderProduct.quantity;
+            const quantity = Number(orderProduct.quantity);
+            const totalPrice = unitPrice * quantity;
 
             return {
-                productId: orderProduct.productId,
-                quantity: orderProduct.quantity,
+                productId: Number(orderProduct.productId),
+                quantity: quantity,
                 unitPrice: unitPrice,
                 totalPrice: totalPrice
             };
@@ -337,14 +351,23 @@ app.post('/api/orders', async (req, res) => {
         //Calculate total amount
         const totalAmount = orderDetails.reduce((sum, detail) => sum + detail.totalPrice, 0);
 
-        const result = await prisma.$transaction(async (prisma) => {
+        // IMPORTANT: Vérification du solde côté serveur pour les paiements par débit de compte
+        if (paymentMethod === 'ACCOUNT_DEBIT') {
+            if (Number(user.balance) < totalAmount) {
+                return res.status(400).json({
+                    error: `Solde insuffisant. Solde disponible: ${Number(user.balance).toFixed(2)}€, Montant requis: ${totalAmount.toFixed(2)}€`
+                });
+            }
+        }
+
+        const result = await prisma.$transaction(async (prismaTransaction) => {
             //Create the order
-            const order = await prisma.order.create({
+            const order = await prismaTransaction.order.create({
                 data: {
-                    clientId: clientId,
+                    clientId: Number(clientId),
                     totalAmount: totalAmount,
                     paymentMethod: paymentMethod,
-                    notes: notes,
+                    notes: notes || null,
                     products: {
                         create: orderDetails
                     }
@@ -356,7 +379,8 @@ app.post('/api/orders', async (req, res) => {
                             email: true,
                             firstName: true,
                             lastName: true,
-                            role: true
+                            role: true,
+                            balance: true
                         }
                     },
                     products: {
@@ -365,7 +389,9 @@ app.post('/api/orders', async (req, res) => {
                                 select: {
                                     id: true,
                                     name: true,
-                                    description: true
+                                    description: true,
+                                    price: true,
+                                    trainerPrice: true
                                 }
                             }
                         }
@@ -375,11 +401,11 @@ app.post('/api/orders', async (req, res) => {
 
             //Update product quantities
             for (const orderProduct of products) {
-                await prisma.product.update({
-                    where: { id: orderProduct.productId },
+                await prismaTransaction.product.update({
+                    where: { id: Number(orderProduct.productId) },
                     data: {
                         quantity: {
-                            decrement: orderProduct.quantity
+                            decrement: Number(orderProduct.quantity)
                         }
                     }
                 });
@@ -387,14 +413,19 @@ app.post('/api/orders', async (req, res) => {
 
             //Update user balance if paying with account
             if (paymentMethod === 'ACCOUNT_DEBIT') {
-                await prisma.user.update({
-                    where: { id: clientId },
+                const updatedUser = await prismaTransaction.user.update({
+                    where: { id: Number(clientId) },
                     data: {
                         balance: {
                             decrement: totalAmount
                         }
                     }
                 });
+
+                // Vérification finale - s'assurer que le solde n'est pas négatif
+                if (Number(updatedUser.balance) < 0) {
+                    throw new Error('Transaction would result in negative balance');
+                }
             }
 
             return order;
@@ -403,9 +434,25 @@ app.post('/api/orders', async (req, res) => {
         res.status(201).json(result);
     } catch (err) {
         console.error('Error creating order: ', err);
+        
+        // Gestion d'erreur plus détaillée
+        if (err.code === 'P2002') {
+            return res.status(400).json({
+                error: 'Conflict in data creation',
+                message: err.message
+            });
+        }
+        
+        if (err.code === 'P2025') {
+            return res.status(404).json({
+                error: 'Resource not found',
+                message: err.message
+            });
+        }
+
         res.status(500).json({
             error: 'Internal server error',
-            message: err.message
+            message: err.message || 'An unexpected error occurred'
         });
     }
 });
@@ -489,7 +536,7 @@ app.get('/api/orders/:id', async (req, res) => {
     }
 });
 
-// Hard delete an order
+// Hard delete an order with balance restoration
 app.delete('/api/orders/:id/hard', async (req, res) => {
     try {
         const { id } = req.params;
@@ -498,6 +545,15 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
         const existingOrder = await prisma.order.findUnique({
             where: { id: Number(id) },
             include: {
+                client: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        balance: true
+                    }
+                },
                 products: {
                     include: {
                         product: {
@@ -516,7 +572,7 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
         }
 
         const result = await prisma.$transaction(async (prisma) => {
-            //Restore the stock
+            // Restore the stock
             if (restoreStock) {
                 for (const orderDetail of existingOrder.products) {
                     await prisma.product.update({
@@ -529,13 +585,27 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                     });
                 }
             }
-            
-            //Delete OrderDetails
+
+            // Restore balance if payment was by account debit
+            let balanceRestored = 0;
+            if (existingOrder.paymentMethod === 'ACCOUNT_DEBIT') {
+                await prisma.user.update({
+                    where: { id: existingOrder.clientId },
+                    data: {
+                        balance: {
+                            increment: existingOrder.totalAmount
+                        }
+                    }
+                });
+                balanceRestored = existingOrder.totalAmount;
+            }
+
+            // Delete OrderDetails
             await prisma.orderDetail.deleteMany({
                 where: { orderId: Number(id) }
             });
-            
-            //Delete Order
+
+            // Delete Order
             await prisma.order.delete({
                 where: { id: Number(id) }
             });
@@ -543,6 +613,8 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
             return {
                 deletedOrderId: Number(id),
                 stockRestored: restoreStock,
+                balanceRestored: balanceRestored,
+                clientName: `${existingOrder.client.firstName || ''} ${existingOrder.client.lastName || ''}`.trim() || existingOrder.client.email,
                 restoredProducts: restoreStock ? existingOrder.products.map(p => ({
                     productId: p.productId,
                     productName: p.product.name,
@@ -554,11 +626,11 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Order permanently deleted',
+            message: 'Order cancelled successfully',
             data: result
         });
     } catch (err) {
-        console.error('Error hard deleting order: ', err);
+        console.error('Error cancelling order: ', err);
         if (err.code === 'P2025') {
             return res.status(404).json({ error: 'Order not found' });
         }

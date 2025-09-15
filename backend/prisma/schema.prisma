@@ -92,4 +92,5 @@ enum PaymentType {
   PAYPAL
   CASH
   QRCODE
+  ACCOUNT_DEBIT
 }
