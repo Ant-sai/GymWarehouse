@@ -30,7 +30,7 @@ export type Order = {
   client: User;
   totalAmount: number;
   date: string;
-  paymentMethod: "QRCODE" | "CASH" | "CREDITCARD" | "ACCOUNT_DEBIT";
+  paymentMethod: "QRCODE" | "CASH" | "CREDITCARD" | "ACCOUNT_DEBIT" | "FREE";
   notes?: string;
   products: Array<{
     product: Product;
@@ -40,32 +40,35 @@ export type Order = {
   }>;
 };
 
-// Type pour les produits restaurés lors de l'annulation
-type RestoredProduct = {
-  productName: string;
-  quantity: number;
+type DailyStats = {
+  date: string;
+  orders: Order[];
+  totalRevenue: number;
+  orderCount: number;
+  cashRevenue: number;
+  cardRevenue: number;
+  qrRevenue: number;
+  accountDebitRevenue: number;
+  freeRevenue: number;
+  trainerOrders: number;
+  userOrders: number;
 };
 
-// Type pour la réponse de l'API lors de l'annulation
-type CancelOrderResponse = {
-  data: {
-    stockRestored: boolean;
-    restoredProducts: RestoredProduct[];
-    balanceRestored: number;
-  };
-};
-
-export default function OrdersPage() {
+export default function DailyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
+  // Date sélectionnée pour la vue journalière
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // États pour le formulaire de nouvelle commande
   const [showForm, setShowForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [cart, setCart] = useState<OrderItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "CREDITCARD" | "ACCOUNT_DEBIT">("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "CREDITCARD" | "ACCOUNT_DEBIT" | "FREE">("CASH");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   
@@ -119,6 +122,84 @@ export default function OrdersPage() {
     }
   }
 
+  // Calculer les statistiques journalières
+  function getDailyStats(date: string): DailyStats {
+    const dayOrders = orders.filter(order => {
+      const orderDate = new Date(order.date).toISOString().split('T')[0];
+      return orderDate === date;
+    });
+
+    const stats: DailyStats = {
+      date,
+      orders: dayOrders,
+      totalRevenue: 0,
+      orderCount: dayOrders.length,
+      cashRevenue: 0,
+      cardRevenue: 0,
+      qrRevenue: 0,
+      accountDebitRevenue: 0,
+      freeRevenue: 0,
+      trainerOrders: 0,
+      userOrders: 0,
+    };
+
+    dayOrders.forEach(order => {
+      const amount = Number(order.totalAmount);
+      
+      // Les commandes gratuites ne contribuent pas au chiffre d'affaires
+      if (order.paymentMethod !== "FREE") {
+        stats.totalRevenue += amount;
+      }
+      
+      switch (order.paymentMethod) {
+        case "CASH":
+          stats.cashRevenue += amount;
+          break;
+        case "CREDITCARD":
+          stats.cardRevenue += amount;
+          break;
+        case "QRCODE":
+          stats.qrRevenue += amount;
+          break;
+        case "ACCOUNT_DEBIT":
+          stats.accountDebitRevenue += amount;
+          break;
+        case "FREE":
+          // Les commandes gratuites n'ajoutent rien au CA
+          break;
+      }
+
+      if (order.client?.role === "TRAINER") {
+        stats.trainerOrders++;
+      } else {
+        stats.userOrders++;
+      }
+    });
+
+    return stats;
+  }
+
+  // Obtenir les dates qui ont des commandes
+  function getAvailableDates(): string[] {
+    const dates = new Set<string>();
+    orders.forEach(order => {
+      const date = new Date(order.date).toISOString().split('T')[0];
+      dates.add(date);
+    });
+    return Array.from(dates).sort().reverse(); // Plus récentes en premier
+  }
+
+  // Navigation entre les dates
+  function navigateDate(direction: 'prev' | 'next') {
+    const currentDate = new Date(selectedDate);
+    if (direction === 'prev') {
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    setSelectedDate(currentDate.toISOString().split('T')[0]);
+  }
+
   function addToCart(product: Product) {
     const price = selectedUser?.role === "TRAINER" ? product.trainerPrice : product.price;
     const existingItem = cart.find(item => item.productId === product.id);
@@ -145,6 +226,7 @@ export default function OrdersPage() {
   }
 
   function calculateTotal() {
+    if (paymentMethod === "FREE") return 0;
     return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
   }
 
@@ -201,7 +283,7 @@ export default function OrdersPage() {
 
       // Recharger les données pour avoir les stocks à jour
       fetchProducts();
-      fetchUsers(); // Pour le solde mis à jour si paiement par compte
+      fetchUsers();
 
     } catch (err) {
       console.error('Erreur lors de la création de la commande:', err);
@@ -239,7 +321,6 @@ export default function OrdersPage() {
     }
   }
 
-  // Fonction pour modifier un produit
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
     if (!editingProduct) return;
@@ -282,7 +363,6 @@ export default function OrdersPage() {
     }
   }
 
-  // Fonction pour ouvrir le formulaire de modification
   function openEditForm(product: Product) {
     setEditingProduct(product);
     setEditForm({
@@ -305,9 +385,13 @@ export default function OrdersPage() {
       case "CASH": return "Espèces";
       case "CREDITCARD": return "Carte bancaire";
       case "ACCOUNT_DEBIT": return "Débit compte";
+      case "FREE": return "Gratuit";
       default: return method;
     }
   };
+
+  const dailyStats = getDailyStats(selectedDate);
+  const availableDates = getAvailableDates();
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -321,7 +405,7 @@ export default function OrdersPage() {
           <Link to="/membres" className="block text-[#AAB4C3] hover:text-white transition-colors">
             Membres
           </Link>
-          <div className="font-medium text-white">Commandes</div>
+          <div className="font-medium text-white">Commandes Journalières</div>
         </nav>
       </aside>
 
@@ -329,7 +413,7 @@ export default function OrdersPage() {
       <main className="flex-1 p-12">
         <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-semibold text-black">Commandes</h1>
+            <h1 className="text-3xl font-semibold text-black">Vue Journalière</h1>
             <button
               onClick={fetchOrders}
               className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
@@ -346,6 +430,115 @@ export default function OrdersPage() {
           </button>
         </header>
 
+        {/* Navigation par date */}
+        <div className="mb-8 bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigateDate('prev')}
+                className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
+              >
+                ← Jour précédent
+              </button>
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Sélectionner une date</option>
+                  {availableDates.map(date => (
+                    <option key={date} value={date}>
+                      {new Date(date).toLocaleDateString('fr-FR', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <button
+                onClick={() => navigateDate('next')}
+                className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
+              >
+                Jour suivant →
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Aujourd'hui
+            </button>
+          </div>
+
+          {/* Statistiques du jour */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+              <div className="text-2xl font-bold text-green-700">
+                {dailyStats.totalRevenue.toFixed(2)}€
+              </div>
+              <div className="text-sm text-green-600">Chiffre d'affaires</div>
+            </div>
+            
+            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+              <div className="text-2xl font-bold text-blue-700">
+                {dailyStats.orderCount}
+              </div>
+              <div className="text-sm text-blue-600">Commandes</div>
+            </div>
+            
+            <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+              <div className="text-2xl font-bold text-purple-700">
+                {dailyStats.trainerOrders}
+              </div>
+              <div className="text-sm text-purple-600">Entraîneurs</div>
+            </div>
+            
+            <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
+              <div className="text-2xl font-bold text-orange-700">
+                {dailyStats.userOrders}
+              </div>
+              <div className="text-sm text-orange-600">Membres</div>
+            </div>
+          </div>
+
+          {/* Répartition par méthode de paiement */}
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.cashRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Espèces</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.cardRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Carte</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.qrRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">QR Code</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Compte</div>
+            </div>
+            <div className="bg-red-50 p-3 rounded text-center border border-red-200">
+              <div className="font-semibold text-red-700">{dailyStats.orders.filter(o => o.paymentMethod === "FREE").length}</div>
+              <div className="text-sm text-red-500">Gratuit</div>
+            </div>
+          </div>
+        </div>
+
         {/* États de chargement et d'erreur */}
         {loading && (
           <div className="text-center py-8">
@@ -360,92 +553,104 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {/* Liste des commandes */}
+        {/* Liste des commandes du jour */}
         {!loading && !error && (
-          <div className="space-y-4">
-            {orders.length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-gray-500">Aucune commande</div>
-                <div className="text-sm text-gray-400 mt-2">
-                  Créez votre première commande en cliquant sur "Nouvelle commande"
-                </div>
-              </div>
-            )}
-
-            {orders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
-                    <p className="text-gray-600">
-                      Client: {order.client ? getFullName(order.client) : "Client inconnu"}
-                      {order.client?.role === "TRAINER" && (
-                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                          Entraîneur
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-gray-600">
-                      Date: {new Date(order.date).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
-                      {Number(order.totalAmount).toFixed(2)}€
-                    </div>
-                    <div className={`px-3 py-1 rounded text-sm font-medium mb-2 ${
-                      order.paymentMethod === "ACCOUNT_DEBIT"
-                        ? "bg-purple-100 text-purple-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}>
-                      {getPaymentMethodLabel(order.paymentMethod)}
-                    </div>
-                    
-                    {/* Bouton d'annulation */}
-                    <button
-                      onClick={() => handleCancelOrder(order)}
-                      className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
-                      title="Annuler cette commande (restaure stocks et solde)"
-                    >
-                      🗑️ Annuler
-                    </button>
+          <div>
+            <h2 className="text-xl font-semibold mb-4 text-black">
+              Commandes du {new Date(selectedDate).toLocaleDateString('fr-FR', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </h2>
+            
+            <div className="space-y-4">
+              {dailyStats.orders.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Aucune commande pour cette date</div>
+                  <div className="text-sm text-gray-400 mt-2">
+                    Sélectionnez une autre date ou créez une nouvelle commande
                   </div>
                 </div>
+              )}
 
-                <div className="border-t pt-4">
-                  <h4 className="font-medium mb-2">Produits:</h4>
-                  <div className="space-y-1">
-                    {order.products?.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center text-sm">
-                        <div className="flex items-center gap-2">
-                          <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
-                          <button 
-                            onClick={() => openEditForm(item.product)} 
-                            className="p-1 hover:bg-blue-50 rounded"
-                            title="Modifier ce produit"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        </div>
-                        <span>{Number(item.totalPrice).toFixed(2)}€</span>
+              {dailyStats.orders.map((order) => (
+                <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
+                      <p className="text-gray-600">
+                        Client: {order.client ? getFullName(order.client) : "Client inconnu"}
+                        {order.client?.role === "TRAINER" && (
+                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            Entraîneur
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-gray-600">
+                        Heure: {new Date(order.date).toLocaleTimeString('fr-FR')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-600">
+                        {Number(order.totalAmount).toFixed(2)}€
                       </div>
-                    )) || <div className="text-gray-500">Aucun produit</div>}
-                  </div>
-                  {order.notes && (
-                    <div className="mt-3 text-sm text-gray-600">
-                      <strong>Notes:</strong> {order.notes}
+                      <div className={`px-3 py-1 rounded text-sm font-medium mb-2 ${
+                        order.paymentMethod === "ACCOUNT_DEBIT"
+                          ? "bg-purple-100 text-purple-800"
+                          : order.paymentMethod === "FREE"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                        {getPaymentMethodLabel(order.paymentMethod)}
+                      </div>
+                      
+                      <button
+                        onClick={() => handleCancelOrder(order)}
+                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+                        title="Annuler cette commande (restaure stocks et solde)"
+                      >
+                        🗑️ Annuler
+                      </button>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-2">Produits:</h4>
+                    <div className="space-y-1">
+                      {order.products?.map((item, index) => (
+                        <div key={index} className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
+                            <button 
+                              onClick={() => openEditForm(item.product)} 
+                              className="p-1 hover:bg-blue-50 rounded"
+                              title="Modifier ce produit"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <span>{Number(item.totalPrice).toFixed(2)}€</span>
+                        </div>
+                      )) || <div className="text-gray-500">Aucun produit</div>}
+                    </div>
+                    {order.notes && (
+                      <div className="mt-3 text-sm text-gray-600">
+                        <strong>Notes:</strong> {order.notes}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Modal nouvelle commande */}
+        {/* Modals (inchangés) */}
         {showForm && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowForm(false)} />
@@ -460,7 +665,7 @@ export default function OrdersPage() {
                   onChange={(e) => {
                     const user = users.find(u => u.id === Number(e.target.value));
                     setSelectedUser(user || null);
-                    setCart([]); // Réinitialiser le panier quand on change de client
+                    setCart([]);
                   }}
                   className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   required
@@ -541,8 +746,9 @@ export default function OrdersPage() {
                       );
                     })}
                     <div className="mt-4 text-right">
-                      <div className="text-xl font-bold">
+                      <div className={`text-xl font-bold ${paymentMethod === "FREE" ? "text-red-600" : ""}`}>
                         Total: {calculateTotal().toFixed(2)}€
+                        {paymentMethod === "FREE" && <span className="text-sm ml-2">(GRATUIT)</span>}
                       </div>
                     </div>
                   </div>
@@ -561,10 +767,16 @@ export default function OrdersPage() {
                   <option value="CREDITCARD">Carte bancaire</option>
                   <option value="QRCODE">QR Code</option>
                   <option value="ACCOUNT_DEBIT">Débit compte</option>
+                  <option value="FREE">Gratuit (produit défectueux/geste commercial)</option>
                 </select>
                 {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
                   <p className="text-sm text-gray-600 mt-1">
                     Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
+                  </p>
+                )}
+                {paymentMethod === "FREE" && (
+                  <p className="text-sm text-red-600 mt-1">
+                    ⚠️ Cette commande sera gratuite - aucun paiement ne sera demandé
                   </p>
                 )}
               </div>
@@ -584,7 +796,13 @@ export default function OrdersPage() {
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    setShowForm(false);
+                    setSelectedUser(null);
+                    setCart([]);
+                    setPaymentMethod("CASH");
+                    setNotes("");
+                  }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
                 >
@@ -593,9 +811,13 @@ export default function OrdersPage() {
                 <button
                   onClick={handleCreateOrder}
                   disabled={saving || !selectedUser || cart.length === 0}
-                  className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`px-4 py-2 rounded text-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                    paymentMethod === "FREE" 
+                      ? "bg-red-600 hover:bg-red-700" 
+                      : "bg-[#1E2A47] hover:bg-[#2A3B5A]"
+                  }`}
                 >
-                  {saving ? "Création..." : "Créer la commande"}
+                  {saving ? "Création..." : paymentMethod === "FREE" ? "Créer commande gratuite" : "Créer la commande"}
                 </button>
               </div>
             </div>

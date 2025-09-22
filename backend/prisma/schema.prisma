@@ -93,4 +93,5 @@ enum PaymentType {
   CASH
   QRCODE
   ACCOUNT_DEBIT
+  FREE
 }
