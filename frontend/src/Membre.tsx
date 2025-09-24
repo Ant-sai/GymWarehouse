@@ -17,6 +17,7 @@ export default function MembersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -31,6 +32,26 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editBalance, setEditBalance] = useState("");
+
+  // Fonction pour formater le nom complet
+  const getFullName = (user: User) => {
+    const parts = [user.firstName, user.lastName].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : "Non renseigné";
+  };
+
+  // Fonction pour filtrer les utilisateurs selon le terme de recherche
+  const filteredUsers = users.filter(user => {
+    const fullName = getFullName(user).toLowerCase();
+    const email = user.email.toLowerCase();
+    const phone = user.phoneNumber?.toLowerCase() || "";
+    const role = user.role === "TRAINER" ? "entraîneur" : "utilisateur";
+    const search = searchTerm.toLowerCase();
+
+    return fullName.includes(search) || 
+           email.includes(search) || 
+           phone.includes(search) || 
+           role.includes(search);
+  });
 
   // Fonction pour récupérer tous les utilisateurs
   async function fetchUsers() {
@@ -213,11 +234,6 @@ export default function MembersPage() {
     fetchUsers();
   };
 
-  // Fonction pour formater le nom complet
-  const getFullName = (user: User) => {
-    const parts = [user.firstName, user.lastName].filter(Boolean);
-    return parts.length > 0 ? parts.join(" ") : "Non renseigné";
-  };
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -256,6 +272,44 @@ export default function MembersPage() {
           </button>
         </header>
 
+        {/* Barre de recherche */}
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Rechercher un membre (nom, email, téléphone, rôle)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <svg 
+              className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          
+          {/* Compteur de résultats */}
+          {searchTerm && !loading && (
+            <div className="mt-2 text-sm text-gray-600">
+              {filteredUsers.length} résultat{filteredUsers.length > 1 ? 's' : ''} trouvé{filteredUsers.length > 1 ? 's' : ''} sur {users.length} membre{users.length > 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+
         {/* États de chargement et d'erreur */}
         {loading && (
           <div className="text-center py-8">
@@ -290,7 +344,7 @@ export default function MembersPage() {
 
             {/* Content */}
             <div className="space-y-4 px-4">
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && users.length === 0 && (
                 <div className="text-center py-8">
                   <div className="text-gray-500">Aucun membre dans la base de données</div>
                   <div className="text-sm text-gray-400 mt-2">
@@ -298,8 +352,23 @@ export default function MembersPage() {
                   </div>
                 </div>
               )}
+
+              {filteredUsers.length === 0 && users.length > 0 && searchTerm && (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Aucun membre trouvé pour "{searchTerm}"</div>
+                  <div className="text-sm text-gray-400 mt-2">
+                    Essayez de modifier votre recherche ou 
+                    <button 
+                      onClick={() => setSearchTerm("")}
+                      className="text-blue-500 hover:text-blue-700 ml-1"
+                    >
+                      afficher tous les membres
+                    </button>
+                  </div>
+                </div>
+              )}
               
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <div
                   key={user.id}
                   className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-6 items-center text-black hover:shadow-md transition-shadow"

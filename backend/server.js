@@ -352,13 +352,7 @@ app.post('/api/orders', async (req, res) => {
         const totalAmount = orderDetails.reduce((sum, detail) => sum + detail.totalPrice, 0);
 
         // IMPORTANT: Vérification du solde côté serveur pour les paiements par débit de compte
-        if (paymentMethod === 'ACCOUNT_DEBIT') {
-            if (Number(user.balance) < totalAmount) {
-                return res.status(400).json({
-                    error: `Solde insuffisant. Solde disponible: ${Number(user.balance).toFixed(2)}€, Montant requis: ${totalAmount.toFixed(2)}€`
-                });
-            }
-        }
+        
 
         const result = await prisma.$transaction(async (prismaTransaction) => {
             //Create the order
@@ -423,9 +417,6 @@ app.post('/api/orders', async (req, res) => {
                 });
 
                 // Vérification finale - s'assurer que le solde n'est pas négatif
-                if (Number(updatedUser.balance) < 0) {
-                    throw new Error('Transaction would result in negative balance');
-                }
             }
 
             return order;
