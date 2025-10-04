@@ -1,15 +1,12 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -24,9 +21,12 @@ model User {
   
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
-
+  
   orders        Order[]
-
+  openedCashRegisters   CashRegister[] @relation("OpenedBy")
+  closedCashRegisters   CashRegister[] @relation("ClosedBy")
+  cashMovements         CashMovement[]
+  
   @@map("users")
 }
 
@@ -39,48 +39,89 @@ model Product {
   trainerPrice  Decimal     @db.Decimal(10, 2) @map("trainer_price")
   cost          Decimal     @db.Decimal(10, 2)
   isActive      Boolean     @default(true)
-
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
   
   orderDetails  OrderDetail[]
-
+  
   @@map("products")
 }
 
 model Order {
   id            Int         @id @default(autoincrement())
-
   client        User        @relation(fields: [clientId], references: [id])
   clientId      Int
-
   totalAmount   Decimal     @map("total_amount") @db.Decimal(10, 2)
   date          DateTime    @default(now())
   paymentMethod PaymentType @map("payment_method")
-
   notes         String?
-
+  
   products      OrderDetail[]
-
+  cashMovements CashMovement[]
+  
   @@map("orders")
 }
 
 model OrderDetail {
   id            Int         @id @default(autoincrement())
-
   order         Order       @relation(fields: [orderId], references: [id])
   orderId       Int
   
   product       Product     @relation(fields: [productId], references: [id])
   productId     Int         
-
   quantity      Int
-
   unitPrice     Decimal     @map("unit_price") @db.Decimal(10, 2)
-  totalPrice   Decimal     @map("total_price") @db.Decimal(10, 2)
-
+  totalPrice    Decimal     @map("total_price") @db.Decimal(10, 2)
+  
   @@map("order_details")
 }
+
+// ========================================
+// NOUVEAUX MODÈLES - GESTION DE CAISSE
+// ========================================
+
+model CashRegister {
+  id              Int               @id @default(autoincrement())
+  openingDate     DateTime          @default(now()) @map("opening_date")
+  closingDate     DateTime?         @map("closing_date")
+  openingBalance  Decimal           @default(0) @db.Decimal(10, 2) @map("opening_balance")
+  closingBalance  Decimal?          @db.Decimal(10, 2) @map("closing_balance")
+  expectedBalance Decimal?          @db.Decimal(10, 2) @map("expected_balance")
+  difference      Decimal?          @db.Decimal(10, 2)
+  status          CashRegisterStatus @default(OPEN)
+  notes           String?
+  
+  openedBy        Int?              @map("opened_by")
+  closedBy        Int?              @map("closed_by")
+  
+  openedByUser    User?             @relation("OpenedBy", fields: [openedBy], references: [id])
+  closedByUser    User?             @relation("ClosedBy", fields: [closedBy], references: [id])
+  
+  movements       CashMovement[]
+  
+  @@map("cash_register")
+}
+
+model CashMovement {
+  id              Int               @id @default(autoincrement())
+  cashRegisterId  Int               @map("cash_register_id")
+  movementType    MovementType      @map("movement_type")
+  amount          Decimal           @db.Decimal(10, 2)
+  orderId         Int?              @map("order_id")
+  description     String?           @db.VarChar(500)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  createdBy       Int?              @map("created_by")
+  
+  cashRegister    CashRegister      @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+  order           Order?            @relation(fields: [orderId], references: [id])
+  user            User?             @relation(fields: [createdBy], references: [id])
+  
+  @@map("cash_movements")
+}
+
+// ========================================
+// ENUMS
+// ========================================
 
 enum Role {
   TRAINER
@@ -94,4 +135,19 @@ enum PaymentType {
   QRCODE
   ACCOUNT_DEBIT
   FREE
+}
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+enum MovementType {
+  OPENING_FUND    // Fond de caisse initial
+  SALE            // Vente
+  REFUND          // Remboursement
+  EXPENSE         // Dépense
+  DEPOSIT         // Dépôt
+  WITHDRAWAL      // Retrait
+  ADJUSTMENT      // Ajustement manuel
 }
