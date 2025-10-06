@@ -383,7 +383,7 @@ export default function DailyOrdersPage() {
       console.error('Erreur lors de l\'annulation:', err);
     }
   }
-  async function handleRefund() {
+async function handleRefund() {
   if (!refundUser) {
     alert("Veuillez sélectionner un membre");
     return;
@@ -412,11 +412,9 @@ export default function DailyOrdersPage() {
       throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
     }
 
-    const refundTransaction = await response.json();
-    
-    // Ajouter le remboursement à la liste des commandes (pour l'affichage)
-    // Note: Vous devrez adapter votre backend pour que les remboursements 
-    // soient aussi récupérés via /api/orders ou créer une union des deux
+    // Supprimez cette ligne car vous ne l'utilisez pas
+    // const refundTransaction = await response.json();
+    await response.json(); // Si vous voulez juste consommer la réponse
     
     alert(`Remboursement de ${amount.toFixed(2)}€ effectué avec succès !`);
     
@@ -438,7 +436,6 @@ export default function DailyOrdersPage() {
     setSaving(false);
   }
 }
-
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
     if (!editingProduct) return;
