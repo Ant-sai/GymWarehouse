@@ -48,7 +48,7 @@ export default function StockPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch("http://localhost:3000/api/products");
+      const response = await fetch("/api/products");
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -98,7 +98,7 @@ export default function StockPage() {
         isActive: true,
       });
 
-      const response = await fetch("http://localhost:3000/api/products", {
+      const response = await fetch("/api/products", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -169,7 +169,7 @@ export default function StockPage() {
         throw new Error("Le prix entraîneur doit être supérieur à 0");
       }
 
-      const response = await fetch(`http://localhost:3000/api/products/${editingProduct.id}`, {
+      const response = await fetch(`/api/products/${editingProduct.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -207,7 +207,7 @@ export default function StockPage() {
 
   async function handleDelete(id: number) {
     try {
-      const response = await fetch(`http://localhost:3000/api/products/${id}`, {
+      const response = await fetch(`/api/products/${id}`, {
         method: "DELETE",
       });
 

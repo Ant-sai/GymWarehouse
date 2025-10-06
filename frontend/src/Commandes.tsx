@@ -95,7 +95,7 @@ export default function DailyOrdersPage() {
 
   async function fetchOrders() {
     try {
-      const response = await fetch("http://localhost:3000/api/orders");
+      const response = await fetch("/api/orders");
       if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
       const data = await response.json();
       setOrders(data);
@@ -110,7 +110,7 @@ export default function DailyOrdersPage() {
   // Juste après avoir fetch les utilisateurs
   async function fetchUsers() {
     try {
-      const response = await fetch("http://localhost:3000/api/users");
+      const response = await fetch("/api/users");
       if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
       const data: User[] = await response.json();
 
@@ -130,7 +130,7 @@ export default function DailyOrdersPage() {
 
   async function fetchProducts() {
     try {
-      const response = await fetch("http://localhost:3000/api/products");
+      const response = await fetch("/api/products");
       if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
       const data = await response.json();
       setProducts(data.filter((p: Product) => p.isActive));
@@ -315,7 +315,7 @@ export default function DailyOrdersPage() {
         }))
       };
 
-      const response = await fetch("http://localhost:3000/api/orders", {
+      const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
@@ -353,7 +353,7 @@ export default function DailyOrdersPage() {
 
   async function handleCancelOrder(order: Order) {
     try {
-      const response = await fetch(`http://localhost:3000/api/orders/${order.id}/hard`, {
+      const response = await fetch(`/api/orders/${order.id}/hard`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -385,7 +385,7 @@ export default function DailyOrdersPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:3000/api/products/${editingProduct.id}`, {
+      const response = await fetch(`/api/products/${editingProduct.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

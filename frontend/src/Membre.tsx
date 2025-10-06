@@ -59,7 +59,7 @@ export default function MembersPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch("http://localhost:3000/api/users");
+      const response = await fetch("/api/users");
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -105,7 +105,7 @@ export default function MembersPage() {
         balance: Number(form.balance || 0),
       });
 
-      const response = await fetch("http://localhost:3000/api/users", {
+      const response = await fetch("/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -166,7 +166,7 @@ export default function MembersPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${id}`, {
+      const response = await fetch(`/api/users/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -210,7 +210,7 @@ export default function MembersPage() {
     if (!confirm("Supprimer ce membre ?")) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${id}`, {
+      const response = await fetch(`/api/users/${id}`, {
         method: "DELETE",
       });
 
