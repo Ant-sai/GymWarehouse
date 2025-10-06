@@ -3,13 +3,10 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-
 dotenv.config(); // ⚠️ doit être en tout premier
-
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
-
 
 // Middlewares
 app.use(
@@ -38,28 +35,25 @@ app.listen(PORT, () => {
 //Graceful shutdown
 const gracefulShutdown = async () => {
     console.log('🛑 Shutting down server...');
-
     try {
         await prisma.$disconnect();
         console.log('✅ Database connection closed');
     } catch (error) {
         console.error('❌ Error closing database connection:', error);
     }
-
     process.exit(0);
 };
-
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
 // -----------------------------------------------
 // ----------------- User routes -----------------
 // -----------------------------------------------
-//Create a user 
-app.post('/api/users', async (req, res) => { 
+//Create a user
+app.post('/api/users', async (req, res) => {
     try {
         const { email, firstName, lastName, phoneNumber, role, balance } = req.body;
-        
+       
         const user = await prisma.user.create({
             data: {
                 email: email,
@@ -70,7 +64,6 @@ app.post('/api/users', async (req, res) => {
                 balance: balance,
             }
         });
-
         res.status(201).json(user);
     } catch (err) {
         console.error('Error creating user: ', err);
@@ -95,7 +88,6 @@ app.get('/api/users', async (req, res) => {
                 updatedAt: true,
             },
         });
-
         res.json(users);
     } catch (err) {
         console.error('Error fetching users: ', err);
@@ -111,11 +103,9 @@ app.get('/api/users/:id', async (req, res) => {
             where: { id: Number(id) },
             include: { orders: true, },
         });
-
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-
         res.json(user);
     } catch (err) {
         console.error('Error fetching user: ', err);
@@ -128,7 +118,6 @@ app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { email, firstName, lastName, phoneNumber, role, balance } = req.body;
-
         const user = await prisma.user.update({
             where: { id: Number(id), },
             data: {
@@ -140,7 +129,6 @@ app.put('/api/users/:id', async (req, res) => {
                 balance: balance,
             },
         });
-
         res.json(user);
     } catch (err) {
         console.error('Error updating user: ', err);
@@ -155,7 +143,6 @@ app.delete('/api/users/:id', async (req, res) => {
         await prisma.user.delete({
             where: { id: Number(id) },
         });
-
         res.status(204).send();
     } catch (err) {
         console.error('Error deleting user: ', err);
@@ -167,10 +154,10 @@ app.delete('/api/users/:id', async (req, res) => {
 // ---------------- Product routes ----------------
 // ------------------------------------------------
 //Create a product
-app.post('/api/products', async (req, res) => { 
+app.post('/api/products', async (req, res) => {
     try {
         const { name, description, quantity, price, trainerPrice, cost, isActive } = req.body;
-        
+       
         const product = await prisma.product.create({
             data: {
                 name: name,
@@ -182,7 +169,6 @@ app.post('/api/products', async (req, res) => {
                 isActive: isActive,
             }
         });
-
         res.status(201).json(product);
     } catch (err) {
         console.error('Error creating product: ', err);
@@ -208,7 +194,6 @@ app.get('/api/products', async (req, res) => {
                 updatedAt: true,
             },
         });
-
         res.json(products);
     } catch (err) {
         console.error('Error fetching products: ', err);
@@ -223,11 +208,9 @@ app.get('/api/products/:id', async (req, res) => {
         const product = await prisma.product.findUnique({
             where: { id: Number(id) },
         });
-
         if (!product) {
             return res.status(404).json({ error: 'Product not found' });
         }
-
         res.json(product);
     } catch (err) {
         console.error('Error fetching product: ', err);
@@ -240,7 +223,6 @@ app.put('/api/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { name, description, quantity, price, trainerPrice, cost, isActive } = req.body;
-
         const product = await prisma.product.update({
             where: { id: Number(id), },
             data: {
@@ -253,7 +235,6 @@ app.put('/api/products/:id', async (req, res) => {
                 isActive: isActive,
             },
         });
-
         res.json(product);
     } catch (err) {
         console.error('Error updating product: ', err);
@@ -268,7 +249,6 @@ app.delete('/api/products/:id', async (req, res) => {
         await prisma.product.delete({
             where: { id: Number(id) },
         });
-
         res.status(204).send();
     } catch (err) {
         console.error('Error deleting product: ', err);
@@ -280,28 +260,27 @@ app.delete('/api/products/:id', async (req, res) => {
 // ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
-//Create an order - Version corrigée
 app.post('/api/orders', async (req, res) => {
     try {
         const { clientId, paymentMethod, notes, products } = req.body;
-        
+       
         // Validation des données d'entrée
         if (!clientId || !paymentMethod || !products || !Array.isArray(products) || products.length === 0) {
-            return res.status(400).json({ 
-                error: 'Données manquantes: clientId, paymentMethod et products sont requis' 
+            return res.status(400).json({
+                error: 'Données manquantes: clientId, paymentMethod et products sont requis'
             });
         }
-        
+       
         //Finding the user
         const user = await prisma.user.findUnique({
             where: { id: Number(clientId) },
         });
-        
+       
         //Check if the user exists
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        
+       
         //Finding the products
         const productIds = products.map(p => Number(p.productId));
         const dbProducts = await prisma.product.findMany({
@@ -310,12 +289,12 @@ app.post('/api/orders', async (req, res) => {
                 isActive: true,
             }
         });
-        
+       
         //Check if the products are active
         if (dbProducts.length !== productIds.length) {
             return res.status(400).json({ error: 'Some products not found or inactive' });
         }
-        
+       
         //Check if stock is available
         for (const orderProduct of products) {
             const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
@@ -328,18 +307,16 @@ app.post('/api/orders', async (req, res) => {
                 });
             }
         }
-        
+       
         //Calculate order details
         const orderDetails = products.map(orderProduct => {
             const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
-
             const unitPrice = user.role === 'TRAINER' && dbProduct.trainerPrice > 0
-                ? Number(dbProduct.trainerPrice) 
+                ? Number(dbProduct.trainerPrice)
                 : Number(dbProduct.price);
-            
+           
             const quantity = Number(orderProduct.quantity);
             const totalPrice = unitPrice * quantity;
-
             return {
                 productId: Number(orderProduct.productId),
                 quantity: quantity,
@@ -347,13 +324,10 @@ app.post('/api/orders', async (req, res) => {
                 totalPrice: totalPrice
             };
         });
-        
+       
         //Calculate total amount
         const totalAmount = orderDetails.reduce((sum, detail) => sum + detail.totalPrice, 0);
-
-        // IMPORTANT: Vérification du solde côté serveur pour les paiements par débit de compte
-        
-
+       
         const result = await prisma.$transaction(async (prismaTransaction) => {
             //Create the order
             const order = await prismaTransaction.order.create({
@@ -392,7 +366,6 @@ app.post('/api/orders', async (req, res) => {
                     }
                 }
             });
-
             //Update product quantities
             for (const orderProduct of products) {
                 await prismaTransaction.product.update({
@@ -404,10 +377,9 @@ app.post('/api/orders', async (req, res) => {
                     }
                 });
             }
-
             //Update user balance if paying with account
             if (paymentMethod === 'ACCOUNT_DEBIT') {
-                const updatedUser = await prismaTransaction.user.update({
+                await prismaTransaction.user.update({
                     where: { id: Number(clientId) },
                     data: {
                         balance: {
@@ -415,17 +387,13 @@ app.post('/api/orders', async (req, res) => {
                         }
                     }
                 });
-
-                // Vérification finale - s'assurer que le solde n'est pas négatif
             }
-
             return order;
         });
-
         res.status(201).json(result);
     } catch (err) {
         console.error('Error creating order: ', err);
-        
+       
         // Gestion d'erreur plus détaillée
         if (err.code === 'P2002') {
             return res.status(400).json({
@@ -433,14 +401,13 @@ app.post('/api/orders', async (req, res) => {
                 message: err.message
             });
         }
-        
+       
         if (err.code === 'P2025') {
             return res.status(404).json({
                 error: 'Resource not found',
                 message: err.message
             });
         }
-
         res.status(500).json({
             error: 'Internal server error',
             message: err.message || 'An unexpected error occurred'
@@ -478,7 +445,6 @@ app.get('/api/orders', async (req, res) => {
                 }
             }
         });
-
         res.json(orders);
     } catch (err) {
         console.error('Error fetching orders: ', err)
@@ -515,11 +481,9 @@ app.get('/api/orders/:id', async (req, res) => {
                 }
             }
         });
-
         if (!order) {
             return res.status(404).json({ error: 'Order not found' });
         }
-
         res.json(order);
     } catch (err) {
         console.error('Error fetching order: ', err);
@@ -532,7 +496,6 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
     try {
         const { id } = req.params;
         const { restoreStock = true, reason } = req.body;
-
         const existingOrder = await prisma.order.findUnique({
             where: { id: Number(id) },
             include: {
@@ -557,11 +520,9 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 }
             }
         });
-
         if (!existingOrder) {
             return res.status(404).json({ error: 'Order not found' });
         }
-
         const result = await prisma.$transaction(async (prisma) => {
             // Restore the stock
             if (restoreStock) {
@@ -576,7 +537,6 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                     });
                 }
             }
-
             // Restore balance if payment was by account debit
             let balanceRestored = 0;
             if (existingOrder.paymentMethod === 'ACCOUNT_DEBIT') {
@@ -590,17 +550,14 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 });
                 balanceRestored = existingOrder.totalAmount;
             }
-
             // Delete OrderDetails
             await prisma.orderDetail.deleteMany({
                 where: { orderId: Number(id) }
             });
-
             // Delete Order
             await prisma.order.delete({
                 where: { id: Number(id) }
             });
-
             return {
                 deletedOrderId: Number(id),
                 stockRestored: restoreStock,
@@ -614,7 +571,6 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 reason: reason || 'No reason provided',
             };
         });
-
         res.json({
             success: true,
             message: 'Order cancelled successfully',
@@ -625,10 +581,94 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
         if (err.code === 'P2025') {
             return res.status(404).json({ error: 'Order not found' });
         }
-
         res.status(500).json({
             error: 'Internal server error',
             message: err.message
+        });
+    }
+});
+
+// -----------------------------------------------
+// ---------------- Refund routes ----------------
+// -----------------------------------------------
+// Create a refund (credit user account)
+app.post('/api/refunds', async (req, res) => {
+    try {
+        const { userId, amount, notes } = req.body;
+        
+        // Validation
+        if (!userId || !amount) {
+            return res.status(400).json({
+                error: 'Données manquantes: userId et amount sont requis'
+            });
+        }
+        
+        const refundAmount = Number(amount);
+        if (isNaN(refundAmount) || refundAmount <= 0) {
+            return res.status(400).json({
+                error: 'Le montant du remboursement doit être positif'
+            });
+        }
+        
+        // Vérifier que l'utilisateur existe
+        const user = await prisma.user.findUnique({
+            where: { id: Number(userId) }
+        });
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const result = await prisma.$transaction(async (prismaTransaction) => {
+            // Créer une commande spéciale de type REFUND
+            // On utilise un montant négatif pour différencier visuellement
+            const refundOrder = await prismaTransaction.order.create({
+                data: {
+                    clientId: Number(userId),
+                    totalAmount: -refundAmount, // Montant négatif pour le remboursement
+                    paymentMethod: 'ACCOUNT_DEBIT', // On utilise ce type pour identifier un crédit
+                    notes: `[REMBOURSEMENT] ${notes || 'Remboursement effectué'}`,
+                    // Pas de produits pour un remboursement
+                },
+                include: {
+                    client: {
+                        select: {
+                            id: true,
+                            email: true,
+                            firstName: true,
+                            lastName: true,
+                            role: true,
+                            balance: true
+                        }
+                    },
+                    products: true
+                }
+            });
+            
+            // Créditer le compte de l'utilisateur
+            const updatedUser = await prismaTransaction.user.update({
+                where: { id: Number(userId) },
+                data: {
+                    balance: {
+                        increment: refundAmount
+                    }
+                }
+            });
+            
+            return {
+                refund: refundOrder,
+                newBalance: updatedUser.balance,
+                amountRefunded: refundAmount
+            };
+        });
+        
+        res.status(201).json(result);
+        
+    } catch (err) {
+        console.error('Error processing refund: ', err);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: err.message || 'An unexpected error occurred'
         });
     }
 });
