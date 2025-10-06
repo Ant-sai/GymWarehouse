@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
+import PrimeroseVector from './assets/PrimeroseVector.svg';
 
 export type User = {
   id: number;
@@ -429,7 +430,7 @@ export default function DailyOrdersPage() {
     });
     setShowEditForm(true);
   }
-  
+
 
   const getFullName = (user: User | undefined) => {
     if (!user) return "Utilisateur inconnu";
@@ -454,8 +455,11 @@ export default function DailyOrdersPage() {
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <aside className="w-60 bg-[#1E2A47] text-white p-8">
-        <h2 className="text-xl font-semibold mb-8">Gym Warehouse</h2>
-        <nav className="space-y-4 text-sm">
+        <img
+          src={PrimeroseVector}
+          alt="Gym Warehouse"
+          className="w-full h-auto mb-8"
+        />        <nav className="space-y-4 text-sm">
           <Link to="/stock" className="block text-[#AAB4C3] hover:text-white transition-colors">
             Stock
           </Link>
@@ -650,10 +654,10 @@ export default function DailyOrdersPage() {
                         {Number(order.totalAmount).toFixed(2)}€
                       </div>
                       <div className={`px-3 py-1 rounded text-sm font-medium mb-2 ${order.paymentMethod === "ACCOUNT_DEBIT"
-                          ? "bg-purple-100 text-purple-800"
-                          : order.paymentMethod === "FREE"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
+                        ? "bg-purple-100 text-purple-800"
+                        : order.paymentMethod === "FREE"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
                         }`}>
                         {getPaymentMethodLabel(order.paymentMethod)}
                       </div>
@@ -729,57 +733,57 @@ export default function DailyOrdersPage() {
 
               </div>
 
-{/* Sélection des produits */}
-<div className="mb-6">
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Produits disponibles
-  </label>
+              {/* Sélection des produits */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Produits disponibles
+                </label>
 
-  {/* Filtre de recherche */}
-  <div className="mb-4">
-    <input
-      type="text"
-      placeholder="Rechercher un produit..."
-      value={productSearch}
-      onChange={(e) => setProductSearch(e.target.value)}
-      className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-    />
-  </div>
+                {/* Filtre de recherche */}
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    placeholder="Rechercher un produit..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
 
-  <div className="grid grid-cols-2 gap-4 max-h-60 overflow-y-auto border rounded p-4">
-    {filteredProducts.length === 0 ? (
-      <div className="col-span-2 text-center text-gray-500 py-4">
-        {productSearch ? "Aucun produit trouvé" : "Aucun produit disponible"}
-      </div>
-    ) : (
-      filteredProducts.map(product => (
-        <div key={product.id} className="border rounded p-3">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h4 className="font-medium">{product.name}</h4>
-              <p className="text-sm text-gray-600">Stock: {product.quantity}</p>
-            </div>
-            <div className="text-right">
-              <div className="font-bold">
-                {/* Si selectedUser peut être null, il faut fallback */}
-                {selectedUser?.role === "TRAINER"
-                  ? product.trainerPrice
-                  : product.price}€
+                <div className="grid grid-cols-2 gap-4 max-h-60 overflow-y-auto border rounded p-4">
+                  {filteredProducts.length === 0 ? (
+                    <div className="col-span-2 text-center text-gray-500 py-4">
+                      {productSearch ? "Aucun produit trouvé" : "Aucun produit disponible"}
+                    </div>
+                  ) : (
+                    filteredProducts.map(product => (
+                      <div key={product.id} className="border rounded p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-medium">{product.name}</h4>
+                            <p className="text-sm text-gray-600">Stock: {product.quantity}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold">
+                              {/* Si selectedUser peut être null, il faut fallback */}
+                              {selectedUser?.role === "TRAINER"
+                                ? product.trainerPrice
+                                : product.price}€
+                            </div>
+                            <button
+                              onClick={() => addToCart(product)}
+                              className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
+                              disabled={product.quantity <= 0}
+                            >
+                              Ajouter
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => addToCart(product)}
-                className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
-                disabled={product.quantity <= 0}
-              >
-                Ajouter
-              </button>
-            </div>
-          </div>
-        </div>
-      ))
-    )}
-  </div>
-</div>
 
 
               {/* Panier */}
@@ -944,8 +948,8 @@ export default function DailyOrdersPage() {
                   onClick={handleCreateOrder}
                   disabled={saving || !selectedUser || cart.length === 0}
                   className={`px-4 py-2 rounded text-white disabled:opacity-50 disabled:cursor-not-allowed ${paymentMethod === "FREE"
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-[#1E2A47] hover:bg-[#2A3B5A]"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-[#1E2A47] hover:bg-[#2A3B5A]"
                     }`}
                 >
                   {saving ? "Création..." : paymentMethod === "FREE" ? "Créer commande gratuite" : "Créer la commande"}

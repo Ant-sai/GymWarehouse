@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
+import PrimeroseVector from './assets/PrimeroseVector.svg';
+
 
 export type Product = {
   id: number;
@@ -238,8 +240,11 @@ export default function StockPage() {
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <aside className="w-60 bg-[#1E2A47] text-white p-8">
-        <h2 className="text-xl font-semibold mb-8">Gym Warehouse</h2>
-        <nav className="space-y-4 text-sm">
+<img
+          src={PrimeroseVector}
+          alt="Gym Warehouse"
+          className="w-full h-auto mb-8"
+        />        <nav className="space-y-4 text-sm">
           <div className="font-medium text-white">Stock</div>
           <Link to="/membres" className="block text-[#AAB4C3] hover:text-white transition-colors">
             Membres
