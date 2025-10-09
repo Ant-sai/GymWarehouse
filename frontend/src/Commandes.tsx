@@ -266,16 +266,11 @@ export default function DailyOrdersPage() {
     return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
   }
 
-  function calculateDiscount() {
-    if (discountValue <= 0 || paymentMethod === "FREE") return 0;
-
-    const subtotal = calculateSubtotal();
-    if (discountType === "percentage") {
-      return (subtotal * discountValue) / 100;
-    } else {
-      return Math.min(discountValue, subtotal);
-    }
-  }
+function calculateDiscount() {
+  if (discountValue <= 0 || paymentMethod === "FREE") return 0;
+  const subtotal = calculateSubtotal();
+  return Math.min(discountValue, subtotal);
+}
 
   // Filtrer les produits selon la recherche
   const filteredProducts = products.filter(product =>
