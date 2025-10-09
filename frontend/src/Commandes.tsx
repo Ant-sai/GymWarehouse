@@ -815,9 +815,9 @@ async function handleRefund() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 max-h-60 overflow-y-auto border rounded p-4">
+                <div className="grid grid-cols-3 gap-4 max-h-60 overflow-y-auto border rounded p-4">
                   {filteredProducts.length === 0 ? (
-                    <div className="col-span-2 text-center text-gray-500 py-4">
+                    <div className="col-span-3 text-center text-gray-500 py-4">
                       {productSearch ? "Aucun produit trouvé" : "Aucun produit disponible"}
                     </div>
                   ) : (
