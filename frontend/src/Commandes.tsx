@@ -383,59 +383,59 @@ export default function DailyOrdersPage() {
       console.error('Erreur lors de l\'annulation:', err);
     }
   }
-async function handleRefund() {
-  if (!refundUser) {
-    alert("Veuillez sélectionner un membre");
-    return;
-  }
-  
-  const amount = Number(refundAmount);
-  if (isNaN(amount) || amount <= 0) {
-    alert("Veuillez entrer un montant valide");
-    return;
-  }
-
-  setSaving(true);
-  try {
-    const response = await fetch("/api/refunds", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: refundUser.id,
-        amount: amount,
-        notes: refundNotes
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+  async function handleRefund() {
+    if (!refundUser) {
+      alert("Veuillez sélectionner un membre");
+      return;
     }
 
-    // Supprimez cette ligne car vous ne l'utilisez pas
-    // const refundTransaction = await response.json();
-    await response.json(); // Si vous voulez juste consommer la réponse
-    
-    alert(`Remboursement de ${amount.toFixed(2)}€ effectué avec succès !`);
-    
-    // Réinitialiser le formulaire
-    setShowRefundForm(false);
-    setRefundUser(null);
-    setRefundAmount("");
-    setRefundNotes("");
+    const amount = Number(refundAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Veuillez entrer un montant valide");
+      return;
+    }
 
-    // Recharger les données
-    fetchOrders();
-    fetchUsers();
+    setSaving(true);
+    try {
+      const response = await fetch("/api/refunds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: refundUser.id,
+          amount: amount,
+          notes: refundNotes
+        }),
+      });
 
-  } catch (err) {
-    console.error('Erreur lors du remboursement:', err);
-    const errorMessage = err instanceof Error ? err.message : "Impossible d'effectuer le remboursement";
-    alert(errorMessage);
-  } finally {
-    setSaving(false);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
+      // Supprimez cette ligne car vous ne l'utilisez pas
+      // const refundTransaction = await response.json();
+      await response.json(); // Si vous voulez juste consommer la réponse
+
+      alert(`Remboursement de ${amount.toFixed(2)}€ effectué avec succès !`);
+
+      // Réinitialiser le formulaire
+      setShowRefundForm(false);
+      setRefundUser(null);
+      setRefundAmount("");
+      setRefundNotes("");
+
+      // Recharger les données
+      fetchOrders();
+      fetchUsers();
+
+    } catch (err) {
+      console.error('Erreur lors du remboursement:', err);
+      const errorMessage = err instanceof Error ? err.message : "Impossible d'effectuer le remboursement";
+      alert(errorMessage);
+    } finally {
+      setSaving(false);
+    }
   }
-}
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
     if (!editingProduct) return;
@@ -530,31 +530,31 @@ async function handleRefund() {
       {/* Main */}
       <main className="flex-1 p-12">
         <header className="flex items-center justify-between mb-8">
-  <div className="flex items-center gap-4">
-    <h1 className="text-3xl font-semibold text-black">Vue Journalière</h1>
-    <button
-      onClick={fetchOrders}
-      className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
-      disabled={loading}
-    >
-      {loading ? "⟳" : "↻"} Actualiser
-    </button>
-  </div>
-  <div className="flex gap-3">
-    <button
-      onClick={() => setShowRefundForm(true)}
-      className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
-    >
-      💰 Remboursement
-    </button>
-    <button
-      onClick={() => setShowForm(true)}
-      className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
-    >
-      Nouvelle commande
-    </button>
-  </div>
-</header>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-semibold text-black">Vue Journalière</h1>
+            <button
+              onClick={fetchOrders}
+              className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
+              disabled={loading}
+            >
+              {loading ? "⟳" : "↻"} Actualiser
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowRefundForm(true)}
+              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
+            >
+              💰 Remboursement
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
+            >
+              Nouvelle commande
+            </button>
+          </div>
+        </header>
 
         {/* Navigation par date */}
         <div className="mb-8 bg-white rounded-lg p-6 shadow-sm">
@@ -804,28 +804,28 @@ async function handleRefund() {
                     </div>
                   ) : (
                     filteredProducts.map(product => (
-<div key={product.id} className="border rounded p-2">
-  <div className="flex justify-between items-start mb-1">
-    <div>
-      <h4 className="font-medium text-sm">{product.name}</h4>
-      <p className="text-xs text-gray-600">Stock: {product.quantity}</p>
-    </div>
-    <div className="text-right">
-      <div className="font-bold text-sm">
-        {selectedUser?.role === "TRAINER"
-          ? product.trainerPrice
-          : product.price}€
-      </div>
-      <button
-        onClick={() => addToCart(product)}
-        className="mt-0.5 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
-        disabled={product.quantity <= 0}
-      >
-        Ajouter
-      </button>
-    </div>
-  </div>
-</div>
+                      <div key={product.id} className="border rounded p-2">
+                        <div className="flex justify-between items-start mb-1">
+                          <div>
+                            <h4 className="font-medium text-sm">{product.name}</h4>
+                            <p className="text-xs text-gray-600">Stock: {product.quantity}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-sm">
+                              {selectedUser?.role === "TRAINER"
+                                ? product.trainerPrice
+                                : product.price}€
+                            </div>
+                            <button
+                              onClick={() => addToCart(product)}
+                              className="mt-0.5 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
+                              disabled={product.quantity <= 0}
+                            >
+                              Ajouter
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     ))
                   )}
                 </div>
@@ -868,31 +868,22 @@ async function handleRefund() {
                     })}
 
                     {/* Section Réduction */}
+                    {/* Section Réduction */}
                     {paymentMethod !== "FREE" && (
                       <div className="mt-4 pt-4 border-t">
                         <div className="flex items-center gap-4 mb-2">
-                          <label className="text-sm font-medium text-gray-700">Réduction:</label>
-                          <select
-                            value={discountType}
-                            onChange={(e) => setDiscountType(e.target.value as "percentage" | "amount")}
-                            className="border rounded px-2 py-1 text-sm"
-                          >
-                            <option value="percentage">Pourcentage (%)</option>
-                            <option value="amount">Montant fixe (€)</option>
-                          </select>
+                          <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                           <input
                             type="number"
                             min="0"
-                            max={discountType === "percentage" ? 100 : calculateSubtotal()}
-                            step={discountType === "percentage" ? 1 : 0.01}
+                            max={calculateSubtotal()}
+                            step={0.01}
                             value={discountValue}
                             onChange={(e) => setDiscountValue(Number(e.target.value))}
-                            className="border rounded px-2 py-1 text-sm w-20"
-                            placeholder="0"
+                            className="border rounded px-2 py-1 text-sm w-24"
+                            placeholder="0.00"
                           />
-                          <span className="text-sm text-gray-600">
-                            {discountType === "percentage" ? "%" : "€"}
-                          </span>
+                          <span className="text-sm text-gray-600">€</span>
                           {discountValue > 0 && (
                             <button
                               onClick={() => setDiscountValue(0)}
@@ -959,7 +950,7 @@ async function handleRefund() {
                   </p>
                 )}
               </div>
-                              {/* Sélection du client */}
+              {/* Sélection du client */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
                 <select
@@ -978,7 +969,7 @@ async function handleRefund() {
                 </select>
 
               </div>
-              
+
               {/* Notes */}
               {/* <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
@@ -1097,103 +1088,103 @@ async function handleRefund() {
           </div>
         )}
         {/* Modal remboursement */}
-{showRefundForm && (
-  <div className="fixed inset-0 flex items-center justify-center z-40">
-    <div className="absolute inset-0 bg-black/30" onClick={() => setShowRefundForm(false)} />
-    <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
-      <h3 className="text-xl font-semibold mb-6 text-black">Remboursement</h3>
+        {showRefundForm && (
+          <div className="fixed inset-0 flex items-center justify-center z-40">
+            <div className="absolute inset-0 bg-black/30" onClick={() => setShowRefundForm(false)} />
+            <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
+              <h3 className="text-xl font-semibold mb-6 text-black">Remboursement</h3>
 
-      <div className="space-y-4">
-        {/* Sélection du membre */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Membre à rembourser *
-          </label>
-          <select
-            value={refundUser?.id || ""}
-            onChange={(e) => {
-              const user = users.find(u => u.id === Number(e.target.value));
-              setRefundUser(user || null);
-            }}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Sélectionner un membre</option>
-            {users.map(user => (
-              <option key={user.id} value={user.id}>
-                {getFullName(user)}
-              </option>
-            ))}
-          </select>
-          {refundUser && (
-            <div className="text-sm mt-2 text-gray-600">
-              Solde actuel: <span className="font-medium">{Number(refundUser.balance).toFixed(2)}€</span>
+              <div className="space-y-4">
+                {/* Sélection du membre */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Membre à rembourser *
+                  </label>
+                  <select
+                    value={refundUser?.id || ""}
+                    onChange={(e) => {
+                      const user = users.find(u => u.id === Number(e.target.value));
+                      setRefundUser(user || null);
+                    }}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Sélectionner un membre</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {getFullName(user)}
+                      </option>
+                    ))}
+                  </select>
+                  {refundUser && (
+                    <div className="text-sm mt-2 text-gray-600">
+                      Solde actuel: <span className="font-medium">{Number(refundUser.balance).toFixed(2)}€</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Montant */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Montant du remboursement (€) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                  {refundUser && refundAmount && Number(refundAmount) > 0 && (
+                    <div className="text-sm mt-2 text-green-600">
+                      Nouveau solde: <span className="font-medium">
+                        {(Number(refundUser.balance) + Number(refundAmount)).toFixed(2)}€
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Raison du remboursement (optionnel)
+                  </label>
+                  <textarea
+                    value={refundNotes}
+                    onChange={(e) => setRefundNotes(e.target.value)}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="Ex: Produit défectueux, erreur de facturation..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRefundForm(false);
+                    setRefundUser(null);
+                    setRefundAmount("");
+                    setRefundNotes("");
+                  }}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={saving}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleRefund}
+                  disabled={saving || !refundUser || !refundAmount || Number(refundAmount) <= 0}
+                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Remboursement..." : "Effectuer le remboursement"}
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Montant */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Montant du remboursement (€) *
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={refundAmount}
-            onChange={(e) => setRefundAmount(e.target.value)}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="0.00"
-          />
-          {refundUser && refundAmount && Number(refundAmount) > 0 && (
-            <div className="text-sm mt-2 text-green-600">
-              Nouveau solde: <span className="font-medium">
-                {(Number(refundUser.balance) + Number(refundAmount)).toFixed(2)}€
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Raison du remboursement (optionnel)
-          </label>
-          <textarea
-            value={refundNotes}
-            onChange={(e) => setRefundNotes(e.target.value)}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            rows={3}
-            placeholder="Ex: Produit défectueux, erreur de facturation..."
-          />
-        </div>
-      </div>
-
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            setShowRefundForm(false);
-            setRefundUser(null);
-            setRefundAmount("");
-            setRefundNotes("");
-          }}
-          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-          disabled={saving}
-        >
-          Annuler
-        </button>
-        <button
-          onClick={handleRefund}
-          disabled={saving || !refundUser || !refundAmount || Number(refundAmount) <= 0}
-          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? "Remboursement..." : "Effectuer le remboursement"}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          </div>
+        )}
       </main>
     </div>
   );
