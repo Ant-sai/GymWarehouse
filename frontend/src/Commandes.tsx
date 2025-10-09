@@ -778,25 +778,7 @@ async function handleRefund() {
             <div className="relative bg-white rounded-lg p-6 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
               <h3 className="text-xl font-semibold mb-6 text-black">Nouvelle commande</h3>
 
-              {/* Sélection du client */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-                <select
-                  value={selectedUser?.id || ""}
-                  onChange={(e) => {
-                    const user = users.find(u => u.id === Number(e.target.value));
-                    setSelectedUser(user || null);
-                  }}
-                  className="border rounded px-3 py-2"
-                >
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {getFullName(user)}
-                    </option>
-                  ))}
-                </select>
 
-              </div>
 
               {/* Sélection des produits */}
               <div className="mb-6">
@@ -977,9 +959,28 @@ async function handleRefund() {
                   </p>
                 )}
               </div>
-
-              {/* Notes */}
+                              {/* Sélection du client */}
               <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+                <select
+                  value={selectedUser?.id || ""}
+                  onChange={(e) => {
+                    const user = users.find(u => u.id === Number(e.target.value));
+                    setSelectedUser(user || null);
+                  }}
+                  className="border rounded px-3 py-2"
+                >
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {getFullName(user)}
+                    </option>
+                  ))}
+                </select>
+
+              </div>
+              
+              {/* Notes */}
+              {/* <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
                 <textarea
                   value={notes}
@@ -988,7 +989,7 @@ async function handleRefund() {
                   rows={3}
                   placeholder="Commentaires sur la commande..."
                 />
-              </div>
+              </div> */}
 
               <div className="flex justify-end gap-3">
                 <button
