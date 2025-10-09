@@ -113,24 +113,31 @@ export default function DailyOrdersPage() {
   }
 
   // Juste après avoir fetch les utilisateurs
-  async function fetchUsers() {
-    try {
-      const response = await fetch("/api/users");
-      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
-      const data: User[] = await response.json();
+async function fetchUsers() {
+  try {
+    const response = await fetch("/api/users");
+    if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+    const data: User[] = await response.json();
 
-      // Tri par ordre alphabétique (prend d’abord lastName puis firstName)
-      const sortedUsers = data.sort((a, b) => {
-        const nameA = `${a.lastName || ""} ${a.firstName || ""}`.trim().toLowerCase();
-        const nameB = `${b.lastName || ""} ${b.firstName || ""}`.trim().toLowerCase();
-        return nameA.localeCompare(nameB, "fr");
-      });
+    // Tri par ordre alphabétique (prend d'abord lastName puis firstName)
+    const sortedUsers = data.sort((a, b) => {
+      const nameA = `${a.lastName || ""} ${a.firstName || ""}`.trim().toLowerCase();
+      const nameB = `${b.lastName || ""} ${b.firstName || ""}`.trim().toLowerCase();
+      return nameA.localeCompare(nameB, "fr");
+    });
 
-      setUsers(sortedUsers);
-    } catch (err) {
-      console.error('Erreur lors de la récupération des utilisateurs:', err);
-    }
+    setUsers(sortedUsers);
+    
+    // ✅ Sélectionner automatiquement "Vente instantané" ou le premier utilisateur
+    const venteInstantUser = sortedUsers.find(u => 
+      getFullName(u).toLowerCase().includes("vente instant")
+    );
+    setSelectedUser(venteInstantUser || sortedUsers[0] || null);
+    
+  } catch (err) {
+    console.error('Erreur lors de la récupération des utilisateurs:', err);
   }
+}
 
 
   async function fetchProducts() {
