@@ -774,7 +774,7 @@ function calculateDiscount() {
         {showForm && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowForm(false)} />
-            <div className="relative bg-white rounded-lg p-6 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
+            <div className="relative bg-white rounded-lg p-12 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
               <h3 className="text-xl font-semibold mb-6 text-black">Nouvelle commande</h3>
 
 
