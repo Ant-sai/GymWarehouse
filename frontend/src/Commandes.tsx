@@ -822,29 +822,28 @@ async function handleRefund() {
                     </div>
                   ) : (
                     filteredProducts.map(product => (
-                      <div key={product.id} className="border rounded p-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="font-medium">{product.name}</h4>
-                            <p className="text-sm text-gray-600">Stock: {product.quantity}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold">
-                              {/* Si selectedUser peut être null, il faut fallback */}
-                              {selectedUser?.role === "TRAINER"
-                                ? product.trainerPrice
-                                : product.price}€
-                            </div>
-                            <button
-                              onClick={() => addToCart(product)}
-                              className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
-                              disabled={product.quantity <= 0}
-                            >
-                              Ajouter
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+<div key={product.id} className="border rounded p-2">
+  <div className="flex justify-between items-start mb-1">
+    <div>
+      <h4 className="font-medium text-sm">{product.name}</h4>
+      <p className="text-xs text-gray-600">Stock: {product.quantity}</p>
+    </div>
+    <div className="text-right">
+      <div className="font-bold text-sm">
+        {selectedUser?.role === "TRAINER"
+          ? product.trainerPrice
+          : product.price}€
+      </div>
+      <button
+        onClick={() => addToCart(product)}
+        className="mt-0.5 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
+        disabled={product.quantity <= 0}
+      >
+        Ajouter
+      </button>
+    </div>
+  </div>
+</div>
                     ))
                   )}
                 </div>
