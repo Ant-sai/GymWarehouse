@@ -979,7 +979,6 @@ function calculateDiscount() {
                     setCart([]);
                     setPaymentMethod("CASH");
                     setNotes("");
-                    setDiscountType("percentage");
                     setDiscountValue(0);
                     setProductSearch("");
                   }}
