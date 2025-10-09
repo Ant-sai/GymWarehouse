@@ -260,85 +260,77 @@ app.delete('/api/products/:id', async (req, res) => {
 // ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
+//Create an order
 app.post('/api/orders', async (req, res) => {
     try {
-        const { clientId, paymentMethod, notes, products } = req.body;
-       
-        // Validation des données d'entrée
+        const { clientId, paymentMethod, notes, products, discount = 0 } = req.body; // ✅ on récupère discount
+
+        // Validation
         if (!clientId || !paymentMethod || !products || !Array.isArray(products) || products.length === 0) {
             return res.status(400).json({
                 error: 'Données manquantes: clientId, paymentMethod et products sont requis'
             });
         }
-       
-        //Finding the user
+
+        // Vérification utilisateur
         const user = await prisma.user.findUnique({
             where: { id: Number(clientId) },
         });
-       
-        //Check if the user exists
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-       
-        //Finding the products
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // Vérification produits
         const productIds = products.map(p => Number(p.productId));
         const dbProducts = await prisma.product.findMany({
-            where: {
-                id: { in: productIds },
-                isActive: true,
-            }
+            where: { id: { in: productIds }, isActive: true },
         });
-       
-        //Check if the products are active
-        if (dbProducts.length !== productIds.length) {
+        if (dbProducts.length !== productIds.length)
             return res.status(400).json({ error: 'Some products not found or inactive' });
-        }
-       
-        //Check if stock is available
+
+        // Vérif stock
         for (const orderProduct of products) {
             const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
-            if (!dbProduct) {
-                return res.status(400).json({ error: `Product ${orderProduct.productId} not found` });
-            }
-            if (dbProduct.quantity < Number(orderProduct.quantity)) {
+            if (!dbProduct) return res.status(400).json({ error: `Product ${orderProduct.productId} not found` });
+            if (dbProduct.quantity < Number(orderProduct.quantity))
                 return res.status(400).json({
                     error: `Insufficient stock for product: ${dbProduct.name}. Available: ${dbProduct.quantity}, Requested: ${orderProduct.quantity}`
                 });
-            }
         }
-       
-        //Calculate order details
+
+        // Détails commande
         const orderDetails = products.map(orderProduct => {
             const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
-            const unitPrice = user.role === 'TRAINER' && dbProduct.trainerPrice > 0
-                ? Number(dbProduct.trainerPrice)
-                : Number(dbProduct.price);
-           
+            const unitPrice =
+                user.role === 'TRAINER' && dbProduct.trainerPrice > 0
+                    ? Number(dbProduct.trainerPrice)
+                    : Number(dbProduct.price);
+
             const quantity = Number(orderProduct.quantity);
             const totalPrice = unitPrice * quantity;
             return {
                 productId: Number(orderProduct.productId),
-                quantity: quantity,
-                unitPrice: unitPrice,
-                totalPrice: totalPrice
+                quantity,
+                unitPrice,
+                totalPrice,
             };
         });
-       
-        //Calculate total amount
-        const totalAmount = orderDetails.reduce((sum, detail) => sum + detail.totalPrice, 0);
-       
+
+        // Total brut
+        const totalBeforeDiscount = orderDetails.reduce((sum, d) => sum + d.totalPrice, 0);
+        // ✅ Application de la réduction (ne jamais passer en dessous de 0)
+        const totalAmount = Math.max(0, totalBeforeDiscount - Number(discount));
+
         const result = await prisma.$transaction(async (prismaTransaction) => {
-            //Create the order
+            // ✅ Création de la commande avec discount enregistré
             const order = await prismaTransaction.order.create({
                 data: {
                     clientId: Number(clientId),
-                    totalAmount: totalAmount,
-                    paymentMethod: paymentMethod,
+                    totalAmount,
+                    paymentMethod,
                     notes: notes || null,
+                    discount: Number(discount), // ✅ champ à ajouter dans ton modèle Prisma si pas encore présent
                     products: {
-                        create: orderDetails
-                    }
+                        create: orderDetails,
+                    },
                 },
                 include: {
                     client: {
@@ -348,8 +340,8 @@ app.post('/api/orders', async (req, res) => {
                             firstName: true,
                             lastName: true,
                             role: true,
-                            balance: true
-                        }
+                            balance: true,
+                        },
                     },
                     products: {
                         include: {
@@ -359,61 +351,45 @@ app.post('/api/orders', async (req, res) => {
                                     name: true,
                                     description: true,
                                     price: true,
-                                    trainerPrice: true
-                                }
-                            }
-                        }
-                    }
-                }
+                                    trainerPrice: true,
+                                },
+                            },
+                        },
+                    },
+                },
             });
-            //Update product quantities
+
+            // Mise à jour des stocks
             for (const orderProduct of products) {
                 await prismaTransaction.product.update({
                     where: { id: Number(orderProduct.productId) },
-                    data: {
-                        quantity: {
-                            decrement: Number(orderProduct.quantity)
-                        }
-                    }
+                    data: { quantity: { decrement: Number(orderProduct.quantity) } },
                 });
             }
-            //Update user balance if paying with account
+
+            // Débit du compte si paiement via compte
             if (paymentMethod === 'ACCOUNT_DEBIT') {
                 await prismaTransaction.user.update({
                     where: { id: Number(clientId) },
                     data: {
-                        balance: {
-                            decrement: totalAmount
-                        }
-                    }
+                        balance: { decrement: totalAmount },
+                    },
                 });
             }
+
             return order;
         });
+
         res.status(201).json(result);
     } catch (err) {
         console.error('Error creating order: ', err);
-       
-        // Gestion d'erreur plus détaillée
-        if (err.code === 'P2002') {
-            return res.status(400).json({
-                error: 'Conflict in data creation',
-                message: err.message
-            });
-        }
-       
-        if (err.code === 'P2025') {
-            return res.status(404).json({
-                error: 'Resource not found',
-                message: err.message
-            });
-        }
         res.status(500).json({
             error: 'Internal server error',
-            message: err.message || 'An unexpected error occurred'
+            message: err.message || 'An unexpected error occurred',
         });
     }
 });
+
 
 //Fetch all orders
 app.get('/api/orders', async (req, res) => {

@@ -55,7 +55,7 @@ model Order {
   date          DateTime    @default(now())
   paymentMethod PaymentType @map("payment_method")
   notes         String?
-  
+  discount     Float?        @default(0)
   products      OrderDetail[]
   cashMovements CashMovement[]
   
