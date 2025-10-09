@@ -271,16 +271,23 @@ function calculateDiscount() {
   );
 
   async function handleCreateOrder() {
-    if (!selectedUser) {
-      alert("Veuillez sélectionner un client");
-      return;
-    }
-    if (cart.length === 0) {
-      alert("Veuillez ajouter au moins un produit");
-      return;
-    }
+  console.log("🔵 handleCreateOrder appelée");
+  console.log("selectedUser:", selectedUser);
+  console.log("cart:", cart);
+  
+  if (!selectedUser) {
+    console.log("❌ Pas de selectedUser");
+    alert("Veuillez sélectionner un client");
+    return;
+  }
+  if (cart.length === 0) {
+    console.log("❌ Panier vide");
+    alert("Veuillez ajouter au moins un produit");
+    return;
+  }
 
     const total = calculateTotal();
+  console.log("💰 Total calculé:", total);
     // Avertissement pour les comptes qui vont devenir négatifs
     if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
       const newBalance = Number(selectedUser.balance) - total;
@@ -308,12 +315,13 @@ function calculateDiscount() {
           quantity: item.quantity
         }))
       };
-
+      console.log("📤 Envoi de la requête...");
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
       });
+      console.log("📥 Réponse reçue:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
