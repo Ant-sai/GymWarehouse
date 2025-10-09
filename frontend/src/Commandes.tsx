@@ -245,22 +245,16 @@ export default function DailyOrdersPage() {
     }
   }
 
-  function calculateTotal() {
-    if (paymentMethod === "FREE") return 0;
+ function calculateTotal() {
+  if (paymentMethod === "FREE") return 0;
 
-    const subtotal = cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+  const subtotal = calculateSubtotal();
+  
+  if (discountValue <= 0) return subtotal;
 
-    if (discountValue <= 0) return subtotal;
-
-    let discount = 0;
-    if (discountType === "percentage") {
-      discount = (subtotal * discountValue) / 100;
-    } else {
-      discount = discountValue;
-    }
-
-    return Math.max(0, subtotal - discount);
-  }
+  // Réduction directe en euros
+  return Math.max(0, subtotal - discountValue);
+}
 
   function calculateSubtotal() {
     return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
