@@ -74,7 +74,6 @@ export default function DailyOrdersPage() {
   const [saving, setSaving] = useState(false);
 
   // États pour la réduction
-  const [discountType, setDiscountType] = useState<"percentage" | "amount">("percentage");
   const [discountValue, setDiscountValue] = useState<number>(0);
 
   // État pour le filtre de recherche produits
