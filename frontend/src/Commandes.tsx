@@ -4,7 +4,6 @@ import PrimeroseVector from './assets/PrimeroseVector.svg';
 
 export type User = {
   id: number;
-  email: string;
   firstName?: string;
   lastName?: string;
   role: "USER" | "TRAINER";
@@ -54,6 +53,7 @@ type DailyStats = {
   trainerOrders: number;
   userOrders: number;
 };
+
 
 export default function DailyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -488,11 +488,11 @@ function calculateDiscount() {
   }
 
 
-  const getFullName = (user: User | undefined) => {
-    if (!user) return "Utilisateur inconnu";
-    const parts = [user.firstName, user.lastName].filter(Boolean);
-    return parts.length > 0 ? parts.join(" ") : user.email;
-  };
+const getFullName = (user: User | undefined) => {
+  if (!user) return "Utilisateur inconnu";
+  const parts = [user.firstName, user.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
+};
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
@@ -602,7 +602,7 @@ function calculateDiscount() {
 
             <button
               onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+              className="bg-[#1E2A47] hover:bg-blue-600 text-white px-4 py-2 rounded"
             >
               Aujourd'hui
             </button>
@@ -817,7 +817,7 @@ function calculateDiscount() {
                             </div>
                             <button
                               onClick={() => addToCart(product)}
-                              className="mt-0.5 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
+                              className="mt-0.5 bg-[#1E2A47] text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
                               disabled={product.quantity <= 0}
                             >
                               Ajouter

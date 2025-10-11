@@ -5,10 +5,8 @@ import PrimeroseVector from './assets/PrimeroseVector.svg';
 
 export type User = {
   id: number;
-  email: string;
   firstName?: string;
   lastName?: string;
-  phoneNumber?: string;
   role: "USER" | "TRAINER";
   balance: number;
   createdAt: string;
@@ -23,10 +21,8 @@ export default function MembersPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    email: "",
     firstName: "",
     lastName: "",
-    phoneNumber: "",
     role: "USER" as "USER" | "TRAINER",
     balance: "",
   });
@@ -44,14 +40,10 @@ export default function MembersPage() {
   // Fonction pour filtrer les utilisateurs selon le terme de recherche
   const filteredUsers = users.filter(user => {
     const fullName = getFullName(user).toLowerCase();
-    const email = user.email.toLowerCase();
-    const phone = user.phoneNumber?.toLowerCase() || "";
     const role = user.role === "TRAINER" ? "entraîneur" : "utilisateur";
     const search = searchTerm.toLowerCase();
 
     return fullName.includes(search) || 
-           email.includes(search) || 
-           phone.includes(search) || 
            role.includes(search);
   });
 
@@ -85,75 +77,66 @@ export default function MembersPage() {
     fetchUsers();
   }, []);
 
-  async function handleAddUser(e?: React.FormEvent) {
-    e?.preventDefault();
-    setSaving(true);
+async function handleAddUser(e?: React.FormEvent) {
+  e?.preventDefault();
+  setSaving(true);
+ 
+  try {
+    // Validation côté client
+    if (!form.firstName?.trim() && !form.lastName?.trim()) {
+      throw new Error("Au moins le prénom ou le nom est obligatoire");
+    }
     
-    try {
-      // Validation côté client
-      if (!form.email?.trim()) {
-        throw new Error("L'email est obligatoire");
-      }
-      if (!form.email.includes("@")) {
-        throw new Error("L'email doit être valide");
-      }
-
-      console.log('Envoi des données:', {
-        email: form.email,
+    console.log('Envoi des données:', {
+      firstName: form.firstName || null,
+      lastName: form.lastName || null,
+      role: form.role,
+      balance: Number(form.balance || 0),
+    });
+    
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         firstName: form.firstName || null,
         lastName: form.lastName || null,
-        phoneNumber: form.phoneNumber || null,
         role: form.role,
         balance: Number(form.balance || 0),
-      });
-
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: form.email,
-          firstName: form.firstName || null,
-          lastName: form.lastName || null,
-          phoneNumber: form.phoneNumber || null,
-          role: form.role,
-          balance: Number(form.balance || 0),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
-      }
-
-      const newUser = await response.json();
-      console.log('Utilisateur créé:', newUser);
-
-      // Mettre à jour le state local
-      setUsers((prev) => [newUser, ...prev]);
-      
-      // Réinitialiser le formulaire
-      setShowForm(false);
-      setForm({ 
-        email: "",
-        firstName: "",
-        lastName: "",
-        phoneNumber: "",
-        role: "USER",
-        balance: "",
-      });
-
-      alert("Membre ajouté avec succès !");
-      
-    } catch (err) {
-      console.error('Erreur lors de l\'ajout du membre:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
-      alert(errorMessage);
-    } finally {
-      setSaving(false);
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
     }
+    
+    const newUser = await response.json();
+    console.log('Utilisateur créé:', newUser);
+    
+    // Mettre à jour le state local
+    setUsers((prev) => [newUser, ...prev]);
+   
+    // Réinitialiser le formulaire
+    setShowForm(false);
+    setForm({
+      firstName: "",
+      lastName: "",
+      role: "USER",
+      balance: "",
+    });
+    
+    alert("Membre ajouté avec succès !");
+   
+  } catch (err) {
+    console.error('Erreur lors de l\'ajout du membre:', err);
+    const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
+    alert(errorMessage);
+  } finally {
+    setSaving(false);
   }
+}
 
   async function handleUpdateBalance(id: number) {
     if (!editBalance.trim()) {
@@ -282,7 +265,7 @@ export default function MembersPage() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Rechercher un membre (nom, email, téléphone, rôle)..."
+              placeholder="Rechercher un membre (nom, rôle)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -340,8 +323,6 @@ export default function MembersPage() {
           <>
             <div className="grid grid-cols-6 gap-6 px-4 text-sm font-medium text-gray-700 mb-4">
               <div>Nom complet</div>
-              <div>Email</div>
-              <div>Téléphone</div>
               <div>Rôle</div>
               <div>Solde</div>
               <div>Actions</div>
@@ -379,8 +360,6 @@ export default function MembersPage() {
                   className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-6 items-center text-black hover:shadow-md transition-shadow"
                 >
                   <div className="truncate font-medium">{getFullName(user)}</div>
-                  <div className="truncate text-sm">{user.email}</div>
-                  <div className="truncate text-sm">{user.phoneNumber || "-"}</div>
                   <div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       user.role === "TRAINER" 
@@ -491,17 +470,6 @@ export default function MembersPage() {
               <h3 className="text-xl font-semibold mb-4 text-black">Ajouter un membre</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email *</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    required
-                    placeholder="email@exemple.com"
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700">Rôle *</label>
                   <select
                     value={form.role}
@@ -530,17 +498,6 @@ export default function MembersPage() {
                     onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     placeholder="Nom (optionnel)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Téléphone</label>
-                  <input
-                    type="tel"
-                    value={form.phoneNumber}
-                    onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="Téléphone (optionnel)"
                   />
                 </div>
                 <div>

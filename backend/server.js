@@ -52,14 +52,12 @@ process.on('SIGTERM', gracefulShutdown);
 //Create a user
 app.post('/api/users', async (req, res) => {
     try {
-        const { email, firstName, lastName, phoneNumber, role, balance } = req.body;
+        const { firstName, lastName, role, balance } = req.body;
        
         const user = await prisma.user.create({
             data: {
-                email: email,
                 firstName: firstName,
                 lastName: lastName,
-                phoneNumber: phoneNumber,
                 role: role,
                 balance: balance,
             }
@@ -78,10 +76,8 @@ app.get('/api/users', async (req, res) => {
             orderBy: { id: 'asc' },
             select: {
                 id: true,
-                email: true,
                 firstName: true,
                 lastName: true,
-                phoneNumber: true,
                 role: true,
                 balance: true,
                 createdAt: true,
@@ -117,14 +113,12 @@ app.get('/api/users/:id', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { email, firstName, lastName, phoneNumber, role, balance } = req.body;
+        const { firstName, lastName, role, balance } = req.body;
         const user = await prisma.user.update({
             where: { id: Number(id), },
             data: {
-                email: email,
                 firstName: firstName,
                 lastName: lastName,
-                phoneNumber: phoneNumber,
                 role: role,
                 balance: balance,
             },
@@ -336,7 +330,6 @@ app.post('/api/orders', async (req, res) => {
                     client: {
                         select: {
                             id: true,
-                            email: true,
                             firstName: true,
                             lastName: true,
                             role: true,
@@ -400,7 +393,6 @@ app.get('/api/orders', async (req, res) => {
                 client: {
                     select: {
                         id: true,
-                        email: true,
                         firstName: true,
                         lastName: true,
                         role: true
@@ -438,7 +430,6 @@ app.get('/api/orders/:id', async (req, res) => {
                 client: {
                     select: {
                         id: true,
-                        email: true,
                         firstName: true,
                         lastName: true,
                         role: true
@@ -480,7 +471,6 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                         id: true,
                         firstName: true,
                         lastName: true,
-                        email: true,
                         balance: true
                     }
                 },
@@ -538,7 +528,7 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 deletedOrderId: Number(id),
                 stockRestored: restoreStock,
                 balanceRestored: balanceRestored,
-                clientName: `${existingOrder.client.firstName || ''} ${existingOrder.client.lastName || ''}`.trim() || existingOrder.client.email,
+                clientName: `${existingOrder.client.firstName || ''} ${existingOrder.client.lastName || ''}`.trim(),
                 restoredProducts: restoreStock ? existingOrder.products.map(p => ({
                     productId: p.productId,
                     productName: p.product.name,
@@ -610,7 +600,6 @@ app.post('/api/refunds', async (req, res) => {
                     client: {
                         select: {
                             id: true,
-                            email: true,
                             firstName: true,
                             lastName: true,
                             role: true,
