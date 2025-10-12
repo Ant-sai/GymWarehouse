@@ -1046,7 +1046,7 @@ export default function DailyOrdersPage() {
               </div>
 
               {/* Notes */}
-              {/* <div className="mb-6">
+               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
                 <textarea
                   value={notes}
@@ -1055,7 +1055,7 @@ export default function DailyOrdersPage() {
                   rows={3}
                   placeholder="Commentaires sur la commande..."
                 />
-              </div> */}
+              </div>
 
               <div className="flex justify-end gap-3">
                 <button
@@ -1220,7 +1220,7 @@ export default function DailyOrdersPage() {
                 </div>
 
                 {/* Notes */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Raison du remboursement (optionnel)
                   </label>
@@ -1231,7 +1231,7 @@ export default function DailyOrdersPage() {
                     rows={3}
                     placeholder="Ex: Produit défectueux, erreur de facturation..."
                   />
-                </div>
+                </div> */}
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
