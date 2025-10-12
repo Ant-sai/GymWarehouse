@@ -87,6 +87,14 @@ export default function DailyOrdersPage() {
     price: "",
     trainerPrice: "",
   });
+  // États pour l'ajout rapide d'un nouveau membre
+  const [showAddMemberForm, setShowAddMemberForm] = useState(false);
+  const [newMemberForm, setNewMemberForm] = useState({
+    firstName: "",
+    lastName: "",
+    role: "USER" as "USER" | "TRAINER",
+    balance: "",
+  });
 
   // Charger toutes les données au montage
   useEffect(() => {
@@ -113,31 +121,31 @@ export default function DailyOrdersPage() {
   }
 
   // Juste après avoir fetch les utilisateurs
-async function fetchUsers() {
-  try {
-    const response = await fetch("/api/users");
-    if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
-    const data: User[] = await response.json();
+  async function fetchUsers() {
+    try {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data: User[] = await response.json();
 
-    // Tri par ordre alphabétique (prend d'abord lastName puis firstName)
-    const sortedUsers = data.sort((a, b) => {
-      const nameA = `${a.lastName || ""} ${a.firstName || ""}`.trim().toLowerCase();
-      const nameB = `${b.lastName || ""} ${b.firstName || ""}`.trim().toLowerCase();
-      return nameA.localeCompare(nameB, "fr");
-    });
+      // Tri par ordre alphabétique (prend d'abord lastName puis firstName)
+      const sortedUsers = data.sort((a, b) => {
+        const nameA = `${a.lastName || ""} ${a.firstName || ""}`.trim().toLowerCase();
+        const nameB = `${b.lastName || ""} ${b.firstName || ""}`.trim().toLowerCase();
+        return nameA.localeCompare(nameB, "fr");
+      });
 
-    setUsers(sortedUsers);
-    
-    // ✅ Sélectionner automatiquement "Vente instantané" ou le premier utilisateur
-    const venteInstantUser = sortedUsers.find(u => 
-      getFullName(u).toLowerCase().includes("vente instant")
-    );
-    setSelectedUser(venteInstantUser || sortedUsers[0] || null);
-    
-  } catch (err) {
-    console.error('Erreur lors de la récupération des utilisateurs:', err);
+      setUsers(sortedUsers);
+
+      // ✅ Sélectionner automatiquement "Vente instantané" ou le premier utilisateur
+      const venteInstantUser = sortedUsers.find(u =>
+        getFullName(u).toLowerCase().includes("vente instant")
+      );
+      setSelectedUser(venteInstantUser || sortedUsers[0] || null);
+
+    } catch (err) {
+      console.error('Erreur lors de la récupération des utilisateurs:', err);
+    }
   }
-}
 
 
   async function fetchProducts() {
@@ -214,6 +222,62 @@ async function fetchUsers() {
     });
     return Array.from(dates).sort().reverse(); // Plus récentes en premier
   }
+  // Fonction pour ajouter un nouveau membre rapidement
+  async function handleAddMember(e?: React.FormEvent) {
+    e?.preventDefault();
+    setSaving(true);
+
+    try {
+      // Validation côté client
+      if (!newMemberForm.firstName?.trim() && !newMemberForm.lastName?.trim()) {
+        throw new Error("Au moins le prénom ou le nom est obligatoire");
+      }
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: newMemberForm.firstName || null,
+          lastName: newMemberForm.lastName || null,
+          role: newMemberForm.role,
+          balance: Number(newMemberForm.balance || 0),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
+      const newUser = await response.json();
+
+      // Mettre à jour la liste des utilisateurs
+      await fetchUsers();
+
+      // Sélectionner automatiquement le nouveau membre
+      setSelectedUser(newUser);
+
+      // Réinitialiser et fermer le formulaire
+      setShowAddMemberForm(false);
+      setNewMemberForm({
+        firstName: "",
+        lastName: "",
+        role: "USER",
+        balance: "",
+      });
+
+      alert("Membre ajouté avec succès !");
+
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout du membre:', err);
+      const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
+      alert(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // Navigation entre les dates
   function navigateDate(direction: 'prev' | 'next') {
@@ -251,26 +315,26 @@ async function fetchUsers() {
     }
   }
 
- function calculateTotal() {
-  if (paymentMethod === "FREE") return 0;
+  function calculateTotal() {
+    if (paymentMethod === "FREE") return 0;
 
-  const subtotal = calculateSubtotal();
-  
-  if (discountValue <= 0) return subtotal;
+    const subtotal = calculateSubtotal();
 
-  // Réduction directe en euros
-  return Math.max(0, subtotal - discountValue);
-}
+    if (discountValue <= 0) return subtotal;
+
+    // Réduction directe en euros
+    return Math.max(0, subtotal - discountValue);
+  }
 
   function calculateSubtotal() {
     return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
   }
 
-function calculateDiscount() {
-  if (discountValue <= 0 || paymentMethod === "FREE") return 0;
-  const subtotal = calculateSubtotal();
-  return Math.min(discountValue, subtotal);
-}
+  function calculateDiscount() {
+    if (discountValue <= 0 || paymentMethod === "FREE") return 0;
+    const subtotal = calculateSubtotal();
+    return Math.min(discountValue, subtotal);
+  }
 
   // Filtrer les produits selon la recherche
   const filteredProducts = products.filter(product =>
@@ -278,15 +342,15 @@ function calculateDiscount() {
   );
 
   async function handleCreateOrder() {
-  
-  if (!selectedUser) {
-    alert("Veuillez sélectionner un client");
-    return;
-  }
-  if (cart.length === 0) {
-    alert("Veuillez ajouter au moins un produit");
-    return;
-  }
+
+    if (!selectedUser) {
+      alert("Veuillez sélectionner un client");
+      return;
+    }
+    if (cart.length === 0) {
+      alert("Veuillez ajouter au moins un produit");
+      return;
+    }
 
     const total = calculateTotal();
     // Avertissement pour les comptes qui vont devenir négatifs
@@ -321,7 +385,7 @@ function calculateDiscount() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        
+
         body: JSON.stringify(orderData),
       });
       console.log("📥 Réponse reçue:", response.status);
@@ -340,7 +404,7 @@ function calculateDiscount() {
       setCart([]);
       setPaymentMethod("CASH");
       setNotes("");
-
+      setDiscountValue(0);
       alert("Commande créée avec succès !");
 
       // Recharger les données pour avoir les stocks à jour
@@ -488,11 +552,11 @@ function calculateDiscount() {
   }
 
 
-const getFullName = (user: User | undefined) => {
-  if (!user) return "Utilisateur inconnu";
-  const parts = [user.firstName, user.lastName].filter(Boolean);
-  return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
-};
+  const getFullName = (user: User | undefined) => {
+    if (!user) return "Utilisateur inconnu";
+    const parts = [user.firstName, user.lastName].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
+  };
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
@@ -952,21 +1016,33 @@ const getFullName = (user: User | undefined) => {
               {/* Sélection du client */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-                <select
-                  value={selectedUser?.id || ""}
-                  onChange={(e) => {
-                    const user = users.find(u => u.id === Number(e.target.value));
-                    setSelectedUser(user || null);
-                  }}
-                  className="border rounded px-3 py-2"
-                >
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {getFullName(user)}
-                    </option>
-                  ))}
-                </select>
-
+                <div className="flex gap-2">
+                  <select
+                    value={selectedUser?.id || ""}
+                    onChange={(e) => {
+                      const user = users.find(u => u.id === Number(e.target.value));
+                      setSelectedUser(user || null);
+                    }}
+                    className="flex-1 border rounded px-3 py-2"
+                  >
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {getFullName(user)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddMemberForm(true)}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+                    title="Ajouter un nouveau membre"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    Nouveau
+                  </button>
+                </div>
               </div>
 
               {/* Notes */}
@@ -1183,6 +1259,91 @@ const getFullName = (user: User | undefined) => {
             </div>
           </div>
         )}
+        {/* Modal d'ajout rapide de membre */}
+{showAddMemberForm && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddMemberForm(false)} />
+    <form
+      onSubmit={handleAddMember}
+      className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50"
+    >
+      <h3 className="text-xl font-semibold mb-4 text-black">Ajouter un membre</h3>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Rôle *</label>
+          <select
+            value={newMemberForm.role}
+            onChange={(e) => setNewMemberForm({ ...newMemberForm, role: e.target.value as "USER" | "TRAINER" })}
+            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            required
+          >
+            <option value="USER">Utilisateur</option>
+            <option value="TRAINER">Entraîneur</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+          <input
+            value={newMemberForm.firstName}
+            onChange={(e) => setNewMemberForm({ ...newMemberForm, firstName: e.target.value })}
+            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="Prénom (optionnel)"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+          <input
+            value={newMemberForm.lastName}
+            onChange={(e) => setNewMemberForm({ ...newMemberForm, lastName: e.target.value })}
+            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="Nom (optionnel)"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Solde initial</label>
+          <input
+            type="number"
+            step="0.01"
+            value={newMemberForm.balance}
+            onChange={(e) => setNewMemberForm({ ...newMemberForm, balance: e.target.value })}
+            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setShowAddMemberForm(false);
+            setNewMemberForm({
+              firstName: "",
+              lastName: "",
+              role: "USER",
+              balance: "",
+            });
+          }}
+          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+          disabled={saving}
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? "Ajout..." : "Ajouter le membre"}
+        </button>
+      </div>
+    </form>
+  </div>
+)}
       </main>
     </div>
   );
