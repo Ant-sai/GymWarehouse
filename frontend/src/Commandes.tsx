@@ -216,15 +216,7 @@ export default function DailyOrdersPage() {
     return stats;
   }
 
-  // Obtenir les dates qui ont des commandes
-  function getAvailableDates(): string[] {
-    const dates = new Set<string>();
-    orders.forEach(order => {
-      const date = new Date(order.date).toISOString().split('T')[0];
-      dates.add(date);
-    });
-    return Array.from(dates).sort().reverse(); // Plus récentes en premier
-  }
+  
   // Fonction pour ajouter un nouveau membre rapidement
   async function handleAddMember(e?: React.FormEvent) {
     e?.preventDefault();
@@ -339,13 +331,7 @@ export default function DailyOrdersPage() {
     return Math.min(discountValue, subtotal);
   }
 
-  // Filtrer les produits selon la recherche
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(productSearch.toLowerCase())
-  );
-  const filteredUsers = users.filter(user =>
-  getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
-);
+  
 
  async function handleCreateOrder() {
   if (!selectedUser) {
@@ -572,6 +558,23 @@ export default function DailyOrdersPage() {
       default: return method;
     }
   };
+
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+  // Filtrer les produits selon la recherche
+  
+  const filteredUsers = users.filter(user =>
+  getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
+);
+function getAvailableDates(): string[] {
+  const dates = new Set<string>();
+  orders.forEach(order => {
+    const date = new Date(order.date).toISOString().split('T')[0];
+    dates.add(date);
+  });
+  return Array.from(dates).sort().reverse(); // Plus récentes en premier
+}
 
   const dailyStats = getDailyStats(selectedDate);
   const availableDates = getAvailableDates();
