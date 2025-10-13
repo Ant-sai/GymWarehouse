@@ -254,10 +254,9 @@ app.delete('/api/products/:id', async (req, res) => {
 // ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
-//Create an order
 app.post('/api/orders', async (req, res) => {
     try {
-        const { clientId, paymentMethod, notes, products, discount = 0 } = req.body; // ✅ on récupère discount
+        const { clientId, paymentMethod, notes, products, discount = 0, discountComment } = req.body; // ✅ ajout discountComment
 
         // Validation
         if (!clientId || !paymentMethod || !products || !Array.isArray(products) || products.length === 0) {
@@ -310,18 +309,26 @@ app.post('/api/orders', async (req, res) => {
 
         // Total brut
         const totalBeforeDiscount = orderDetails.reduce((sum, d) => sum + d.totalPrice, 0);
-        // ✅ Application de la réduction (ne jamais passer en dessous de 0)
+        // Application de la réduction
         const totalAmount = Math.max(0, totalBeforeDiscount - Number(discount));
 
+        // ✅ Construire les notes finales avec le commentaire de réduction
+        let finalNotes = notes || null;
+        if (Number(discount) > 0 && discountComment) {
+            finalNotes = finalNotes 
+                ? `${finalNotes}\n[Réduction: ${discountComment}]`
+                : `[Réduction: ${discountComment}]`;
+        }
+
         const result = await prisma.$transaction(async (prismaTransaction) => {
-            // ✅ Création de la commande avec discount enregistré
+            // Création de la commande
             const order = await prismaTransaction.order.create({
                 data: {
                     clientId: Number(clientId),
                     totalAmount,
                     paymentMethod,
-                    notes: notes || null,
-                    discount: Number(discount), // ✅ champ à ajouter dans ton modèle Prisma si pas encore présent
+                    notes: finalNotes, // ✅ notes modifiées
+                    discount: Number(discount),
                     products: {
                         create: orderDetails,
                     },

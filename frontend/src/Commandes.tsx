@@ -75,7 +75,8 @@ export default function DailyOrdersPage() {
 
   // États pour la réduction
   const [discountValue, setDiscountValue] = useState<number>(0);
-
+  const [discountComment, setDiscountComment] = useState("");
+  const [userSearch, setUserSearch] = useState("");
   // État pour le filtre de recherche produits
   const [productSearch, setProductSearch] = useState("");
 
@@ -341,84 +342,85 @@ export default function DailyOrdersPage() {
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  async function handleCreateOrder() {
+ async function handleCreateOrder() {
+  if (!selectedUser) {
+    alert("Veuillez sélectionner un client");
+    return;
+  }
+  if (cart.length === 0) {
+    alert("Veuillez ajouter au moins un produit");
+    return;
+  }
 
-    if (!selectedUser) {
-      alert("Veuillez sélectionner un client");
+  const total = calculateTotal();
+  
+  if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
+    const newBalance = Number(selectedUser.balance) - total;
+    const confirmNegative = window.confirm(
+      `Cette transaction créera un solde négatif.\n\n` +
+      `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
+      `Montant à débiter: ${total.toFixed(2)}€\n` +
+      `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
+      `Voulez-vous continuer ?`
+    );
+
+    if (!confirmNegative) {
       return;
-    }
-    if (cart.length === 0) {
-      alert("Veuillez ajouter au moins un produit");
-      return;
-    }
-
-    const total = calculateTotal();
-    // Avertissement pour les comptes qui vont devenir négatifs
-    if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
-      const newBalance = Number(selectedUser.balance) - total;
-      const confirmNegative = window.confirm(
-        `Cette transaction créera un solde négatif.\n\n` +
-        `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
-        `Montant à débiter: ${total.toFixed(2)}€\n` +
-        `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
-        `Voulez-vous continuer ?`
-      );
-
-      if (!confirmNegative) {
-        return;
-      }
-    }
-
-    setSaving(true);
-    try {
-      const orderData = {
-        clientId: selectedUser.id,
-        paymentMethod: paymentMethod,
-        notes: notes,
-        discount: discountValue,
-        products: cart.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity
-        }))
-      };
-      console.log("📤 Envoi de la requête...");
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-
-        body: JSON.stringify(orderData),
-      });
-      console.log("📥 Réponse reçue:", response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
-      }
-
-      const newOrder = await response.json();
-      setOrders([newOrder, ...orders]);
-
-      // Réinitialiser le formulaire
-      setShowForm(false);
-      setSelectedUser(null);
-      setCart([]);
-      setPaymentMethod("CASH");
-      setNotes("");
-      setDiscountValue(0);
-      alert("Commande créée avec succès !");
-
-      // Recharger les données pour avoir les stocks à jour
-      fetchProducts();
-      fetchUsers();
-
-    } catch (err) {
-      console.error('Erreur lors de la création de la commande:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible de créer la commande";
-      alert(errorMessage);
-    } finally {
-      setSaving(false);
     }
   }
+
+  setSaving(true);
+  try {
+    const orderData = {
+      clientId: selectedUser.id,
+      paymentMethod: paymentMethod,
+      notes: notes,
+      discount: discountValue,
+      discountComment: discountComment, // ✅ Nouveau champ
+      products: cart.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity
+      }))
+    };
+    
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+    }
+
+    const newOrder = await response.json();
+    setOrders([newOrder, ...orders]);
+
+    // Réinitialiser le formulaire
+    setShowForm(false);
+    setSelectedUser(null);
+    setCart([]);
+    setPaymentMethod("CASH");
+    setNotes("");
+    setDiscountValue(0);
+    setDiscountComment(""); // ✅ Réinitialiser le commentaire
+    alert("Commande créée avec succès !");
+
+    fetchProducts();
+    fetchUsers();
+
+  } catch (err) {
+    console.error('Erreur lors de la création de la commande:', err);
+    const errorMessage = err instanceof Error ? err.message : "Impossible de créer la commande";
+    alert(errorMessage);
+  } finally {
+    setSaving(false);
+  }
+}
+const filteredUsers = users.filter(user =>
+  getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
+);
 
   async function handleCancelOrder(order: Order) {
     try {
@@ -608,7 +610,7 @@ export default function DailyOrdersPage() {
               onClick={() => setShowRefundForm(true)}
               className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
             >
-              💰 Remboursement
+              💰 Remboursement crédit
             </button>
             <button
               onClick={() => setShowForm(true)}
@@ -761,75 +763,85 @@ export default function DailyOrdersPage() {
               )}
 
               {dailyStats.orders.map((order) => (
-                <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
-                      <p className="text-gray-600">
-                        Client: {order.client ? getFullName(order.client) : "Client inconnu"}
-                        {order.client?.role === "TRAINER" && (
-                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                            Entraîneur
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-gray-600">
-                        Heure: {new Date(order.date).toLocaleTimeString('fr-FR')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
-                        {Number(order.totalAmount).toFixed(2)}€
-                      </div>
-                      <div className={`px-3 py-1 rounded text-sm font-medium mb-2 ${order.paymentMethod === "ACCOUNT_DEBIT"
-                        ? "bg-purple-100 text-purple-800"
-                        : order.paymentMethod === "FREE"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                        }`}>
-                        {getPaymentMethodLabel(order.paymentMethod)}
-                      </div>
+  <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
+    <div className="flex justify-between items-start mb-4">
+      <div>
+        <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
+        <p className="text-gray-600">
+          Client: {order.client ? getFullName(order.client) : "Client inconnu"}
+          {order.client?.role === "TRAINER" && (
+            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+              Entraîneur
+            </span>
+          )}
+        </p>
+        <p className="text-gray-600">
+          Heure: {new Date(order.date).toLocaleTimeString('fr-FR')}
+        </p>
+        {/* ✅ NOUVEAU : Affichage du mode de paiement */}
+        <p className="text-gray-600 flex items-center gap-2 mt-1">
+          <span className="font-medium">Paiement:</span>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+            order.paymentMethod === "CASH" 
+              ? "bg-green-100 text-green-800"
+              : order.paymentMethod === "QRCODE"
+              ? "bg-blue-100 text-blue-800"
+              : order.paymentMethod === "ACCOUNT_DEBIT"
+              ? "bg-purple-100 text-purple-800"
+              : order.paymentMethod === "FREE"
+              ? "bg-red-100 text-red-800"
+              : "bg-gray-100 text-gray-800"
+          }`}>
+            {getPaymentMethodLabel(order.paymentMethod)}
+          </span>
+        </p>
+      </div>
+      <div className="text-right">
+        <div className="text-2xl font-bold text-green-600">
+          {Number(order.totalAmount).toFixed(2)}€
+        </div>
+        {/* ✅ Badge de paiement déplacé/supprimé d'ici car maintenant affiché à gauche */}
+        
+        <button
+          onClick={() => handleCancelOrder(order)}
+          className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors mt-2"
+          title="Annuler cette commande (restaure stocks et solde)"
+        >
+          🗑️ Annuler
+        </button>
+      </div>
+    </div>
 
-                      <button
-                        onClick={() => handleCancelOrder(order)}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
-                        title="Annuler cette commande (restaure stocks et solde)"
-                      >
-                        🗑️ Annuler
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-2">Produits:</h4>
-                    <div className="space-y-1">
-                      {order.products?.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm">
-                          <div className="flex items-center gap-2">
-                            <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
-                            <button
-                              onClick={() => openEditForm(item.product)}
-                              className="p-1 hover:bg-blue-50 rounded"
-                              title="Modifier ce produit"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                          </div>
-                          <span>{Number(item.totalPrice).toFixed(2)}€</span>
-                        </div>
-                      )) || <div className="text-gray-500">Aucun produit</div>}
-                    </div>
-                    {order.notes && (
-                      <div className="mt-3 text-sm text-gray-600">
-                        <strong>Notes:</strong> {order.notes}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+    <div className="border-t pt-4">
+      <h4 className="font-medium mb-2">Produits:</h4>
+      <div className="space-y-1">
+        {order.products?.map((item, index) => (
+          <div key={index} className="flex justify-between items-center text-sm">
+            <div className="flex items-center gap-2">
+              <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
+              <button
+                onClick={() => openEditForm(item.product)}
+                className="p-1 hover:bg-blue-50 rounded"
+                title="Modifier ce produit"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+            <span>{Number(item.totalPrice).toFixed(2)}€</span>
+          </div>
+        )) || <div className="text-gray-500">Aucun produit</div>}
+      </div>
+      {order.notes && (
+        <div className="mt-3 text-sm text-gray-600">
+          <strong>Notes:</strong> {order.notes}
+        </div>
+      )}
+    </div>
+  </div>
+))}
             </div>
           </div>
         )}
@@ -930,34 +942,49 @@ export default function DailyOrdersPage() {
                       );
                     })}
 
-                    {/* Section Réduction */}
-                    {/* Section Réduction */}
-                    {paymentMethod !== "FREE" && (
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex items-center gap-4 mb-2">
-                          <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max={calculateSubtotal()}
-                            step={0.01}
-                            value={discountValue}
-                            onChange={(e) => setDiscountValue(Number(e.target.value))}
-                            className="border rounded px-2 py-1 text-sm w-24"
-                            placeholder="0.00"
-                          />
-                          <span className="text-sm text-gray-600">€</span>
-                          {discountValue > 0 && (
-                            <button
-                              onClick={() => setDiscountValue(0)}
-                              className="text-red-500 text-sm hover:text-red-700"
-                            >
-                              ✕ Supprimer
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    {/* Section Réduction avec commentaire */}
+{paymentMethod !== "FREE" && (
+  <div className="mt-4 pt-4 border-t">
+    <div className="flex items-center gap-4 mb-2">
+      <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
+      <input
+        type="number"
+        min="0"
+        max={calculateSubtotal()}
+        step={0.01}
+        value={discountValue}
+        onChange={(e) => setDiscountValue(Number(e.target.value))}
+        className="border rounded px-2 py-1 text-sm w-24"
+        placeholder="0.00"
+      />
+      <span className="text-sm text-gray-600">€</span>
+      {discountValue > 0 && (
+        <button
+          onClick={() => {
+            setDiscountValue(0);
+            setDiscountComment("");
+          }}
+          className="text-red-500 text-sm hover:text-red-700"
+        >
+          ✕ Supprimer
+        </button>
+      )}
+    </div>
+    
+    {/* Commentaire pour la réduction */}
+    {discountValue > 0 && (
+      <div className="mt-2">
+        <input
+          type="text"
+          value={discountComment}
+          onChange={(e) => setDiscountComment(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          placeholder="Raison de la réduction (optionnel)..."
+        />
+      </div>
+    )}
+  </div>
+)}
 
                     {/* Totaux */}
                     <div className="mt-4 text-right space-y-1">
@@ -980,70 +1007,106 @@ export default function DailyOrdersPage() {
 
               {/* Méthode de paiement */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Méthode de paiement *</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as any)}
-                  className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="CASH">Espèces</option>
-                  <option value="QRCODE">QR Code</option>
-                  {/* N'affiche l'option Débit compte que si ce n'est pas le client "Vente instantané" */}
-                  {selectedUser && !getFullName(selectedUser).includes("Vente instentané") && (
-                    <option value="ACCOUNT_DEBIT">Débit compte</option>
-                  )}
-                  <option value="FREE">Gratuit (produit défectueux/geste commercial)</option>
-                </select>
-                {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
-                  <div className="text-sm mt-1">
-                    <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                      Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
-                      {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
-                    </span>
-                    {cart.length > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
-                      </div>
-                    )}
-                  </div>
-                )}
-                {paymentMethod === "FREE" && (
-                  <p className="text-sm text-red-600 mt-1">
-                    ⚠️ Cette commande sera gratuite - aucun paiement ne sera demandé
-                  </p>
-                )}
-              </div>
+  <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
+  <div className="grid grid-cols-3 gap-3">
+    <button
+      type="button"
+      onClick={() => setPaymentMethod("CASH")}
+      className={`px-4 py-3 rounded-lg border-2 transition-all ${
+        paymentMethod === "CASH"
+          ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+      }`}
+    >
+      💵 Espèces
+    </button>
+    
+    <button
+      type="button"
+      onClick={() => setPaymentMethod("QRCODE")}
+      className={`px-4 py-3 rounded-lg border-2 transition-all ${
+        paymentMethod === "QRCODE"
+          ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
+          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+      }`}
+    >
+      📱 QR Code
+    </button>
+    
+    {selectedUser && !getFullName(selectedUser).includes("Vente instentané") && (
+      <button
+        type="button"
+        onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
+        className={`px-4 py-3 rounded-lg border-2 transition-all ${
+          paymentMethod === "ACCOUNT_DEBIT"
+            ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
+            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+        }`}
+      >
+        💳 Débit compte
+      </button>
+    )}
+  </div>
+  
+  {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
+    <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg">
+      <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+        Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
+        {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
+      </span>
+      {cart.length > 0 && (
+        <div className="text-xs text-gray-500 mt-1">
+          Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
+        </div>
+      )}
+    </div>
+  )}
+</div>
               {/* Sélection du client */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-                <div className="flex gap-2">
-                  <select
-                    value={selectedUser?.id || ""}
-                    onChange={(e) => {
-                      const user = users.find(u => u.id === Number(e.target.value));
-                      setSelectedUser(user || null);
-                    }}
-                    className="flex-1 border rounded px-3 py-2"
-                  >
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {getFullName(user)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddMemberForm(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
-                    title="Ajouter un nouveau membre"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    Nouveau
-                  </button>
-                </div>
-              </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+  
+  {/* Barre de recherche */}
+  <input
+    type="text"
+    placeholder="Rechercher un client..."
+    value={userSearch}
+    onChange={(e) => setUserSearch(e.target.value)}
+    className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+  />
+  
+  <div className="flex gap-2">
+    <select
+      value={selectedUser?.id || ""}
+      onChange={(e) => {
+        const user = users.find(u => u.id === Number(e.target.value));
+        setSelectedUser(user || null);
+      }}
+      className="flex-1 border rounded px-3 py-2"
+    >
+      {filteredUsers.length === 0 ? (
+        <option value="">Aucun client trouvé</option>
+      ) : (
+        filteredUsers.map(user => (
+          <option key={user.id} value={user.id}>
+            {getFullName(user)}
+          </option>
+        ))
+      )}
+    </select>
+    <button
+      type="button"
+      onClick={() => setShowAddMemberForm(true)}
+      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+      title="Ajouter un nouveau membre"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      Nouveau
+    </button>
+  </div>
+</div>
 
               {/* Notes */}
                <div className="mb-6">
@@ -1068,6 +1131,8 @@ export default function DailyOrdersPage() {
                     setNotes("");
                     setDiscountValue(0);
                     setProductSearch("");
+                    setUserSearch("");
+                    setDiscountComment("");
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
@@ -1224,7 +1289,7 @@ export default function DailyOrdersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Raison du remboursement (optionnel)
                   </label>
-                  <textarea
+                  <textareaf
                     value={refundNotes}
                     onChange={(e) => setRefundNotes(e.target.value)}
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
