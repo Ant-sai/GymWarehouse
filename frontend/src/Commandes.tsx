@@ -107,6 +107,8 @@ export default function DailyOrdersPage() {
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [refundNotes, setRefundNotes] = useState("");
 
+  
+
   async function fetchOrders() {
     try {
       const response = await fetch("/api/orders");
@@ -341,6 +343,9 @@ export default function DailyOrdersPage() {
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
+  const filteredUsers = users.filter(user =>
+  getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
+);
 
  async function handleCreateOrder() {
   if (!selectedUser) {
@@ -418,9 +423,7 @@ export default function DailyOrdersPage() {
     setSaving(false);
   }
 }
-const filteredUsers = users.filter(user =>
-  getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
-);
+
 
   async function handleCancelOrder(order: Order) {
     try {
