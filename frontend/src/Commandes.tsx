@@ -711,31 +711,8 @@ function getAvailableDates(): string[] {
               <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
               <div className="text-sm text-gray-500">Crédit</div>
             </div>
-            <div className="bg-red-50 p-3 rounded text-center border border-red-200">
-              <div className="font-semibold text-red-700">{dailyStats.orders.filter(o => o.paymentMethod === "FREE").length}</div>
-              <div className="text-sm text-red-500">Gratuit</div>
-            </div>
           </div>
 
-          {/* Répartition par méthode de paiement */}
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-gray-50 p-3 rounded text-center">
-              <div className="font-semibold text-gray-700">{dailyStats.cashRevenue.toFixed(2)}€</div>
-              <div className="text-sm text-gray-500">Espèces</div>
-            </div>
-            <div className="bg-gray-50 p-3 rounded text-center">
-              <div className="font-semibold text-gray-700">{dailyStats.qrRevenue.toFixed(2)}€</div>
-              <div className="text-sm text-gray-500">QR Code</div>
-            </div>
-            <div className="bg-gray-50 p-3 rounded text-center">
-              <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
-              <div className="text-sm text-gray-500">Crédit</div>
-            </div>
-            <div className="bg-red-50 p-3 rounded text-center border border-red-200">
-              <div className="font-semibold text-red-700">{dailyStats.orders.filter(o => o.paymentMethod === "FREE").length}</div>
-              <div className="text-sm text-red-500">Gratuit</div>
-            </div>
-          </div>
         </div>
 
         {/* États de chargement et d'erreur */}
