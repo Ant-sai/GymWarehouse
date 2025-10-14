@@ -681,24 +681,58 @@ function getAvailableDates(): string[] {
           </div>
 
           {/* Statistiques du jour */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-            <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-              <div className="text-2xl font-bold text-green-700">
-                {dailyStats.cashRevenue.toFixed(2)}€
+{/* Statistiques du jour */}
+          <div className="bg-white p-6 rounded-lg shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">Chiffre d'affaires</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">Crédit</span>
+                <span className="text-xl font-bold text-purple-700">
+                  {dailyStats.accountDebitRevenue.toFixed(2)}€
+                </span>
               </div>
-              <div className="text-sm text-green-600">Chiffre d'affaires Espèces</div>
-            </div>
-
-            <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-              <div className="text-2xl font-bold text-purple-700">
-                {dailyStats.accountDebitRevenue.toFixed(2)}€
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">QR Code</span>
+                <span className="text-xl font-bold text-blue-700">
+                  {dailyStats.qrRevenue.toFixed(2)}€
+                </span>
               </div>
-              <div className="text-sm text-purple-600">Chiffre d'affaires Crédit</div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">Espèces</span>
+                <span className="text-xl font-bold text-green-700">
+                  {dailyStats.cashRevenue.toFixed(2)}€
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b bg-gray-50 px-2 rounded">
+                <span className="text-gray-600">Trou</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  defaultValue="0"
+                  className="w-32 text-right text-xl font-bold text-red-600 border border-gray-300 rounded px-2 py-1"
+                  id="trou-input"
+                  onChange={(e) => {
+                    const trouValue = Number(e.target.value) || 0;
+                    const fondCaisse = dailyStats.cashRevenue - trouValue;
+                    const fondElement = document.getElementById('fond-caisse');
+                    if (fondElement) {
+                      fondElement.textContent = `${fondCaisse.toFixed(2)}€`;
+                      fondElement.className = `text-xl font-bold ${fondCaisse >= 0 ? 'text-green-700' : 'text-red-700'}`;
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex justify-between items-center py-2 bg-green-50 px-2 rounded">
+                <span className="text-gray-700 font-medium">Fond de caisse</span>
+                <span id="fond-caisse" className="text-xl font-bold text-green-700">
+                  {dailyStats.cashRevenue.toFixed(2)}€
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Répartition par méthode de paiement */}
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+          {/* <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-gray-50 p-3 rounded text-center">
               <div className="font-semibold text-gray-700">{dailyStats.cashRevenue.toFixed(2)}€</div>
               <div className="text-sm text-gray-500">Espèces</div>
@@ -711,7 +745,7 @@ function getAvailableDates(): string[] {
               <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
               <div className="text-sm text-gray-500">Crédit</div>
             </div>
-          </div>
+          </div> */}
 
         </div>
 
