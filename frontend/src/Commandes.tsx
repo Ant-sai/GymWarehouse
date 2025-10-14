@@ -681,33 +681,19 @@ function getAvailableDates(): string[] {
           </div>
 
           {/* Statistiques du jour */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
             <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
               <div className="text-2xl font-bold text-green-700">
-                {dailyStats.totalRevenue.toFixed(2)}€
+                {dailyStats.cashRevenue.toFixed(2)}€
               </div>
-              <div className="text-sm text-green-600">Chiffre d'affaires</div>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-              <div className="text-2xl font-bold text-blue-700">
-                {dailyStats.orderCount}
-              </div>
-              <div className="text-sm text-blue-600">Commandes</div>
+              <div className="text-sm text-green-600">Chiffre d'affaires Espèces</div>
             </div>
 
             <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
               <div className="text-2xl font-bold text-purple-700">
-                {dailyStats.trainerOrders}
+                {dailyStats.accountDebitRevenue.toFixed(2)}€
               </div>
-              <div className="text-sm text-purple-600">Entraîneurs</div>
-            </div>
-
-            <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
-              <div className="text-2xl font-bold text-orange-700">
-                {dailyStats.userOrders}
-              </div>
-              <div className="text-sm text-orange-600">Membres</div>
+              <div className="text-sm text-purple-600">Chiffre d'affaires Crédit</div>
             </div>
           </div>
 
@@ -723,7 +709,27 @@ function getAvailableDates(): string[] {
             </div>
             <div className="bg-gray-50 p-3 rounded text-center">
               <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
-              <div className="text-sm text-gray-500">Débit</div>
+              <div className="text-sm text-gray-500">Crédit</div>
+            </div>
+            <div className="bg-red-50 p-3 rounded text-center border border-red-200">
+              <div className="font-semibold text-red-700">{dailyStats.orders.filter(o => o.paymentMethod === "FREE").length}</div>
+              <div className="text-sm text-red-500">Gratuit</div>
+            </div>
+          </div>
+
+          {/* Répartition par méthode de paiement */}
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.cashRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Espèces</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.qrRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">QR Code</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Crédit</div>
             </div>
             <div className="bg-red-50 p-3 rounded text-center border border-red-200">
               <div className="font-semibold text-red-700">{dailyStats.orders.filter(o => o.paymentMethod === "FREE").length}</div>
@@ -771,23 +777,17 @@ function getAvailableDates(): string[] {
               {dailyStats.orders.map((order) => (
   <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
     <div className="flex justify-between items-start mb-4">
-      <div>
-        <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
-        <p className="text-gray-600">
-          Client: {order.client ? getFullName(order.client) : "Client inconnu"}
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          <p className="text-gray-900 font-medium">
+            {order.client ? getFullName(order.client) : "Client inconnu"}
+          </p>
           {order.client?.role === "TRAINER" && (
-            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
               Entraîneur
             </span>
           )}
-        </p>
-        <p className="text-gray-600">
-          Heure: {new Date(order.date).toLocaleTimeString('fr-FR')}
-        </p>
-        {/* ✅ NOUVEAU : Affichage du mode de paiement */}
-        <p className="text-gray-600 flex items-center gap-2 mt-1">
-          <span className="font-medium">Paiement:</span>
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+          <span className={`px-2 py-1 rounded text-xs font-medium ${
             order.paymentMethod === "CASH" 
               ? "bg-green-100 text-green-800"
               : order.paymentMethod === "QRCODE"
@@ -800,14 +800,15 @@ function getAvailableDates(): string[] {
           }`}>
             {getPaymentMethodLabel(order.paymentMethod)}
           </span>
-        </p>
+          <p className="text-gray-500 text-sm">
+            {new Date(order.date).toLocaleTimeString('fr-FR')}
+          </p>
+        </div>
       </div>
-      <div className="text-right">
+      <div className="text-right ml-4">
         <div className="text-2xl font-bold text-green-600">
           {Number(order.totalAmount).toFixed(2)}€
         </div>
-        {/* ✅ Badge de paiement déplacé/supprimé d'ici car maintenant affiché à gauche */}
-        
         <button
           onClick={() => handleCancelOrder(order)}
           className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors mt-2"
