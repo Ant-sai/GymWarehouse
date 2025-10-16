@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,126 +8,122 @@ datasource db {
 }
 
 model User {
-  id            Int         @id @default(autoincrement())
-  firstName     String?     
-  lastName      String?     
-  role          Role        @default(USER)
-  balance       Decimal     @default(0) @db.Decimal(10, 2)
-  
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  
-  orders        Order[]
-  openedCashRegisters   CashRegister[] @relation("OpenedBy")
-  closedCashRegisters   CashRegister[] @relation("ClosedBy")
-  cashMovements         CashMovement[]
-  
+  id                  Int            @id @default(autoincrement())
+  firstName           String?
+  lastName            String?
+  role                Role           @default(USER)
+  balance             Decimal        @default(0.00) @db.Decimal(10, 2)
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  cashMovements       CashMovement[]
+  closedCashRegisters CashRegister[] @relation("ClosedBy")
+  openedCashRegisters CashRegister[] @relation("OpenedBy")
+  orders              Order[]
+
   @@map("users")
 }
 
 model Product {
-  id            Int         @id @default(autoincrement())
-  name          String
-  description   String?
-  quantity      Int         @default(0)
-  price         Decimal     @db.Decimal(10, 2)
-  trainerPrice  Decimal     @db.Decimal(10, 2) @map("trainer_price")
-  cost          Decimal?    @default(0) @db.Decimal(10, 2)
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  
-  orderDetails  OrderDetail[]
-  
+  id           Int           @id @default(autoincrement())
+  name         String
+  description  String?
+  quantity     Int           @default(0)
+  price        Decimal       @db.Decimal(10, 2)
+  trainerPrice Decimal       @map("trainer_price") @db.Decimal(10, 2)
+  cost         Decimal?      @default(0.00) @db.Decimal(10, 2)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  orderDetails OrderDetail[]
+
   @@map("products")
 }
 
 model Order {
-  id            Int         @id @default(autoincrement())
-  client        User        @relation(fields: [clientId], references: [id])
+  id            Int            @id @default(autoincrement())
   clientId      Int
-  totalAmount   Decimal     @map("total_amount") @db.Decimal(10, 2)
-  date          DateTime    @default(now())
-  paymentMethod PaymentType @map("payment_method")
+  totalAmount   Decimal        @map("total_amount") @db.Decimal(10, 2)
+  date          DateTime       @default(now())
+  paymentMethod PaymentType    @map("payment_method")
   notes         String?
-  discount     Float?        @default(0)
-  products      OrderDetail[]
+  discount      Float?         @default(0)
   cashMovements CashMovement[]
-  
+  products      OrderDetail[]
+  client        User           @relation(fields: [clientId], references: [id])
+
+  @@index([clientId], map: "orders_clientId_fkey")
   @@map("orders")
 }
 
 model OrderDetail {
-  id            Int         @id @default(autoincrement())
-  order         Order       @relation(fields: [orderId], references: [id])
-  orderId       Int
-  
-  product       Product     @relation(fields: [productId], references: [id])
-  productId     Int         
-  quantity      Int
-  unitPrice     Decimal     @map("unit_price") @db.Decimal(10, 2)
-  totalPrice    Decimal     @map("total_price") @db.Decimal(10, 2)
-  
+  id         Int     @id @default(autoincrement())
+  orderId    Int
+  productId  Int
+  quantity   Int
+  unitPrice  Decimal @map("unit_price") @db.Decimal(10, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(10, 2)
+  order      Order   @relation(fields: [orderId], references: [id])
+  product    Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId], map: "order_details_orderId_fkey")
+  @@index([productId], map: "order_details_productId_fkey")
   @@map("order_details")
 }
 
-
 model CashRegister {
-  id              Int               @id @default(autoincrement())
-  openingDate     DateTime          @default(now()) @map("opening_date")
-  closingDate     DateTime?         @map("closing_date")
-  openingBalance  Decimal           @default(0) @db.Decimal(10, 2) @map("opening_balance")
-  closingBalance  Decimal?          @db.Decimal(10, 2) @map("closing_balance")
-  expectedBalance Decimal?          @db.Decimal(10, 2) @map("expected_balance")
-  difference      Decimal?          @db.Decimal(10, 2)
+  id              Int                @id @default(autoincrement())
+  openingDate     DateTime           @default(now()) @map("opening_date")
+  closingDate     DateTime?          @map("closing_date")
+  openingBalance  Decimal            @default(0.00) @map("opening_balance") @db.Decimal(10, 2)
+  closingBalance  Decimal?           @map("closing_balance") @db.Decimal(10, 2)
+  expectedBalance Decimal?           @map("expected_balance") @db.Decimal(10, 2)
+  difference      Decimal?           @db.Decimal(10, 2)
   status          CashRegisterStatus @default(OPEN)
   notes           String?
-  
-  openedBy        Int?              @map("opened_by")
-  closedBy        Int?              @map("closed_by")
-  
-  openedByUser    User?             @relation("OpenedBy", fields: [openedBy], references: [id])
-  closedByUser    User?             @relation("ClosedBy", fields: [closedBy], references: [id])
-  
+  openedBy        Int?               @map("opened_by")
+  closedBy        Int?               @map("closed_by")
   movements       CashMovement[]
-  
+  closedByUser    User?              @relation("ClosedBy", fields: [closedBy], references: [id])
+  openedByUser    User?              @relation("OpenedBy", fields: [openedBy], references: [id])
+
+  @@index([closedBy], map: "cash_register_closed_by_fkey")
+  @@index([openedBy], map: "cash_register_opened_by_fkey")
   @@map("cash_register")
 }
 
 model CashMovement {
-  id              Int               @id @default(autoincrement())
-  cashRegisterId  Int               @map("cash_register_id")
-  movementType    MovementType      @map("movement_type")
-  amount          Decimal           @db.Decimal(10, 2)
-  orderId         Int?              @map("order_id")
-  description     String?           @db.VarChar(500)
-  createdAt       DateTime          @default(now()) @map("created_at")
-  createdBy       Int?              @map("created_by")
-  
-  cashRegister    CashRegister      @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
-  order           Order?            @relation(fields: [orderId], references: [id])
-  user            User?             @relation(fields: [createdBy], references: [id])
-  
+  id             Int          @id @default(autoincrement())
+  cashRegisterId Int          @map("cash_register_id")
+  movementType   MovementType @map("movement_type")
+  amount         Decimal      @db.Decimal(10, 2)
+  orderId        Int?         @map("order_id")
+  description    String?      @db.VarChar(500)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  createdBy      Int?         @map("created_by")
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [createdBy], references: [id])
+  order          Order?       @relation(fields: [orderId], references: [id])
+
+  @@index([cashRegisterId], map: "cash_movements_cash_register_id_fkey")
+  @@index([createdBy], map: "cash_movements_created_by_fkey")
+  @@index([orderId], map: "cash_movements_order_id_fkey")
   @@map("cash_movements")
 }
 
 model DailyClosing {
-  id              Int       @id @default(autoincrement())
-  date            DateTime  @unique @db.Date
-  cashRevenue     Decimal   @db.Decimal(10, 2) @map("cash_revenue")
-  qrRevenue       Decimal   @db.Decimal(10, 2) @map("qr_revenue")
-  creditRevenue   Decimal   @db.Decimal(10, 2) @map("credit_revenue")
-  trou            Decimal   @default(0) @db.Decimal(10, 2)
-  fondCaisse      Decimal   @db.Decimal(10, 2) @map("fond_caisse")
-  notes           String?
-  closedAt        DateTime  @default(now()) @map("closed_at")
-  
+  id            Int      @id @default(autoincrement())
+  date          DateTime @unique @db.Date
+  cashRevenue   Decimal  @db.Decimal(10, 2) @map("cash_revenue")
+  qrRevenue     Decimal  @db.Decimal(10, 2) @map("qr_revenue")
+  creditRevenue Decimal  @db.Decimal(10, 2) @map("credit_revenue")
+  trou          Decimal  @default(0) @db.Decimal(10, 2)
+  fondCaisse    Decimal  @db.Decimal(10, 2) @map("fond_caisse")
+  notes         String?
+  closedBy      Int?     @map("closed_by")
+  closedAt      DateTime @default(now()) @map("closed_at")
+
   @@map("daily_closings")
 }
-
-// ========================================
-// ENUMS
-// ========================================
 
 enum Role {
   TRAINER
@@ -152,11 +145,11 @@ enum CashRegisterStatus {
 }
 
 enum MovementType {
-  OPENING_FUND    // Fond de caisse initial
-  SALE            // Vente
-  REFUND          // Remboursement
-  EXPENSE         // Dépense
-  DEPOSIT         // Dépôt
-  WITHDRAWAL      // Retrait
-  ADJUSTMENT      // Ajustement manuel
+  OPENING_FUND
+  SALE
+  REFUND
+  EXPENSE
+  DEPOSIT
+  WITHDRAWAL
+  ADJUSTMENT
 }
