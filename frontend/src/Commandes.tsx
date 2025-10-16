@@ -96,11 +96,31 @@ export default function DailyOrdersPage() {
     role: "USER" as "USER" | "TRAINER",
     balance: "",
   });
+   // États pour la clôture journalière
+  const [trouValue, setTrouValue] = useState<number>(0);
+  const [fondCaisse, setFondCaisse] = useState<number>(0);
+  const [previousFondCaisse, setPreviousFondCaisse] = useState<number>(0);
+  const [closingNotes, setClosingNotes] = useState("");
+  const [showClosingModal, setShowClosingModal] = useState(false);
 
   // Charger toutes les données au montage
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
   }, []);
+
+    useEffect(() => {
+    if (selectedDate) {
+      fetchDailyClosing(selectedDate);
+      fetchPreviousDayClosing(selectedDate);
+    }
+  }, [selectedDate]);
+
+    useEffect(() => {
+    const stats = getDailyStats(selectedDate);
+    const newFondCaisse = stats.cashRevenue - trouValue;
+    setFondCaisse(newFondCaisse);
+  }, [orders, selectedDate, trouValue]);
+  
   // État pour le formulaire de remboursement
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [refundUser, setRefundUser] = useState<User | null>(null);
@@ -214,6 +234,64 @@ export default function DailyOrdersPage() {
     });
 
     return stats;
+  }
+
+  async function fetchDailyClosing(date: string) {
+    try {
+      const response = await fetch(`/api/daily-closing/${date}`);
+      if (response.ok) {
+        const closing = await response.json();
+        if (closing) {
+          setTrouValue(Number(closing.trou));
+          setClosingNotes(closing.notes || "");
+        }
+      }
+    } catch (err) {
+      console.error('Erreur lors de la récupération de la clôture:', err);
+    }
+  }
+
+  async function fetchPreviousDayClosing(date: string) {
+    try {
+      const response = await fetch(`/api/daily-closing/previous/${date}`);
+      if (response.ok) {
+        const previousClosing = await response.json();
+        if (previousClosing) {
+          setPreviousFondCaisse(Number(previousClosing.fondCaisse));
+        } else {
+          setPreviousFondCaisse(0);
+        }
+      }
+    } catch (err) {
+      console.error('Erreur lors de la récupération de la clôture précédente:', err);
+      setPreviousFondCaisse(0);
+    }
+  }
+
+  async function handleSaveClosing() {
+    try {
+      const response = await fetch('/api/daily-closing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate,
+          cashRevenue: dailyStats.cashRevenue,
+          qrRevenue: dailyStats.qrRevenue,
+          creditRevenue: dailyStats.accountDebitRevenue,
+          trou: trouValue,
+          fondCaisse: fondCaisse,
+          notes: closingNotes,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Erreur lors de la sauvegarde');
+
+      alert('Clôture sauvegardée avec succès !');
+      setShowClosingModal(false);
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde de la clôture:', err);
+      alert('Impossible de sauvegarder la clôture');
+    }
   }
 
   
@@ -682,8 +760,29 @@ function getAvailableDates(): string[] {
 
           {/* Statistiques du jour */}
 {/* Statistiques du jour */}
+          {/* Statistiques du jour */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Chiffre d'affaires</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Chiffre d'affaires</h3>
+              <button
+                onClick={() => setShowClosingModal(true)}
+                className="bg-[#1E2A47] text-white px-4 py-2 rounded hover:bg-[#2A3B5A]"
+              >
+                💾 Sauvegarder clôture
+              </button>
+            </div>
+
+            {previousFondCaisse > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-700 font-medium">Fond de caisse du jour précédent</span>
+                  <span className="text-xl font-bold text-blue-700">
+                    {previousFondCaisse.toFixed(2)}€
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b">
                 <span className="text-gray-600">Crédit</span>
@@ -708,24 +807,15 @@ function getAvailableDates(): string[] {
                 <input
                   type="number"
                   step="0.01"
-                  defaultValue="0"
+                  value={trouValue}
+                  onChange={(e) => setTrouValue(Number(e.target.value) || 0)}
                   className="w-32 text-right text-xl font-bold text-red-600 border border-gray-300 rounded px-2 py-1"
-                  id="trou-input"
-                  onChange={(e) => {
-                    const trouValue = Number(e.target.value) || 0;
-                    const fondCaisse = dailyStats.cashRevenue - trouValue;
-                    const fondElement = document.getElementById('fond-caisse');
-                    if (fondElement) {
-                      fondElement.textContent = `${fondCaisse.toFixed(2)}€`;
-                      fondElement.className = `text-xl font-bold ${fondCaisse >= 0 ? 'text-green-700' : 'text-red-700'}`;
-                    }
-                  }}
                 />
               </div>
               <div className="flex justify-between items-center py-2 bg-green-50 px-2 rounded">
                 <span className="text-gray-700 font-medium">Fond de caisse</span>
-                <span id="fond-caisse" className="text-xl font-bold text-green-700">
-                  {dailyStats.cashRevenue.toFixed(2)}€
+                <span className={`text-xl font-bold ${fondCaisse >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {fondCaisse.toFixed(2)}€
                 </span>
               </div>
             </div>
@@ -1427,6 +1517,72 @@ function getAvailableDates(): string[] {
     </form>
   </div>
 )}
+{/* Modal de sauvegarde de clôture */}
+        {showClosingModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-40">
+            <div className="absolute inset-0 bg-black/30" onClick={() => setShowClosingModal(false)} />
+            <div className="relative bg-white rounded-lg p-6 w-[600px] shadow-lg z-50">
+              <h3 className="text-xl font-semibold mb-4 text-black">
+                Clôture du {new Date(selectedDate).toLocaleDateString('fr-FR')}
+              </h3>
+
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span>Crédit:</span>
+                    <span className="font-bold">{dailyStats.accountDebitRevenue.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>QR Code:</span>
+                    <span className="font-bold">{dailyStats.qrRevenue.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Espèces:</span>
+                    <span className="font-bold">{dailyStats.cashRevenue.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-red-600">
+                    <span>Trou:</span>
+                    <span className="font-bold">-{trouValue.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t-2 border-gray-300">
+                    <span className="font-semibold">Fond de caisse:</span>
+                    <span className={`font-bold text-lg ${fondCaisse >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {fondCaisse.toFixed(2)}€
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes (optionnel)
+                  </label>
+                  <textarea
+                    value={closingNotes}
+                    onChange={(e) => setClosingNotes(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="Remarques sur la clôture..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowClosingModal(false)}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSaveClosing}
+                  className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A]"
+                >
+                  💾 Sauvegarder
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

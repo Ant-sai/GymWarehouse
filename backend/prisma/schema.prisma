@@ -114,6 +114,20 @@ model CashMovement {
   @@map("cash_movements")
 }
 
+model DailyClosing {
+  id              Int       @id @default(autoincrement())
+  date            DateTime  @unique @db.Date
+  cashRevenue     Decimal   @db.Decimal(10, 2) @map("cash_revenue")
+  qrRevenue       Decimal   @db.Decimal(10, 2) @map("qr_revenue")
+  creditRevenue   Decimal   @db.Decimal(10, 2) @map("credit_revenue")
+  trou            Decimal   @default(0) @db.Decimal(10, 2)
+  fondCaisse      Decimal   @db.Decimal(10, 2) @map("fond_caisse")
+  notes           String?
+  closedAt        DateTime  @default(now()) @map("closed_at")
+  
+  @@map("daily_closings")
+}
+
 // ========================================
 // ENUMS
 // ========================================

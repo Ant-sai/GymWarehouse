@@ -644,3 +644,83 @@ app.post('/api/refunds', async (req, res) => {
         });
     }
 });
+// -----------------------------------------------
+// ------------- Daily Closing routes ------------
+// -----------------------------------------------
+
+// Get daily closing for a specific date
+app.get('/api/daily-closing/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const closing = await prisma.dailyClosing.findUnique({
+            where: { date: new Date(date) }
+        });
+        res.json(closing);
+    } catch (err) {
+        console.error('Error fetching daily closing: ', err);
+        res.status(500).json({ error: 'Failed to fetch daily closing' });
+    }
+});
+
+// Create or update daily closing
+app.post('/api/daily-closing', async (req, res) => {
+    try {
+        const { date, cashRevenue, qrRevenue, creditRevenue, trou, fondCaisse, notes, closedBy } = req.body;
+        
+        const dailyClosing = await prisma.dailyClosing.upsert({
+            where: { date: new Date(date) },
+            update: {
+                cashRevenue: Number(cashRevenue),
+                qrRevenue: Number(qrRevenue),
+                creditRevenue: Number(creditRevenue),
+                trou: Number(trou),
+                fondCaisse: Number(fondCaisse),
+                notes: notes,
+                closedBy: closedBy ? Number(closedBy) : null,
+            },
+            create: {
+                date: new Date(date),
+                cashRevenue: Number(cashRevenue),
+                qrRevenue: Number(qrRevenue),
+                creditRevenue: Number(creditRevenue),
+                trou: Number(trou),
+                fondCaisse: Number(fondCaisse),
+                notes: notes,
+                closedBy: closedBy ? Number(closedBy) : null,
+            }
+        });
+        
+        res.status(201).json(dailyClosing);
+    } catch (err) {
+        console.error('Error saving daily closing: ', err);
+        res.status(500).json({ 
+            error: 'Failed to save daily closing',
+            message: err.message 
+        });
+    }
+});
+
+// Get previous day closing (to get fond de caisse for next day)
+app.get('/api/daily-closing/previous/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const currentDate = new Date(date);
+        
+        // Get the most recent closing before this date
+        const previousClosing = await prisma.dailyClosing.findFirst({
+            where: {
+                date: {
+                    lt: currentDate
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+        
+        res.json(previousClosing);
+    } catch (err) {
+        console.error('Error fetching previous closing: ', err);
+        res.status(500).json({ error: 'Failed to fetch previous closing' });
+    }
+});
