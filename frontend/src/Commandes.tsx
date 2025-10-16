@@ -466,14 +466,16 @@ export default function DailyOrdersPage() {
     const newOrder = await response.json();
     setOrders([newOrder, ...orders]);
 
-    // Réinitialiser le formulaire
+    
     setShowForm(false);
     setSelectedUser(null);
     setCart([]);
     setPaymentMethod("CASH");
     setNotes("");
     setDiscountValue(0);
-    setDiscountComment(""); // ✅ Réinitialiser le commentaire
+    setDiscountComment("");
+    setUserSearch("");
+    setProductSearch("");
     alert("Commande créée avec succès !");
 
     fetchProducts();
