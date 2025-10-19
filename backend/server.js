@@ -566,14 +566,15 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
 // -----------------------------------------------
 // Create a refund (credit user account)
 // Create a refund (credit user account)
+// Create a refund (client rembourse sa dette)
 app.post('/api/refunds', async (req, res) => {
     try {
-        const { userId, amount, paymentMethod, notes } = req.body;  // Ajout de paymentMethod
+        const { userId, amount, paymentMethod, notes } = req.body;
         
         // Validation
-        if (!userId || !amount) {
+        if (!userId || !amount || !paymentMethod) {
             return res.status(400).json({
-                error: 'Données manquantes: userId et amount sont requis'
+                error: 'Données manquantes: userId, amount et paymentMethod sont requis'
             });
         }
         
@@ -594,14 +595,14 @@ app.post('/api/refunds', async (req, res) => {
         }
         
         const result = await prisma.$transaction(async (prismaTransaction) => {
-            // Créer une commande spéciale de type REFUND
-            // On utilise un montant négatif pour différencier visuellement
+            // Créer une commande normale pour le remboursement de dette
+            // Le montant est positif car c'est de l'argent qui rentre
             const refundOrder = await prismaTransaction.order.create({
                 data: {
                     clientId: Number(userId),
-                    totalAmount: -refundAmount, // Montant négatif pour le remboursement
-                    paymentMethod: paymentMethod || 'CASH',  // Utiliser le moyen de paiement fourni
-                    notes: `[REMBOURSEMENT ${paymentMethod === 'QRCODE' ? 'QR' : 'ESPÈCES'}] ${notes || 'Remboursement effectué'}`,  // Indiquer le moyen dans les notes
+                    totalAmount: refundAmount, // Montant positif - c'est une rentrée d'argent
+                    paymentMethod: paymentMethod, // CASH ou QRCODE
+                    notes: `[REMBOURSEMENT CRÉDIT] ${notes || 'Remboursement de dette'}`,
                     // Pas de produits pour un remboursement
                 },
                 include: {
@@ -618,7 +619,7 @@ app.post('/api/refunds', async (req, res) => {
                 }
             });
             
-            // Créditer le compte de l'utilisateur
+            // Créditer le compte de l'utilisateur (réduire sa dette)
             const updatedUser = await prismaTransaction.user.update({
                 where: { id: Number(userId) },
                 data: {
@@ -642,61 +643,6 @@ app.post('/api/refunds', async (req, res) => {
         res.status(500).json({
             error: 'Internal server error',
             message: err.message || 'An unexpected error occurred'
-        });
-    }
-});
-// -----------------------------------------------
-// ------------- Daily Closing routes ------------
-// -----------------------------------------------
-
-// Get daily closing for a specific date
-app.get('/api/daily-closing/:date', async (req, res) => {
-    try {
-        const { date } = req.params;
-        const closing = await prisma.dailyClosing.findUnique({
-            where: { date: new Date(date) }
-        });
-        res.json(closing);
-    } catch (err) {
-        console.error('Error fetching daily closing: ', err);
-        res.status(500).json({ error: 'Failed to fetch daily closing' });
-    }
-});
-
-// Create or update daily closing
-app.post('/api/daily-closing', async (req, res) => {
-    try {
-        const { date, cashRevenue, qrRevenue, creditRevenue, trou, fondCaisse, notes, closedBy } = req.body;
-        
-        const dailyClosing = await prisma.dailyClosing.upsert({
-            where: { date: new Date(date) },
-            update: {
-                cashRevenue: Number(cashRevenue),
-                qrRevenue: Number(qrRevenue),
-                creditRevenue: Number(creditRevenue),
-                trou: Number(trou),
-                fondCaisse: Number(fondCaisse),
-                notes: notes,
-                closedBy: closedBy ? Number(closedBy) : null,
-            },
-            create: {
-                date: new Date(date),
-                cashRevenue: Number(cashRevenue),
-                qrRevenue: Number(qrRevenue),
-                creditRevenue: Number(creditRevenue),
-                trou: Number(trou),
-                fondCaisse: Number(fondCaisse),
-                notes: notes,
-                closedBy: closedBy ? Number(closedBy) : null,
-            }
-        });
-        
-        res.status(201).json(dailyClosing);
-    } catch (err) {
-        console.error('Error saving daily closing: ', err);
-        res.status(500).json({ 
-            error: 'Failed to save daily closing',
-            message: err.message 
         });
     }
 });
