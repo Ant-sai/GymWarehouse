@@ -96,38 +96,39 @@ export default function DailyOrdersPage() {
     role: "USER" as "USER" | "TRAINER",
     balance: "",
   });
-   // États pour la clôture journalière
+  // États pour la clôture journalière
   const [trouValue, setTrouValue] = useState<number>(0);
   const [fondCaisse, setFondCaisse] = useState<number>(0);
   const [previousFondCaisse, setPreviousFondCaisse] = useState<number>(0);
   const [closingNotes, setClosingNotes] = useState("");
   const [showClosingModal, setShowClosingModal] = useState(false);
+  const [refundPaymentMethod, setRefundPaymentMethod] = useState<"CASH" | "QRCODE">("CASH");
 
   // Charger toutes les données au montage
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (selectedDate) {
       fetchDailyClosing(selectedDate);
       fetchPreviousDayClosing(selectedDate);
     }
   }, [selectedDate]);
 
-    useEffect(() => {
+  useEffect(() => {
     const stats = getDailyStats(selectedDate);
     const newFondCaisse = stats.cashRevenue - trouValue;
     setFondCaisse(newFondCaisse);
   }, [orders, selectedDate, trouValue]);
-  
+
   // État pour le formulaire de remboursement
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [refundUser, setRefundUser] = useState<User | null>(null);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [refundNotes, setRefundNotes] = useState("");
 
-  
+
 
   async function fetchOrders() {
     try {
@@ -294,7 +295,7 @@ export default function DailyOrdersPage() {
     }
   }
 
-  
+
   // Fonction pour ajouter un nouveau membre rapidement
   async function handleAddMember(e?: React.FormEvent) {
     e?.preventDefault();
@@ -409,86 +410,86 @@ export default function DailyOrdersPage() {
     return Math.min(discountValue, subtotal);
   }
 
-  
 
- async function handleCreateOrder() {
-  if (!selectedUser) {
-    alert("Veuillez sélectionner un client");
-    return;
-  }
-  if (cart.length === 0) {
-    alert("Veuillez ajouter au moins un produit");
-    return;
-  }
 
-  const total = calculateTotal();
-  
-  if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
-    const newBalance = Number(selectedUser.balance) - total;
-    const confirmNegative = window.confirm(
-      `Cette transaction créera un solde négatif.\n\n` +
-      `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
-      `Montant à débiter: ${total.toFixed(2)}€\n` +
-      `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
-      `Voulez-vous continuer ?`
-    );
-
-    if (!confirmNegative) {
+  async function handleCreateOrder() {
+    if (!selectedUser) {
+      alert("Veuillez sélectionner un client");
       return;
     }
-  }
-
-  setSaving(true);
-  try {
-    const orderData = {
-      clientId: selectedUser.id,
-      paymentMethod: paymentMethod,
-      notes: notes,
-      discount: discountValue,
-      discountComment: discountComment, // ✅ Nouveau champ
-      products: cart.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity
-      }))
-    };
-    
-    const response = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(orderData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+    if (cart.length === 0) {
+      alert("Veuillez ajouter au moins un produit");
+      return;
     }
 
-    const newOrder = await response.json();
-    setOrders([newOrder, ...orders]);
+    const total = calculateTotal();
 
-    
-    setShowForm(false);
-    setSelectedUser(null);
-    setCart([]);
-    setPaymentMethod("CASH");
-    setNotes("");
-    setDiscountValue(0);
-    setDiscountComment("");
-    setUserSearch("");
-    setProductSearch("");
-    alert("Commande créée avec succès !");
+    if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
+      const newBalance = Number(selectedUser.balance) - total;
+      const confirmNegative = window.confirm(
+        `Cette transaction créera un solde négatif.\n\n` +
+        `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
+        `Montant à débiter: ${total.toFixed(2)}€\n` +
+        `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
+        `Voulez-vous continuer ?`
+      );
 
-    fetchProducts();
-    fetchUsers();
+      if (!confirmNegative) {
+        return;
+      }
+    }
 
-  } catch (err) {
-    console.error('Erreur lors de la création de la commande:', err);
-    const errorMessage = err instanceof Error ? err.message : "Impossible de créer la commande";
-    alert(errorMessage);
-  } finally {
-    setSaving(false);
+    setSaving(true);
+    try {
+      const orderData = {
+        clientId: selectedUser.id,
+        paymentMethod: paymentMethod,
+        notes: notes,
+        discount: discountValue,
+        discountComment: discountComment, // ✅ Nouveau champ
+        products: cart.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity
+        }))
+      };
+
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
+      const newOrder = await response.json();
+      setOrders([newOrder, ...orders]);
+
+
+      setShowForm(false);
+      setSelectedUser(null);
+      setCart([]);
+      setPaymentMethod("CASH");
+      setNotes("");
+      setDiscountValue(0);
+      setDiscountComment("");
+      setUserSearch("");
+      setProductSearch("");
+      alert("Commande créée avec succès !");
+
+      fetchProducts();
+      fetchUsers();
+
+    } catch (err) {
+      console.error('Erreur lors de la création de la commande:', err);
+      const errorMessage = err instanceof Error ? err.message : "Impossible de créer la commande";
+      alert(errorMessage);
+    } finally {
+      setSaving(false);
+    }
   }
-}
 
 
   async function handleCancelOrder(order: Order) {
@@ -537,6 +538,7 @@ export default function DailyOrdersPage() {
         body: JSON.stringify({
           userId: refundUser.id,
           amount: amount,
+          paymentMethod: refundPaymentMethod,
           notes: refundNotes
         }),
       });
@@ -557,6 +559,7 @@ export default function DailyOrdersPage() {
       setRefundUser(null);
       setRefundAmount("");
       setRefundNotes("");
+      setRefundPaymentMethod("CASH");
 
       // Recharger les données
       fetchOrders();
@@ -643,18 +646,18 @@ export default function DailyOrdersPage() {
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
   // Filtrer les produits selon la recherche
-  
+
   const filteredUsers = users.filter(user =>
-  getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
-);
-function getAvailableDates(): string[] {
-  const dates = new Set<string>();
-  orders.forEach(order => {
-    const date = new Date(order.date).toISOString().split('T')[0];
-    dates.add(date);
-  });
-  return Array.from(dates).sort().reverse(); // Plus récentes en premier
-}
+    getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
+  );
+  function getAvailableDates(): string[] {
+    const dates = new Set<string>();
+    orders.forEach(order => {
+      const date = new Date(order.date).toISOString().split('T')[0];
+      dates.add(date);
+    });
+    return Array.from(dates).sort().reverse(); // Plus récentes en premier
+  }
 
   const dailyStats = getDailyStats(selectedDate);
   const availableDates = getAvailableDates();
@@ -761,7 +764,7 @@ function getAvailableDates(): string[] {
           </div>
 
           {/* Statistiques du jour */}
-{/* Statistiques du jour */}
+          {/* Statistiques du jour */}
           {/* Statistiques du jour */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <div className="flex justify-between items-center mb-4">
@@ -878,80 +881,79 @@ function getAvailableDates(): string[] {
               )}
 
               {dailyStats.orders.map((order) => (
-  <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
-    <div className="flex justify-between items-start mb-4">
-      <div className="flex-1">
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <p className="text-gray-900 font-medium">
-            {order.client ? getFullName(order.client) : "Client inconnu"}
-          </p>
-          {order.client?.role === "TRAINER" && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-              Entraîneur
-            </span>
-          )}
-          <span className={`px-2 py-1 rounded text-xs font-medium ${
-            order.paymentMethod === "CASH" 
-              ? "bg-green-100 text-green-800"
-              : order.paymentMethod === "QRCODE"
-              ? "bg-blue-100 text-blue-800"
-              : order.paymentMethod === "ACCOUNT_DEBIT"
-              ? "bg-purple-100 text-purple-800"
-              : order.paymentMethod === "FREE"
-              ? "bg-red-100 text-red-800"
-              : "bg-gray-100 text-gray-800"
-          }`}>
-            {getPaymentMethodLabel(order.paymentMethod)}
-          </span>
-          <p className="text-gray-500 text-sm">
-            {new Date(order.date).toLocaleTimeString('fr-FR')}
-          </p>
-        </div>
-      </div>
-      <div className="text-right ml-4">
-        <div className="text-2xl font-bold text-green-600">
-          {Number(order.totalAmount).toFixed(2)}€
-        </div>
-        <button
-          onClick={() => handleCancelOrder(order)}
-          className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors mt-2"
-          title="Annuler cette commande (restaure stocks et solde)"
-        >
-          🗑️ Annuler
-        </button>
-      </div>
-    </div>
+                <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <p className="text-gray-900 font-medium">
+                          {order.client ? getFullName(order.client) : "Client inconnu"}
+                        </p>
+                        {order.client?.role === "TRAINER" && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            Entraîneur
+                          </span>
+                        )}
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${order.paymentMethod === "CASH"
+                            ? "bg-green-100 text-green-800"
+                            : order.paymentMethod === "QRCODE"
+                              ? "bg-blue-100 text-blue-800"
+                              : order.paymentMethod === "ACCOUNT_DEBIT"
+                                ? "bg-purple-100 text-purple-800"
+                                : order.paymentMethod === "FREE"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                          }`}>
+                          {getPaymentMethodLabel(order.paymentMethod)}
+                        </span>
+                        <p className="text-gray-500 text-sm">
+                          {new Date(order.date).toLocaleTimeString('fr-FR')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="text-2xl font-bold text-green-600">
+                        {Number(order.totalAmount).toFixed(2)}€
+                      </div>
+                      <button
+                        onClick={() => handleCancelOrder(order)}
+                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors mt-2"
+                        title="Annuler cette commande (restaure stocks et solde)"
+                      >
+                        🗑️ Annuler
+                      </button>
+                    </div>
+                  </div>
 
-    <div className="border-t pt-4">
-      <h4 className="font-medium mb-2">Produits:</h4>
-      <div className="space-y-1">
-        {order.products?.map((item, index) => (
-          <div key={index} className="flex justify-between items-center text-sm">
-            <div className="flex items-center gap-2">
-              <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
-              <button
-                onClick={() => openEditForm(item.product)}
-                className="p-1 hover:bg-blue-50 rounded"
-                title="Modifier ce produit"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </div>
-            <span>{Number(item.totalPrice).toFixed(2)}€</span>
-          </div>
-        )) || <div className="text-gray-500">Aucun produit</div>}
-      </div>
-      {order.notes && (
-        <div className="mt-3 text-sm text-gray-600">
-          <strong>Notes:</strong> {order.notes}
-        </div>
-      )}
-    </div>
-  </div>
-))}
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-2">Produits:</h4>
+                    <div className="space-y-1">
+                      {order.products?.map((item, index) => (
+                        <div key={index} className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
+                            <button
+                              onClick={() => openEditForm(item.product)}
+                              className="p-1 hover:bg-blue-50 rounded"
+                              title="Modifier ce produit"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
+                          <span>{Number(item.totalPrice).toFixed(2)}€</span>
+                        </div>
+                      )) || <div className="text-gray-500">Aucun produit</div>}
+                    </div>
+                    {order.notes && (
+                      <div className="mt-3 text-sm text-gray-600">
+                        <strong>Notes:</strong> {order.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1053,48 +1055,48 @@ function getAvailableDates(): string[] {
                     })}
 
                     {/* Section Réduction avec commentaire */}
-{paymentMethod !== "FREE" && (
-  <div className="mt-4 pt-4 border-t">
-    <div className="flex items-center gap-4 mb-2">
-      <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
-      <input
-        type="number"
-        min="0"
-        max={calculateSubtotal()}
-        step={0.01}
-        value={discountValue}
-        onChange={(e) => setDiscountValue(Number(e.target.value))}
-        className="border rounded px-2 py-1 text-sm w-24"
-        placeholder="0.00"
-      />
-      <span className="text-sm text-gray-600">€</span>
-      {discountValue > 0 && (
-        <button
-          onClick={() => {
-            setDiscountValue(0);
-            setDiscountComment("");
-          }}
-          className="text-red-500 text-sm hover:text-red-700"
-        >
-          ✕ Supprimer
-        </button>
-      )}
-    </div>
-    
-    {/* Commentaire pour la réduction */}
-    {discountValue > 0 && (
-      <div className="mt-2">
-        <input
-          type="text"
-          value={discountComment}
-          onChange={(e) => setDiscountComment(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          placeholder="Raison de la réduction (optionnel)..."
-        />
-      </div>
-    )}
-  </div>
-)}
+                    {paymentMethod !== "FREE" && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="flex items-center gap-4 mb-2">
+                          <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={calculateSubtotal()}
+                            step={0.01}
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(Number(e.target.value))}
+                            className="border rounded px-2 py-1 text-sm w-24"
+                            placeholder="0.00"
+                          />
+                          <span className="text-sm text-gray-600">€</span>
+                          {discountValue > 0 && (
+                            <button
+                              onClick={() => {
+                                setDiscountValue(0);
+                                setDiscountComment("");
+                              }}
+                              className="text-red-500 text-sm hover:text-red-700"
+                            >
+                              ✕ Supprimer
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Commentaire pour la réduction */}
+                        {discountValue > 0 && (
+                          <div className="mt-2">
+                            <input
+                              type="text"
+                              value={discountComment}
+                              onChange={(e) => setDiscountComment(e.target.value)}
+                              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                              placeholder="Raison de la réduction (optionnel)..."
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Totaux */}
                     <div className="mt-4 text-right space-y-1">
@@ -1117,109 +1119,106 @@ function getAvailableDates(): string[] {
 
               {/* Méthode de paiement */}
               <div className="mb-6">
-  <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
-  <div className="grid grid-cols-3 gap-3">
-    <button
-      type="button"
-      onClick={() => setPaymentMethod("CASH")}
-      className={`px-4 py-3 rounded-lg border-2 transition-all ${
-        paymentMethod === "CASH"
-          ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-      }`}
-    >
-      💵 Espèces
-    </button>
-    
-    <button
-      type="button"
-      onClick={() => setPaymentMethod("QRCODE")}
-      className={`px-4 py-3 rounded-lg border-2 transition-all ${
-        paymentMethod === "QRCODE"
-          ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-      }`}
-    >
-      📱 QR Code
-    </button>
-    
-    {selectedUser && !getFullName(selectedUser).includes("Vente instentané") && (
-      <button
-        type="button"
-        onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
-        className={`px-4 py-3 rounded-lg border-2 transition-all ${
-          paymentMethod === "ACCOUNT_DEBIT"
-            ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-        }`}
-      >
-        💳 Débit compte
-      </button>
-    )}
-  </div>
-  
-  {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
-    <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg">
-      <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-        Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
-        {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
-      </span>
-      {cart.length > 0 && (
-        <div className="text-xs text-gray-500 mt-1">
-          Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
-        </div>
-      )}
-    </div>
-  )}
-</div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("CASH")}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "CASH"
+                        ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                      }`}
+                  >
+                    💵 Espèces
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("QRCODE")}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "QRCODE"
+                        ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                      }`}
+                  >
+                    📱 QR Code
+                  </button>
+
+                  {selectedUser && !getFullName(selectedUser).includes("Vente instentané") && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "ACCOUNT_DEBIT"
+                          ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                    >
+                      💳 Débit compte
+                    </button>
+                  )}
+                </div>
+
+                {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
+                  <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg">
+                    <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                      Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
+                      {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
+                    </span>
+                    {cart.length > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               {/* Sélection du client */}
               <div className="mb-6">
-  <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-  
-  {/* Barre de recherche */}
-  <input
-    type="text"
-    placeholder="Rechercher un client..."
-    value={userSearch}
-    onChange={(e) => setUserSearch(e.target.value)}
-    className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-  />
-  
-  <div className="flex gap-2">
-    <select
-      value={selectedUser?.id || ""}
-      onChange={(e) => {
-        const user = users.find(u => u.id === Number(e.target.value));
-        setSelectedUser(user || null);
-      }}
-      className="flex-1 border rounded px-3 py-2"
-    >
-      {filteredUsers.length === 0 ? (
-        <option value="">Aucun client trouvé</option>
-      ) : (
-        filteredUsers.map(user => (
-          <option key={user.id} value={user.id}>
-            {getFullName(user)}
-          </option>
-        ))
-      )}
-    </select>
-    <button
-      type="button"
-      onClick={() => setShowAddMemberForm(true)}
-      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
-      title="Ajouter un nouveau membre"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-        <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-      Nouveau
-    </button>
-  </div>
-</div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+
+                {/* Barre de recherche */}
+                <input
+                  type="text"
+                  placeholder="Rechercher un client..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+
+                <div className="flex gap-2">
+                  <select
+                    value={selectedUser?.id || ""}
+                    onChange={(e) => {
+                      const user = users.find(u => u.id === Number(e.target.value));
+                      setSelectedUser(user || null);
+                    }}
+                    className="flex-1 border rounded px-3 py-2"
+                  >
+                    {filteredUsers.length === 0 ? (
+                      <option value="">Aucun client trouvé</option>
+                    ) : (
+                      filteredUsers.map(user => (
+                        <option key={user.id} value={user.id}>
+                          {getFullName(user)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddMemberForm(true)}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+                    title="Ajouter un nouveau membre"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    Nouveau
+                  </button>
+                </div>
+              </div>
 
               {/* Notes */}
-               <div className="mb-6">
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
                 <textarea
                   value={notes}
@@ -1395,18 +1394,35 @@ function getAvailableDates(): string[] {
                 </div>
 
                 {/* Notes */}
-                {/* <div>
+                {/* Méthode de paiement du remboursement */}
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Raison du remboursement (optionnel)
+                    Moyen de paiement du remboursement *
                   </label>
-                  <textareaf
-                    value={refundNotes}
-                    onChange={(e) => setRefundNotes(e.target.value)}
-                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Ex: Produit défectueux, erreur de facturation..."
-                  />
-                </div> */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRefundPaymentMethod("CASH")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${refundPaymentMethod === "CASH"
+                          ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                    >
+                      💵 Espèces
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRefundPaymentMethod("QRCODE")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${refundPaymentMethod === "QRCODE"
+                          ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                    >
+                      📱 QR Code
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
@@ -1417,6 +1433,7 @@ function getAvailableDates(): string[] {
                     setRefundUser(null);
                     setRefundAmount("");
                     setRefundNotes("");
+                    setRefundPaymentMethod("CASH");
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
@@ -1435,91 +1452,91 @@ function getAvailableDates(): string[] {
           </div>
         )}
         {/* Modal d'ajout rapide de membre */}
-{showAddMemberForm && (
-  <div className="fixed inset-0 flex items-center justify-center z-50">
-    <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddMemberForm(false)} />
-    <form
-      onSubmit={handleAddMember}
-      className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50"
-    >
-      <h3 className="text-xl font-semibold mb-4 text-black">Ajouter un membre</h3>
-      
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Rôle *</label>
-          <select
-            value={newMemberForm.role}
-            onChange={(e) => setNewMemberForm({ ...newMemberForm, role: e.target.value as "USER" | "TRAINER" })}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required
-          >
-            <option value="USER">Utilisateur</option>
-            <option value="TRAINER">Entraîneur</option>
-          </select>
-        </div>
+        {showAddMemberForm && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddMemberForm(false)} />
+            <form
+              onSubmit={handleAddMember}
+              className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50"
+            >
+              <h3 className="text-xl font-semibold mb-4 text-black">Ajouter un membre</h3>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
-          <input
-            value={newMemberForm.firstName}
-            onChange={(e) => setNewMemberForm({ ...newMemberForm, firstName: e.target.value })}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="Prénom (optionnel)"
-          />
-        </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rôle *</label>
+                  <select
+                    value={newMemberForm.role}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, role: e.target.value as "USER" | "TRAINER" })}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="USER">Utilisateur</option>
+                    <option value="TRAINER">Entraîneur</option>
+                  </select>
+                </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
-          <input
-            value={newMemberForm.lastName}
-            onChange={(e) => setNewMemberForm({ ...newMemberForm, lastName: e.target.value })}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="Nom (optionnel)"
-          />
-        </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                  <input
+                    value={newMemberForm.firstName}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, firstName: e.target.value })}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Prénom (optionnel)"
+                  />
+                </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Solde initial</label>
-          <input
-            type="number"
-            step="0.01"
-            value={newMemberForm.balance}
-            onChange={(e) => setNewMemberForm({ ...newMemberForm, balance: e.target.value })}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="0.00"
-          />
-        </div>
-      </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                  <input
+                    value={newMemberForm.lastName}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, lastName: e.target.value })}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Nom (optionnel)"
+                  />
+                </div>
 
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            setShowAddMemberForm(false);
-            setNewMemberForm({
-              firstName: "",
-              lastName: "",
-              role: "USER",
-              balance: "",
-            });
-          }}
-          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-          disabled={saving}
-        >
-          Annuler
-        </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? "Ajout..." : "Ajouter le membre"}
-        </button>
-      </div>
-    </form>
-  </div>
-)}
-{/* Modal de sauvegarde de clôture */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Solde initial</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newMemberForm.balance}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, balance: e.target.value })}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddMemberForm(false);
+                    setNewMemberForm({
+                      firstName: "",
+                      lastName: "",
+                      role: "USER",
+                      balance: "",
+                    });
+                  }}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={saving}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Ajout..." : "Ajouter le membre"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        {/* Modal de sauvegarde de clôture */}
         {showClosingModal && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowClosingModal(false)} />

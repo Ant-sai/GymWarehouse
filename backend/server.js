@@ -565,9 +565,10 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
 // ---------------- Refund routes ----------------
 // -----------------------------------------------
 // Create a refund (credit user account)
+// Create a refund (credit user account)
 app.post('/api/refunds', async (req, res) => {
     try {
-        const { userId, amount, notes } = req.body;
+        const { userId, amount, paymentMethod, notes } = req.body;  // Ajout de paymentMethod
         
         // Validation
         if (!userId || !amount) {
@@ -599,8 +600,8 @@ app.post('/api/refunds', async (req, res) => {
                 data: {
                     clientId: Number(userId),
                     totalAmount: -refundAmount, // Montant négatif pour le remboursement
-                    paymentMethod: 'ACCOUNT_DEBIT', // On utilise ce type pour identifier un crédit
-                    notes: `[REMBOURSEMENT] ${notes || 'Remboursement effectué'}`,
+                    paymentMethod: paymentMethod || 'CASH',  // Utiliser le moyen de paiement fourni
+                    notes: `[REMBOURSEMENT ${paymentMethod === 'QRCODE' ? 'QR' : 'ESPÈCES'}] ${notes || 'Remboursement effectué'}`,  // Indiquer le moyen dans les notes
                     // Pas de produits pour un remboursement
                 },
                 include: {
