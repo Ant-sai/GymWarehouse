@@ -47,6 +47,7 @@ model Order {
   paymentMethod PaymentType    @map("payment_method")
   notes         String?
   discount      Float?         @default(0)
+  trou          Decimal?       @db.Decimal(10, 2)  // Nouveau champ pour sauvegarder le trou
   cashMovements CashMovement[]
   products      OrderDetail[]
   client        User           @relation(fields: [clientId], references: [id])
@@ -111,16 +112,17 @@ model CashMovement {
 }
 
 model DailyClosing {
-  id            Int      @id @default(autoincrement())
-  date          DateTime @unique @db.Date
-  cashRevenue   Decimal  @db.Decimal(10, 2) @map("cash_revenue")
-  qrRevenue     Decimal  @db.Decimal(10, 2) @map("qr_revenue")
-  creditRevenue Decimal  @db.Decimal(10, 2) @map("credit_revenue")
-  trou          Decimal  @default(0) @db.Decimal(10, 2)
-  fondCaisse    Decimal  @db.Decimal(10, 2) @map("fond_caisse")
-  notes         String?
-  closedBy      Int?     @map("closed_by")
-  closedAt      DateTime @default(now()) @map("closed_at")
+  id                Int      @id @default(autoincrement())
+  date              DateTime @unique @db.Date
+  cashRevenue       Decimal  @db.Decimal(10, 2) @map("cash_revenue")
+  qrRevenue         Decimal  @db.Decimal(10, 2) @map("qr_revenue")
+  creditRevenue     Decimal  @db.Decimal(10, 2) @map("credit_revenue")
+  trou              Decimal  @default(0) @db.Decimal(10, 2)
+  fondCaisse        Decimal  @db.Decimal(10, 2) @map("fond_caisse")
+  startingCashFund  Decimal  @db.Decimal(10, 2) @map("starting_cash_fund")  // Nouveau: Début fond de caisse (du jour précédent)
+  notes             String?
+  closedBy          Int?     @map("closed_by")
+  closedAt          DateTime @default(now()) @map("closed_at")
 
   @@map("daily_closings")
 }

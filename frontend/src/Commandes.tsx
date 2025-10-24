@@ -107,6 +107,7 @@ export default function DailyOrdersPage() {
   // Charger toutes les données au montage
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
+    fetchPreviousDayFondCaisse();
   }, []);
 
 
@@ -117,7 +118,8 @@ useEffect(() => {
 }, [orders, selectedDate, trouValue, initialFondCaisse]);
 
   useEffect(() => {
-  setTrouValue(0); // Réinitialiser le trou pour chaque nouvelle journée
+  setTrouValue(0);
+  fetchPreviousDayFondCaisse();
 }, [selectedDate]);
 
   // État pour le formulaire de remboursement
@@ -186,6 +188,26 @@ useEffect(() => {
       console.error('Erreur lors de la récupération des produits:', err);
     }
   }
+  
+  
+async function fetchPreviousDayFondCaisse() {
+  try {
+    const response = await fetch(`/api/daily-closing/previous/${selectedDate}`);
+    if (response.ok) {
+      const previousClosing = await response.json();
+      if (previousClosing) {
+        setInitialFondCaisse(Number(previousClosing.fondCaisse));
+      } else {
+        setInitialFondCaisse(0);
+      }
+    } else {
+      setInitialFondCaisse(0);
+    }
+  } catch (err) {
+    console.error('Erreur lors de la récupération du fond de caisse précédent:', err);
+    setInitialFondCaisse(0);
+  }
+}
 
   // Calculer les statistiques journalières
   function getDailyStats(date: string): DailyStats {
@@ -393,7 +415,7 @@ useEffect(() => {
         paymentMethod: paymentMethod,
         notes: notes,
         discount: discountValue,
-        discountComment: discountComment, // ✅ Nouveau champ
+        discountComment: discountComment, 
         products: cart.map(item => ({
           productId: item.productId,
           quantity: item.quantity

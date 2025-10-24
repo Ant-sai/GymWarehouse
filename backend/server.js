@@ -256,82 +256,79 @@ app.delete('/api/products/:id', async (req, res) => {
 //Create an order
 app.post('/api/orders', async (req, res) => {
     try {
-        const { clientId, paymentMethod, notes, products, discount = 0, discountComment } = req.body; // ✅ ajout discountComment
-
+        const { 
+            clientId, 
+            products, 
+            paymentMethod, 
+            discount, 
+            notes,
+            trou  // Nouveau: accepter le trou dans la requête
+        } = req.body;
+        
         // Validation
-        if (!clientId || !paymentMethod || !products || !Array.isArray(products) || products.length === 0) {
+        if (!clientId || !products || products.length === 0 || !paymentMethod) {
             return res.status(400).json({
-                error: 'Données manquantes: clientId, paymentMethod et products sont requis'
+                error: 'Missing required fields: clientId, products, and paymentMethod'
             });
         }
-
-        // Vérification utilisateur
-        const user = await prisma.user.findUnique({
-            where: { id: Number(clientId) },
-        });
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        // Vérification produits
-        const productIds = products.map(p => Number(p.productId));
-        const dbProducts = await prisma.product.findMany({
-            where: { id: { in: productIds }, isActive: true },
-        });
-        if (dbProducts.length !== productIds.length)
-            return res.status(400).json({ error: 'Some products not found or inactive' });
-
-        // Vérif stock
-        for (const orderProduct of products) {
-            const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
-            if (!dbProduct) return res.status(400).json({ error: `Product ${orderProduct.productId} not found` });
-            if (dbProduct.quantity < Number(orderProduct.quantity))
-                return res.status(400).json({
-                    error: `Insufficient stock for product: ${dbProduct.name}. Available: ${dbProduct.quantity}, Requested: ${orderProduct.quantity}`
-                });
-        }
-
-        // Détails commande
-        const orderDetails = products.map(orderProduct => {
-            const dbProduct = dbProducts.find(p => p.id === Number(orderProduct.productId));
-            const unitPrice =
-                user.role === 'TRAINER' && dbProduct.trainerPrice > 0
-                    ? Number(dbProduct.trainerPrice)
-                    : Number(dbProduct.price);
-
-            const quantity = Number(orderProduct.quantity);
-            const totalPrice = unitPrice * quantity;
-            return {
-                productId: Number(orderProduct.productId),
-                quantity,
-                unitPrice,
-                totalPrice,
-            };
-        });
-
-        // Total brut
-        const totalBeforeDiscount = orderDetails.reduce((sum, d) => sum + d.totalPrice, 0);
-        // Application de la réduction
-        const totalAmount = Math.max(0, totalBeforeDiscount - Number(discount));
-
-        // ✅ Construire les notes finales avec le commentaire de réduction
-        let finalNotes = notes || null;
-        if (Number(discount) > 0 && discountComment) {
-            finalNotes = finalNotes 
-                ? `${finalNotes}\n[Réduction: ${discountComment}]`
-                : `[Réduction: ${discountComment}]`;
-        }
-
+        
         const result = await prisma.$transaction(async (prismaTransaction) => {
-            // Création de la commande
+            // Calculer le montant total
+            let totalAmount = 0;
+            const orderDetails = [];
+            
+            for (const item of products) {
+                const product = await prismaTransaction.product.findUnique({
+                    where: { id: item.productId }
+                });
+                
+                if (!product) {
+                    throw new Error(`Product with id ${item.productId} not found`);
+                }
+                
+                if (product.quantity < item.quantity) {
+                    throw new Error(`Insufficient stock for product ${product.name}`);
+                }
+                
+                const unitPrice = product.price;
+                const totalPrice = unitPrice * item.quantity;
+                totalAmount += Number(totalPrice);
+                
+                orderDetails.push({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPrice: unitPrice,
+                    totalPrice: totalPrice
+                });
+                
+                // Décrémenter le stock
+                await prismaTransaction.product.update({
+                    where: { id: item.productId },
+                    data: {
+                        quantity: {
+                            decrement: item.quantity
+                        }
+                    }
+                });
+            }
+            
+            // Appliquer la réduction
+            if (discount && discount > 0) {
+                totalAmount = totalAmount * (1 - discount / 100);
+            }
+            
+            // Créer la commande avec le trou
             const order = await prismaTransaction.order.create({
                 data: {
                     clientId: Number(clientId),
-                    totalAmount,
-                    paymentMethod,
-                    notes: finalNotes, // ✅ notes modifiées
-                    discount: Number(discount),
+                    totalAmount: totalAmount,
+                    paymentMethod: paymentMethod,
+                    discount: discount || 0,
+                    notes: notes || null,
+                    trou: trou || null,  // Sauvegarder le trou
                     products: {
-                        create: orderDetails,
-                    },
+                        create: orderDetails
+                    }
                 },
                 include: {
                     client: {
@@ -340,8 +337,8 @@ app.post('/api/orders', async (req, res) => {
                             firstName: true,
                             lastName: true,
                             role: true,
-                            balance: true,
-                        },
+                            balance: true
+                        }
                     },
                     products: {
                         include: {
@@ -349,46 +346,40 @@ app.post('/api/orders', async (req, res) => {
                                 select: {
                                     id: true,
                                     name: true,
-                                    description: true,
-                                    price: true,
-                                    trainerPrice: true,
-                                },
-                            },
-                        },
-                    },
-                },
+                                    description: true
+                                }
+                            }
+                        }
+                    }
+                }
             });
-
-            // Mise à jour des stocks
-            for (const orderProduct of products) {
-                await prismaTransaction.product.update({
-                    where: { id: Number(orderProduct.productId) },
-                    data: { quantity: { decrement: Number(orderProduct.quantity) } },
-                });
-            }
-
-            // Débit du compte si paiement via compte
+            
+            // Si paiement par débit de compte
             if (paymentMethod === 'ACCOUNT_DEBIT') {
                 await prismaTransaction.user.update({
                     where: { id: Number(clientId) },
                     data: {
-                        balance: { decrement: totalAmount },
-                    },
+                        balance: {
+                            decrement: totalAmount
+                        }
+                    }
                 });
             }
-
+            
             return order;
         });
-
+        
         res.status(201).json(result);
+        
     } catch (err) {
         console.error('Error creating order: ', err);
         res.status(500).json({
             error: 'Internal server error',
-            message: err.message || 'An unexpected error occurred',
+            message: err.message
         });
     }
 });
+
 
 
 //Fetch all orders
@@ -669,5 +660,148 @@ app.get('/api/daily-closing/previous/:date', async (req, res) => {
     } catch (err) {
         console.error('Error fetching previous closing: ', err);
         res.status(500).json({ error: 'Failed to fetch previous closing' });
+    }
+});
+
+// -----------------------------------------------
+// ------------ Daily Closing routes -------------
+// -----------------------------------------------
+
+// Create or update daily closing with logic for starting cash fund
+app.post('/api/daily-closing', async (req, res) => {
+    try {
+        const { 
+            date, 
+            cashRevenue, 
+            qrRevenue, 
+            creditRevenue, 
+            trou, 
+            fondCaisse, 
+            notes, 
+            closedBy 
+        } = req.body;
+        
+        // Validation
+        if (!date) {
+            return res.status(400).json({ error: 'Date is required' });
+        }
+        
+        const closingDate = new Date(date);
+        
+        // Récupérer le fond de caisse du jour précédent
+        const previousClosing = await prisma.dailyClosing.findFirst({
+            where: {
+                date: {
+                    lt: closingDate
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+        
+        // Le début du fond de caisse est le fond de caisse du jour précédent
+        // Si c'est le premier jour, on utilise 0 ou une valeur par défaut
+        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
+        
+        // Créer ou mettre à jour la clôture journalière
+        const dailyClosing = await prisma.dailyClosing.upsert({
+            where: {
+                date: closingDate
+            },
+            update: {
+                cashRevenue,
+                qrRevenue,
+                creditRevenue,
+                trou: trou || 0,
+                fondCaisse,
+                startingCashFund, // Sauvegarde du début de fond de caisse
+                notes,
+                closedBy,
+                closedAt: new Date()
+            },
+            create: {
+                date: closingDate,
+                cashRevenue,
+                qrRevenue,
+                creditRevenue,
+                trou: trou || 0,
+                fondCaisse,
+                startingCashFund, // Sauvegarde du début de fond de caisse
+                notes,
+                closedBy,
+                closedAt: new Date()
+            }
+        });
+        
+        res.status(201).json({
+            success: true,
+            data: dailyClosing,
+            message: 'Daily closing saved successfully'
+        });
+        
+    } catch (err) {
+        console.error('Error creating daily closing: ', err);
+        res.status(500).json({ 
+            error: 'Failed to create daily closing',
+            message: err.message 
+        });
+    }
+});
+
+// Get daily closing for a specific date
+app.get('/api/daily-closing/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const closingDate = new Date(date);
+        
+        const dailyClosing = await prisma.dailyClosing.findUnique({
+            where: {
+                date: closingDate
+            }
+        });
+        
+        if (!dailyClosing) {
+            return res.status(404).json({ error: 'Daily closing not found' });
+        }
+        
+        res.json(dailyClosing);
+        
+    } catch (err) {
+        console.error('Error fetching daily closing: ', err);
+        res.status(500).json({ error: 'Failed to fetch daily closing' });
+    }
+});
+
+// Get starting cash fund for a specific date (from previous day)
+app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const currentDate = new Date(date);
+        
+        // Trouver la clôture du jour précédent
+        const previousClosing = await prisma.dailyClosing.findFirst({
+            where: {
+                date: {
+                    lt: currentDate
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+        
+        // Le début du fond de caisse = fond de caisse du jour précédent
+        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
+        
+        res.json({
+            startingCashFund,
+            previousDate: previousClosing?.date || null,
+            foundPreviousClosing: !!previousClosing
+        });
+        
+    } catch (err) {
+        console.error('Error fetching starting cash fund: ', err);
+        res.status(500).json({ error: 'Failed to fetch starting cash fund' });
     }
 });
