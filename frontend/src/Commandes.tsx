@@ -697,7 +697,7 @@ const [previousFondCaisse] = useState<number>(0);
                 <div className="flex justify-between items-center">
                   <span className="text-blue-700 font-medium">Fond de caisse du jour précédent</span>
                   <span className="text-xl font-bold text-blue-700">
-                    {previousFondCaisse.toFixed(2)}€
+                    {(dailyStats.cashRevenue - trouValue).toFixed(2)}€
                   </span>
                 </div>
               </div>
