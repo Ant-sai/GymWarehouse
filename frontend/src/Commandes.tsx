@@ -80,8 +80,6 @@ export default function DailyOrdersPage() {
   // État pour le filtre de recherche produits
   const [productSearch, setProductSearch] = useState("");
 const [trouValue, setTrouValue] = useState<number>(0);
-const [fondCaisse] = useState<number>(0);
-const [previousFondCaisse] = useState<number>(0);
 
   // Variables pour le formulaire de modification
   const [showEditForm, setShowEditForm] = useState(false);
@@ -188,9 +186,11 @@ const [previousFondCaisse] = useState<number>(0);
       trainerOrders: 0,
       userOrders: 0,
     };
+    
 
     dayOrders.forEach(order => {
       const amount = Number(order.totalAmount);
+      
 
       // Les commandes gratuites ne contribuent pas au chiffre d'affaires
       if (order.paymentMethod !== "FREE") {
@@ -218,7 +218,7 @@ const [previousFondCaisse] = useState<number>(0);
         stats.userOrders++;
       }
     });
-
+    
     return stats;
   }
 
@@ -588,6 +588,16 @@ const [previousFondCaisse] = useState<number>(0);
 
   const dailyStats = getDailyStats(selectedDate);
   const availableDates = getAvailableDates();
+  
+  // Calculer le fond de caisse (Espèces - Trou)
+  const fondCaisse = dailyStats.cashRevenue - trouValue;
+  
+  // Calculer le fond de caisse du jour précédent
+  const previousDate = new Date(selectedDate);
+  previousDate.setDate(previousDate.getDate() - 1);
+  const previousDateString = previousDate.toISOString().split('T')[0];
+  const previousStats = getDailyStats(previousDateString);
+  const previousFondCaisse = previousStats.cashRevenue - trouValue;
 
   return (
     <div className="min-h-screen flex bg-gray-50">
