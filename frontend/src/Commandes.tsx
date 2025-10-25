@@ -54,6 +54,20 @@ type DailyStats = {
   userOrders: number;
 };
 
+type DailyClosing = {
+  id: number;
+  date: string;
+  cashRevenue: number;
+  qrRevenue: number;
+  creditRevenue: number;
+  trou: number;
+  fondCaisse: number;
+  startingCashFund: number;
+  notes?: string;
+  closedBy?: string;
+  closedAt: string;
+};
+
 
 export default function DailyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -81,6 +95,9 @@ export default function DailyOrdersPage() {
   const [productSearch, setProductSearch] = useState("");
 const [trouValue, setTrouValue] = useState<number>(0);
 
+const [dailyClosing, setDailyClosing] = useState<DailyClosing | null>(null);
+const [loadingClosing, setLoadingClosing] = useState(false);
+
   // Variables pour le formulaire de modification
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -104,6 +121,9 @@ const [trouValue, setTrouValue] = useState<number>(0);
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
   }, []);
+  useEffect(() => {
+  fetchDailyClosing(selectedDate);
+}, [selectedDate]);
 
   // État pour le formulaire de remboursement
   const [showRefundForm, setShowRefundForm] = useState(false);
@@ -111,7 +131,63 @@ const [trouValue, setTrouValue] = useState<number>(0);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [refundNotes, setRefundNotes] = useState("");
 
+async function fetchDailyClosing(date: string) {
+  setLoadingClosing(true);
+  try {
+    const response = await fetch(`/api/daily-closing/${date}`);
+    if (response.ok) {
+      const data: DailyClosing = await response.json();
+      setDailyClosing(data);
+      setTrouValue(data.trou || 0);
+    } else if (response.status === 404) {
+      // Pas de clôture pour ce jour, réinitialiser
+      setDailyClosing(null);
+      setTrouValue(0);
+    } else {
+      console.error('Erreur lors de la récupération de la clôture:', response.status);
+    }
+  } catch (err) {
+    console.error('Erreur lors de la récupération de la clôture journalière:', err);
+  } finally {
+    setLoadingClosing(false);
+  }
+}
 
+async function saveTrou() {
+  setSaving(true);
+  try {
+    const stats = getDailyStats(selectedDate);
+    
+    const response = await fetch('/api/daily-closing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: selectedDate,
+        cashRevenue: stats.cashRevenue,
+        qrRevenue: stats.qrRevenue,
+        creditRevenue: stats.accountDebitRevenue,
+        trou: trouValue,
+        fondCaisse: dailyClosing?.fondCaisse || 0,
+        notes: dailyClosing?.notes || '',
+        closedBy: dailyClosing?.closedBy || 'System'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la sauvegarde du trou');
+    }
+
+    // Recharger les données de clôture
+    await fetchDailyClosing(selectedDate);
+    
+    alert('Trou sauvegardé avec succès !');
+  } catch (err) {
+    console.error('Erreur lors de la sauvegarde du trou:', err);
+    alert('Erreur lors de la sauvegarde du trou');
+  } finally {
+    setSaving(false);
+  }
+}
 
   async function fetchOrders() {
     try {
@@ -732,16 +808,36 @@ const [trouValue, setTrouValue] = useState<number>(0);
                   {dailyStats.cashRevenue.toFixed(2)}€
                 </span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b bg-gray-50 px-2 rounded">
-                <span className="text-gray-600">Trou</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={trouValue}
-                  onChange={(e) => setTrouValue(Number(e.target.value) || 0)}
-                  className="w-32 text-right text-xl font-bold text-red-600 border border-gray-300 rounded px-2 py-1"
-                />
-              </div>
+<div className="border-b pb-2">
+  <div className="text-sm text-gray-600 flex items-center gap-2">
+    Trou
+    {loadingClosing && <span className="text-xs">(chargement...)</span>}
+  </div>
+  <div className="flex items-center gap-2">
+    <input
+      type="number"
+      step="0.01"
+      value={trouValue}
+      onChange={(e) => setTrouValue(Number(e.target.value))}
+      className="w-20 px-2 py-1 border rounded text-lg font-bold text-red-600"
+      disabled={loadingClosing}
+    />
+    <span className="text-lg font-bold text-red-600">€</span>
+    <button
+      onClick={saveTrou}
+      disabled={saving || loadingClosing}
+      className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+      title="Sauvegarder le trou"
+    >
+      💾
+    </button>
+  </div>
+  {dailyClosing && (
+    <div className="text-xs text-gray-500 mt-1">
+      Dernière mise à jour: {new Date(dailyClosing.closedAt).toLocaleTimeString('fr-FR')}
+    </div>
+  )}
+</div>
               <div className="flex justify-between items-center py-2 bg-green-50 px-2 rounded">
                 <span className="text-gray-700 font-medium">Fond de caisse</span>
                 <span className={`text-xl font-bold ${fondCaisse >= 0 ? 'text-green-700' : 'text-red-700'}`}>
