@@ -542,6 +542,66 @@ async function fetchPreviousDayFondCaisse() {
       setSaving(false);
     }
   }
+
+async function handleDailyClosing() {
+  const stats = getDailyStats(selectedDate);
+  
+  // Validation
+  if (fondCaisse <= 0) {
+    const shouldContinue = window.confirm(
+      "Le fond de caisse est à 0€. Voulez-vous vraiment clôturer la journée ?"
+    );
+    if (!shouldContinue) return;
+  }
+  
+  try {
+    setSaving(true);
+    
+    const response = await fetch('/api/daily-closing', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: selectedDate,
+        cashRevenue: stats.cashRevenue,
+        qrRevenue: stats.qrRevenue,
+        creditRevenue: stats.accountDebitRevenue,
+        trou: trouValue,
+        fondCaisse: fondCaisse,
+        notes: `Clôture du ${new Date(selectedDate).toLocaleDateString('fr-FR')}`,
+        closedBy: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la clôture');
+    }
+
+    await response.json();
+    
+    alert(
+      `✅ Clôture enregistrée avec succès!\n\n` +
+      `📅 Date: ${new Date(selectedDate).toLocaleDateString('fr-FR')}\n` +
+      `💰 Fond de caisse: ${fondCaisse.toFixed(2)}€\n` +
+      `🔴 Trou: ${trouValue.toFixed(2)}€\n` +
+      `💵 Cash: ${stats.cashRevenue.toFixed(2)}€\n` +
+      `📱 QR Code: ${stats.qrRevenue.toFixed(2)}€\n` +
+      `💳 Crédit: ${stats.accountDebitRevenue.toFixed(2)}€\n\n` +
+      `Ce fond de caisse (${fondCaisse.toFixed(2)}€) sera le début du fond de demain.`
+    );
+    
+    setTrouValue(0);
+    
+  } catch (error) {
+    console.error('Erreur lors de la clôture:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue';
+    alert(`❌ Erreur lors de l'enregistrement de la clôture journalière:\n${errorMessage}`);
+  } finally {
+    setSaving(false);
+  }
+}
   
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
@@ -729,60 +789,102 @@ async function fetchPreviousDayFondCaisse() {
           </div>
 
           {/* Statistiques du jour */}
-          {/* Statistiques du jour */}
-          {/* Statistiques du jour */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Chiffre d'affaires</h3>
-            </div>
+<div className="bg-white p-6 rounded-lg shadow-sm">
+  <div className="flex justify-between items-center mb-4">
+    <h3 className="text-lg font-semibold text-gray-800">Chiffre d'affaires</h3>
+  </div>
 
-                  <div className="flex justify-between items-center py-2 border-b bg-blue-50 px-2 rounded mb-3">
-  <span className="text-blue-700 font-medium">💰 Début fond de caisse:</span>
-  <input
-    type="number"
-    step="0.01"
-    value={initialFondCaisse}
-    onChange={(e) => setInitialFondCaisse(Number(e.target.value) || 0)}
-    className="w-32 text-right text-xl font-bold text-blue-700 border border-blue-300 rounded px-2 py-1"
-  />
+  {/* Début fond de caisse */}
+  <div className="flex justify-between items-center py-2 border-b bg-blue-50 px-2 rounded mb-3">
+    <span className="text-blue-700 font-medium">💰 Début fond de caisse:</span>
+    <input
+      type="number"
+      step="0.01"
+      value={initialFondCaisse}
+      onChange={(e) => setInitialFondCaisse(Number(e.target.value) || 0)}
+      className="w-32 text-right text-xl font-bold text-blue-700 border border-blue-300 rounded px-2 py-1"
+    />
+  </div>
+
+  <div className="space-y-3">
+    {/* Crédit */}
+    <div className="flex justify-between items-center py-2 border-b">
+      <span className="text-gray-600">Crédit</span>
+      <span className="text-xl font-bold text-purple-700">
+        {dailyStats.accountDebitRevenue.toFixed(2)}€
+      </span>
+    </div>
+    
+    {/* QR Code */}
+    <div className="flex justify-between items-center py-2 border-b">
+      <span className="text-gray-600">QR Code</span>
+      <span className="text-xl font-bold text-blue-700">
+        {dailyStats.qrRevenue.toFixed(2)}€
+      </span>
+    </div>
+    
+    {/* Espèces */}
+    <div className="flex justify-between items-center py-2 border-b">
+      <span className="text-gray-600">Espèces</span>
+      <span className="text-xl font-bold text-green-700">
+        {dailyStats.cashRevenue.toFixed(2)}€
+      </span>
+    </div>
+    
+    {/* Trou */}
+    <div className="flex justify-between items-center py-2 border-b bg-gray-50 px-2 rounded">
+      <span className="text-gray-600">Trou / Retrait</span>
+      <input
+        type="number"
+        step="0.01"
+        value={trouValue}
+        onChange={(e) => setTrouValue(Number(e.target.value) || 0)}
+        className="w-32 text-right font-bold border border-gray-300 rounded px-2 py-1"
+        placeholder="0.00"
+      />
+    </div>
+    
+    {/* Séparateur */}
+    <div className="border-t-2 border-gray-300 my-3"></div>
+    
+    {/* Fond de caisse final */}
+    <div className="flex justify-between items-center py-3 bg-purple-50 px-3 rounded-lg">
+      <span className="text-gray-900 font-semibold text-lg">💼 Fond de caisse final:</span>
+      <span className="text-2xl font-bold text-purple-600">
+        {fondCaisse.toFixed(2)}€
+      </span>
+    </div>
+    
+    {/* Formule de calcul */}
+    <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
+      <p className="font-mono">
+        Calcul: {initialFondCaisse.toFixed(2)} (début) + {dailyStats.cashRevenue.toFixed(2)} (cash) - {trouValue.toFixed(2)} (trou) = <strong>{fondCaisse.toFixed(2)}€</strong>
+      </p>
+    </div>
+    
+    {/* Total revenue */}
+    <div className="flex justify-between items-center py-2">
+      <span className="text-gray-600 font-medium">CA Total (tous moyens)</span>
+      <span className="text-2xl font-bold text-gray-800">
+        {dailyStats.totalRevenue.toFixed(2)}€
+      </span>
+    </div>
+  </div>
+  
+  {/* Bouton de clôture journalière */}
+  <div className="mt-6 pt-6 border-t-2 border-gray-300">
+    <button
+      onClick={handleDailyClosing}
+      disabled={saving}
+      className="w-full px-4 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg shadow-md transition-all"
+    >
+      {saving ? "⏳ Enregistrement..." : "🔒 Clôturer la journée"}
+    </button>
+    <p className="text-xs text-center text-gray-500 mt-2">
+      Le fond de caisse final ({fondCaisse.toFixed(2)}€) sera automatiquement reporté comme fond de départ demain
+    </p>
+  </div>
 </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">Crédit</span>
-                <span className="text-xl font-bold text-purple-700">
-                  {dailyStats.accountDebitRevenue.toFixed(2)}€
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">QR Code</span>
-                <span className="text-xl font-bold text-blue-700">
-                  {dailyStats.qrRevenue.toFixed(2)}€
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">Espèces</span>
-                <span className="text-xl font-bold text-green-700">
-                  {dailyStats.cashRevenue.toFixed(2)}€
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b bg-gray-50 px-2 rounded">
-                <span className="text-gray-600">Trou</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={trouValue}
-                  onChange={(e) => setTrouValue(Number(e.target.value) || 0)}
-                  className="w-32 text-right text-xl font-bold text-red-600 border border-gray-300 rounded px-2 py-1"
-                />
-              </div>
-              <div className="flex justify-between items-center py-2 bg-green-50 px-2 rounded">
-                <span className="text-gray-700 font-medium">Fond de caisse</span>
-                <span className={`text-xl font-bold ${fondCaisse >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {fondCaisse.toFixed(2)}€
-                </span>
-              </div>
-            </div>
-          </div>
 
           {/* Répartition par méthode de paiement */}
           {/* <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
