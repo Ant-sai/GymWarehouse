@@ -152,42 +152,6 @@ async function fetchDailyClosing(date: string) {
   }
 }
 
-async function saveTrou() {
-  setSaving(true);
-  try {
-    const stats = getDailyStats(selectedDate);
-    
-    const response = await fetch('/api/daily-closing', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: selectedDate,
-        cashRevenue: stats.cashRevenue,
-        qrRevenue: stats.qrRevenue,
-        creditRevenue: stats.accountDebitRevenue,
-        trou: trouValue,
-        fondCaisse: dailyClosing?.fondCaisse || 0,
-        notes: dailyClosing?.notes || '',
-        closedBy: dailyClosing?.closedBy || 'System'
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Erreur lors de la sauvegarde du trou');
-    }
-
-    // Recharger les données de clôture
-    await fetchDailyClosing(selectedDate);
-    
-    alert('Trou sauvegardé avec succès !');
-  } catch (err) {
-    console.error('Erreur lors de la sauvegarde du trou:', err);
-    alert('Erreur lors de la sauvegarde du trou');
-  } finally {
-    setSaving(false);
-  }
-}
-
   async function fetchOrders() {
     try {
       const response = await fetch("/api/orders");
@@ -818,18 +782,10 @@ async function saveTrou() {
       step="0.01"
       value={trouValue}
       onChange={(e) => setTrouValue(Number(e.target.value))}
-      className="w-20 px-2 py-1 border rounded text-lg font-bold text-red-600"
+      className="w-full px-2 py-1 border rounded text-lg font-bold text-red-600"
       disabled={loadingClosing}
     />
     <span className="text-lg font-bold text-red-600">€</span>
-    <button
-      onClick={saveTrou}
-      disabled={saving || loadingClosing}
-      className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-      title="Sauvegarder le trou"
-    >
-      💾
-    </button>
   </div>
   {dailyClosing && (
     <div className="text-xs text-gray-500 mt-1">
