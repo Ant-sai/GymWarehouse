@@ -94,6 +94,20 @@ export default function DailyOrdersPage() {
   const [productSearch, setProductSearch] = useState("");
 const [trouValue, setTrouValue] = useState<number>(0);
 
+// États pour les commandes en stand-by
+const [standbyOrders, setStandbyOrders] = useState<Array<{
+  id: string;
+  user: User;
+  cart: OrderItem[];
+  paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
+  notes: string;
+  discountValue: number;
+  discountComment: string;
+  timestamp: number;
+}>>([]);
+const [showStandbyList, setShowStandbyList] = useState(false);
+
+
 const [dailyClosing, setDailyClosing] = useState<DailyClosing | null>(null);
 const [loadingClosing, setLoadingClosing] = useState(false);
 
@@ -456,6 +470,50 @@ async function fetchDailyClosing(date: string) {
       setSaving(false);
     }
   }
+  function handlePutOnStandby() {
+  if (!selectedUser || cart.length === 0) return;
+  
+  const standbyOrder = {
+    id: `standby_${Date.now()}`,
+    user: selectedUser,
+    cart: [...cart],
+    paymentMethod,
+    notes,
+    discountValue,
+    discountComment,
+    timestamp: Date.now()
+  };
+  
+  setStandbyOrders([...standbyOrders, standbyOrder]);
+  
+  // Réinitialiser le formulaire
+  setCart([]);
+  setNotes("");
+  setDiscountValue(0);
+  setDiscountComment("");
+  
+}
+function handleResumeOrder(standbyId: string) {
+  const order = standbyOrders.find(o => o.id === standbyId);
+  if (!order) return;
+  
+  // Restaurer la commande
+  setSelectedUser(order.user);
+  setCart(order.cart);
+  setPaymentMethod(order.paymentMethod);
+  setNotes(order.notes);
+  setDiscountValue(order.discountValue);
+  setDiscountComment(order.discountComment);
+  
+  // Retirer de la liste stand-by
+  setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
+  setShowStandbyList(false);
+}
+function handleDeleteStandby(standbyId: string) {
+  if (confirm("Voulez-vous vraiment supprimer cette commande en stand-by ?")) {
+    setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
+  }
+}
 
 
   async function handleCancelOrder(order: Order) {
@@ -683,6 +741,16 @@ async function fetchDailyClosing(date: string) {
             >
               Nouvelle commande
             </button>
+            <button
+  onClick={() => setShowStandbyList(true)}
+  className="relative px-6 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 font-medium shadow-sm"
+>
+  ⏸️ Stand-by {standbyOrders.length > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+      {standbyOrders.length}
+    </span>
+  )}
+</button>
           </div>
         </header>
 
@@ -1224,6 +1292,14 @@ async function fetchDailyClosing(date: string) {
                 >
                   Fermer
                 </button>
+                    <button
+      type="button"
+      onClick={handlePutOnStandby}
+      disabled={saving || cart.length === 0}
+      className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+    >
+      ⏸️ Mettre en stand-by
+    </button>
                 <button
                   onClick={handleCreateOrder}
                   disabled={saving || !selectedUser || cart.length === 0}
@@ -1512,6 +1588,95 @@ async function fetchDailyClosing(date: string) {
             </form>
           </div>
         )}
+        {/* Modal des commandes en stand-by */}
+{showStandbyList && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black/40" onClick={() => setShowStandbyList(false)} />
+    <div className="relative bg-white rounded-lg p-6 w-[800px] max-h-[80vh] overflow-y-auto shadow-lg z-50">
+      <h3 className="text-xl font-semibold mb-4 text-black">
+        Commandes en stand-by ({standbyOrders.length})
+      </h3>
+      
+      {standbyOrders.length === 0 ? (
+        <p className="text-gray-500 text-center py-8">Aucune commande en stand-by</p>
+      ) : (
+        <div className="space-y-4">
+          {standbyOrders.map((order) => {
+  const total = order.cart.reduce((sum, item) => {
+    return sum + (item.quantity * item.unitPrice);
+  }, 0);
+  const finalTotal = Math.max(0, total - order.discountValue);
+            
+            return (
+              <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-semibold text-lg text-black">
+                      {getFullName(order.user)}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      {new Date(order.timestamp).toLocaleString('fr-FR')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-600">
+                      {finalTotal.toFixed(2)}€
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {order.cart.length} article{order.cart.length > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mb-3 space-y-1">
+                  {order.cart.map((item, idx) => {
+                    const product = products.find(p => p.id === item.productId);
+                    return (
+                      <div key={idx} className="text-sm text-gray-600 flex justify-between">
+                        <span>{product?.name} x{item.quantity}</span>
+                        <span>{(item.quantity * item.unitPrice).toFixed(2)}€</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {order.notes && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    📝 {order.notes}
+                  </p>
+                )}
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleResumeOrder(order.id)}
+                    className="flex-1 px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 font-medium"
+                  >
+                    ▶️ Reprendre
+                  </button>
+                  <button
+                    onClick={() => handleDeleteStandby(order.id)}
+                    className="px-4 py-2 rounded border border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    🗑️ Supprimer
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={() => setShowStandbyList(false)}
+          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         
       </main>
     </div>
