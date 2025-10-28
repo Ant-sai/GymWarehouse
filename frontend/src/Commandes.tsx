@@ -508,6 +508,7 @@ function handleResumeOrder(standbyId: string) {
   // Retirer de la liste stand-by
   setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
   setShowStandbyList(false);
+  setShowForm(true);
 }
 function handleDeleteStandby(standbyId: string) {
   if (confirm("Voulez-vous vraiment supprimer cette commande en stand-by ?")) {
