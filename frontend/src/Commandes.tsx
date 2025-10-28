@@ -426,7 +426,7 @@ async function fetchDailyClosing(date: string) {
         paymentMethod: paymentMethod,
         notes: notes,
         discount: discountValue,
-        discountComment: discountComment, // ✅ Nouveau champ
+        discountComment: discountComment,
         products: cart.map(item => ({
           productId: item.productId,
           quantity: item.quantity
@@ -491,6 +491,7 @@ async function fetchDailyClosing(date: string) {
   setNotes("");
   setDiscountValue(0);
   setDiscountComment("");
+  setShowForm(false);
   
 }
 function handleResumeOrder(standbyId: string) {
