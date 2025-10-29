@@ -218,16 +218,16 @@ app.put('/api/products/:id', async (req, res) => {
         const { id } = req.params;
         const { name, description, quantity, price, trainerPrice, cost, isActive } = req.body;
         const product = await prisma.product.update({
-            where: { id: Number(id), },
-            data: {
-                name: name,
-                description: description,
-                quantity: quantity,
-                price: price,
-                trainerPrice: trainerPrice,
-                cost: cost,
-                isActive: isActive,
-            },
+        where: { id: Number(id), },
+        data: {
+            name: name,
+            description: description,
+            quantity: quantity,
+            price: price,
+            trainerPrice: trainerPrice,
+            cost: cost,
+            isActive: isActive,
+        },
         });
         res.json(product);
     } catch (err) {

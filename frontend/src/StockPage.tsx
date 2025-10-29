@@ -34,6 +34,7 @@ export default function StockPage() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
+    name: "",
     quantity: "",
     price: "",
     trainerPrice: "",
@@ -146,14 +147,15 @@ export default function StockPage() {
 
   // Fonction pour ouvrir le formulaire de modification
   function openEditForm(product: Product) {
-    setEditingProduct(product);
-    setEditForm({
-      quantity: product.quantity.toString(),
-      price: product.price.toString(),
-      trainerPrice: product.trainerPrice?.toString() || "",
-    });
-    setShowEditForm(true);
-  }
+  setEditingProduct(product);
+  setEditForm({
+    name: product.name,
+    quantity: product.quantity.toString(),
+    price: product.price.toString(),
+    trainerPrice: product.trainerPrice?.toString() || "",
+  });
+  setShowEditForm(true);
+}
 
   // Fonction pour modifier un produit
   async function handleEditProduct(e?: React.FormEvent) {
@@ -177,6 +179,7 @@ export default function StockPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          name: editForm.name,
           quantity: Number(editForm.quantity || 0),
           price: Number(editForm.price),
           trainerPrice: Number(editForm.trainerPrice),
@@ -514,6 +517,17 @@ export default function StockPage() {
               <h3 className="text-xl font-semibold mb-4 text-black">Modifier {editingProduct.name}</h3>
               <div className="space-y-4">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700">Nom *</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    required
+                    placeholder="Nom du produit"
+                  />
+                </div>
+                 <div>
                   <label className="block text-sm font-medium text-gray-700">Quantité *</label>
                   <input
                     type="number"
