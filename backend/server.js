@@ -750,26 +750,100 @@ app.post('/api/daily-closing', async (req, res) => {
 });
 
 // Get daily closing for a specific date
-app.get('/api/daily-closing/:date', async (req, res) => {
+// Ligne 434 - Après app.get('/api/daily-closing/:date')
+
+// Update daily closing (specifically for trou updates)
+app.put('/api/daily-closing/:date', async (req, res) => {
     try {
         const { date } = req.params;
+        const { trou } = req.body;
+        
         const closingDate = new Date(date);
         
-        const dailyClosing = await prisma.dailyClosing.findUnique({
+        // Calculer le fond de caisse du jour précédent
+        const previousClosing = await prisma.dailyClosing.findFirst({
             where: {
-                date: closingDate
+                date: {
+                    lt: closingDate
+                }
+            },
+            orderBy: {
+                date: 'desc'
             }
         });
         
-        if (!dailyClosing) {
-            return res.status(404).json({ error: 'Daily closing not found' });
-        }
+        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
+        
+        // Récupérer les stats du jour pour calculer les revenus
+        const dayStart = new Date(closingDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(closingDate);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        const orders = await prisma.order.findMany({
+            where: {
+                date: {
+                    gte: dayStart,
+                    lte: dayEnd
+                }
+            }
+        });
+        
+        let cashRevenue = 0;
+        let qrRevenue = 0;
+        let creditRevenue = 0;
+        
+        orders.forEach(order => {
+            const amount = Number(order.totalAmount);
+            switch (order.paymentMethod) {
+                case "CASH":
+                    cashRevenue += amount;
+                    break;
+                case "QRCODE":
+                    qrRevenue += amount;
+                    break;
+                case "ACCOUNT_DEBIT":
+                    creditRevenue += amount;
+                    break;
+            }
+        });
+        
+        const fondCaisse = cashRevenue - (trou || 0);
+        
+        // Créer ou mettre à jour la clôture
+        const dailyClosing = await prisma.dailyClosing.upsert({
+            where: {
+                date: closingDate
+            },
+            update: {
+                cashRevenue,
+                qrRevenue,
+                creditRevenue,
+                trou: trou || 0,
+                fondCaisse,
+                startingCashFund,
+                closedAt: new Date()
+            },
+            create: {
+                date: closingDate,
+                cashRevenue,
+                qrRevenue,
+                creditRevenue,
+                trou: trou || 0,
+                fondCaisse,
+                startingCashFund,
+                closedAt: new Date()
+            }
+        });
         
         res.json(dailyClosing);
         
     } catch (err) {
-        console.error('Error fetching daily closing: ', err);
-        res.status(500).json({ error: 'Failed to fetch daily closing' });
+        console.error('Error updating daily closing: ', err);
+        res.status(500).json({ 
+            error: 'Failed to update daily closing',
+            message: err.message 
+        });
     }
 });
 

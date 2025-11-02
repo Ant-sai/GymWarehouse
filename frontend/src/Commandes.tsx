@@ -93,6 +93,7 @@ export default function DailyOrdersPage() {
   // État pour le filtre de recherche produits
   const [productSearch, setProductSearch] = useState("");
 const [trouValue, setTrouValue] = useState<number>(0);
+const [startingCashFund, setStartingCashFund] = useState<number>(0);
 
 // États pour les commandes en stand-by
 const [standbyOrders, setStandbyOrders] = useState<Array<{
@@ -137,6 +138,16 @@ const [loadingClosing, setLoadingClosing] = useState(false);
   useEffect(() => {
   fetchDailyClosing(selectedDate);
 }, [selectedDate]);
+// Sauvegarder automatiquement le trou après 1 seconde d'inactivité
+useEffect(() => {
+  const timeoutId = setTimeout(() => {
+    if (trouValue !== (dailyClosing?.trou || 0)) {
+      saveTrouValue(selectedDate, trouValue);
+    }
+  }, 1000); // Délai de 1 seconde après la dernière modification
+
+  return () => clearTimeout(timeoutId);
+}, [trouValue, selectedDate]);
 
   // État pour le formulaire de remboursement
   const [showRefundForm, setShowRefundForm] = useState(false);
@@ -147,15 +158,26 @@ const [loadingClosing, setLoadingClosing] = useState(false);
 async function fetchDailyClosing(date: string) {
   setLoadingClosing(true);
   try {
+    // Récupérer la clôture du jour
     const response = await fetch(`/api/daily-closing/${date}`);
     if (response.ok) {
       const data: DailyClosing = await response.json();
       setDailyClosing(data);
       setTrouValue(data.trou || 0);
+      setStartingCashFund(data.startingCashFund || 0);
     } else if (response.status === 404) {
-      // Pas de clôture pour ce jour, réinitialiser
+      // Pas de clôture pour ce jour, récupérer le fond du jour précédent
       setDailyClosing(null);
       setTrouValue(0);
+      
+      // Récupérer le starting fund du jour précédent
+      const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
+      if (startingFundResponse.ok) {
+        const fundData = await startingFundResponse.json();
+        setStartingCashFund(fundData.startingCashFund || 0);
+      } else {
+        setStartingCashFund(0);
+      }
     } else {
       console.error('Erreur lors de la récupération de la clôture:', response.status);
     }
@@ -163,6 +185,18 @@ async function fetchDailyClosing(date: string) {
     console.error('Erreur lors de la récupération de la clôture journalière:', err);
   } finally {
     setLoadingClosing(false);
+  }
+}
+// Sauvegarder automatiquement le trou quand il change
+async function saveTrouValue(date: string, trou: number) {
+  try {
+    await fetch(`/api/daily-closing/${date}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trou })
+    });
+  } catch (err) {
+    console.error('Erreur lors de la sauvegarde du trou:', err);
   }
 }
 
@@ -690,13 +724,6 @@ function handleDeleteStandby(standbyId: string) {
   
   // Calculer le fond de caisse (Espèces - Trou)
   const fondCaisse = dailyStats.cashRevenue - trouValue;
-  
-  // Calculer le fond de caisse du jour précédent
-  const previousDate = new Date(selectedDate);
-  previousDate.setDate(previousDate.getDate() - 1);
-  const previousDateString = previousDate.toISOString().split('T')[0];
-  const previousStats = getDailyStats(previousDateString);
-  const previousFondCaisse = previousStats.cashRevenue - trouValue;
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -810,17 +837,21 @@ function handleDeleteStandby(standbyId: string) {
           </div>
 
           {/* Statistiques du jour */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            {previousFondCaisse > 0 && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-blue-700 font-medium">Fond de caisse du jour précédent</span>
-                  <span className="text-xl font-bold text-blue-700">
-                    {(dailyStats.cashRevenue - trouValue).toFixed(2)}€
-                  </span>
-                </div>
-              </div>
-            )}
+          {/* Statistiques du jour */}
+<div className="bg-white p-6 rounded-lg shadow-sm">
+  {startingCashFund > 0 && (
+    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="flex justify-between items-center">
+        <span className="text-blue-700 font-medium">💰 Caisse de début de journée</span>
+        <span className="text-xl font-bold text-blue-700">
+          {startingCashFund.toFixed(2)}€
+        </span>
+      </div>
+      <div className="text-xs text-gray-500 mt-1">
+        (Fond de caisse du jour précédent)
+      </div>
+    </div>
+  )}
 
             <div className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b">
@@ -848,13 +879,14 @@ function handleDeleteStandby(standbyId: string) {
   </div>
   <div className="flex items-center gap-2">
     <input
-      type="number"
-      step="0.01"
-      value={trouValue}
-      onChange={(e) => setTrouValue(Number(e.target.value))}
-      className="w-full px-2 py-1 border rounded text-lg font-bold text-red-600"
-      disabled={loadingClosing}
-    />
+  type="number"
+  step="0.01"
+  value={trouValue}
+  onChange={(e) => setTrouValue(Number(e.target.value))}
+  className="w-full px-2 py-1 border rounded text-lg font-bold text-red-600"
+  disabled={loadingClosing}
+  placeholder="0.00"
+/>
     <span className="text-lg font-bold text-red-600">€</span>
   </div>
   {dailyClosing && (
