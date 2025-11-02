@@ -667,91 +667,6 @@ app.get('/api/daily-closing/previous/:date', async (req, res) => {
 // ------------ Daily Closing routes -------------
 // -----------------------------------------------
 
-// Create or update daily closing with logic for starting cash fund
-app.post('/api/daily-closing', async (req, res) => {
-    try {
-        const { 
-            date, 
-            cashRevenue, 
-            qrRevenue, 
-            creditRevenue, 
-            trou, 
-            fondCaisse, 
-            notes, 
-            closedBy 
-        } = req.body;
-        
-        // Validation
-        if (!date) {
-            return res.status(400).json({ error: 'Date is required' });
-        }
-        
-        const closingDate = new Date(date);
-        
-        // Récupérer le fond de caisse du jour précédent
-        const previousClosing = await prisma.dailyClosing.findFirst({
-            where: {
-                date: {
-                    lt: closingDate
-                }
-            },
-            orderBy: {
-                date: 'desc'
-            }
-        });
-        
-        // Le début du fond de caisse est le fond de caisse du jour précédent
-        // Si c'est le premier jour, on utilise 0 ou une valeur par défaut
-        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
-        
-        // Créer ou mettre à jour la clôture journalière
-        const dailyClosing = await prisma.dailyClosing.upsert({
-            where: {
-                date: closingDate
-            },
-            update: {
-                cashRevenue,
-                qrRevenue,
-                creditRevenue,
-                trou: trou || 0,
-                fondCaisse,
-                startingCashFund, // Sauvegarde du début de fond de caisse
-                notes,
-                closedBy,
-                closedAt: new Date()
-            },
-            create: {
-                date: closingDate,
-                cashRevenue,
-                qrRevenue,
-                creditRevenue,
-                trou: trou || 0,
-                fondCaisse,
-                startingCashFund, // Sauvegarde du début de fond de caisse
-                notes,
-                closedBy,
-                closedAt: new Date()
-            }
-        });
-        
-        res.status(201).json({
-            success: true,
-            data: dailyClosing,
-            message: 'Daily closing saved successfully'
-        });
-        
-    } catch (err) {
-        console.error('Error creating daily closing: ', err);
-        res.status(500).json({ 
-            error: 'Failed to create daily closing',
-            message: err.message 
-        });
-    }
-});
-
-// Get daily closing for a specific date
-// Ligne 434 - Après app.get('/api/daily-closing/:date')
-
 // Update daily closing (specifically for trou updates)
 app.put('/api/daily-closing/:date', async (req, res) => {
     try {
@@ -846,6 +761,89 @@ app.put('/api/daily-closing/:date', async (req, res) => {
         });
     }
 });
+// Create or update daily closing with logic for starting cash fund
+app.post('/api/daily-closing', async (req, res) => {
+    try {
+        const { 
+            date, 
+            cashRevenue, 
+            qrRevenue, 
+            creditRevenue, 
+            trou, 
+            fondCaisse, 
+            notes, 
+            closedBy 
+        } = req.body;
+        
+        // Validation
+        if (!date) {
+            return res.status(400).json({ error: 'Date is required' });
+        }
+        
+        const closingDate = new Date(date);
+        
+        // Récupérer le fond de caisse du jour précédent
+        const previousClosing = await prisma.dailyClosing.findFirst({
+            where: {
+                date: {
+                    lt: closingDate
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+        
+        // Le début du fond de caisse est le fond de caisse du jour précédent
+        // Si c'est le premier jour, on utilise 0 ou une valeur par défaut
+        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
+        
+        // Créer ou mettre à jour la clôture journalière
+        const dailyClosing = await prisma.dailyClosing.upsert({
+            where: {
+                date: closingDate
+            },
+            update: {
+                cashRevenue,
+                qrRevenue,
+                creditRevenue,
+                trou: trou || 0,
+                fondCaisse,
+                startingCashFund, // Sauvegarde du début de fond de caisse
+                notes,
+                closedBy,
+                closedAt: new Date()
+            },
+            create: {
+                date: closingDate,
+                cashRevenue,
+                qrRevenue,
+                creditRevenue,
+                trou: trou || 0,
+                fondCaisse,
+                startingCashFund, // Sauvegarde du début de fond de caisse
+                notes,
+                closedBy,
+                closedAt: new Date()
+            }
+        });
+        
+        res.status(201).json({
+            success: true,
+            data: dailyClosing,
+            message: 'Daily closing saved successfully'
+        });
+        
+    } catch (err) {
+        console.error('Error creating daily closing: ', err);
+        res.status(500).json({ 
+            error: 'Failed to create daily closing',
+            message: err.message 
+        });
+    }
+});
+
+
 
 // Get starting cash fund for a specific date (from previous day)
 app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
