@@ -843,6 +843,30 @@ app.post('/api/daily-closing', async (req, res) => {
     }
 });
 
+// Get daily closing for a specific date
+app.get('/api/daily-closing/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const closingDate = new Date(date);
+        
+        const dailyClosing = await prisma.dailyClosing.findUnique({
+            where: {
+                date: closingDate
+            }
+        });
+        
+        if (!dailyClosing) {
+            return res.status(404).json({ error: 'Daily closing not found' });
+        }
+        
+        res.json(dailyClosing);
+        
+    } catch (err) {
+        console.error('Error fetching daily closing: ', err);
+        res.status(500).json({ error: 'Failed to fetch daily closing' });
+    }
+});
+
 
 
 // Get starting cash fund for a specific date (from previous day)
