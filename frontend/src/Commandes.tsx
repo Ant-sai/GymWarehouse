@@ -717,8 +717,7 @@ function handleDeleteStandby(standbyId: string) {
   const availableDates = getAvailableDates();
   
   // Calculer le fond de caisse (Espèces - Trou)
-  const fondCaisse = dailyStats.cashRevenue - trouValue;
-
+const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
@@ -835,7 +834,7 @@ function handleDeleteStandby(standbyId: string) {
   {startingCashFund && (
     <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
       <div className="flex justify-between items-center">
-        <span className="text-blue-700 font-medium">💰 Caisse de début de journée</span>
+        <span className="text-blue-700 font-medium">Caisse de début de journée</span>
         <span className="text-xl font-bold text-blue-700">
           {startingCashFund.toFixed(2)}€
         </span>
