@@ -159,8 +159,8 @@ async function fetchDailyClosing(date: string) {
     if (response.ok) {
       const data: DailyClosing = await response.json();
       setDailyClosing(data);
-      setTrouValue(data.trou || 0);
-      setStartingCashFund(data.startingCashFund || 0);
+      setTrouValue(Number(data.trou) || 0);
+      setStartingCashFund(Number(data.startingCashFund) || 0);
     } else if (response.status === 404) {
       // Pas de clôture pour ce jour, récupérer le fond du jour précédent
       setDailyClosing(null);
@@ -170,12 +170,10 @@ async function fetchDailyClosing(date: string) {
       const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
       if (startingFundResponse.ok) {
         const fundData = await startingFundResponse.json();
-        setStartingCashFund(fundData.startingCashFund || 0);
+        setStartingCashFund(Number(fundData.startingCashFund) || 0);
       } else {
         setStartingCashFund(0);
       }
-    } else {
-      console.error('Erreur lors de la récupération de la clôture:', response.status);
     }
   } catch (err) {
     console.error('Erreur lors de la récupération de la clôture journalière:', err);
@@ -833,9 +831,8 @@ function handleDeleteStandby(standbyId: string) {
           </div>
 
           {/* Statistiques du jour */}
-          {/* Statistiques du jour */}
 <div className="bg-white p-6 rounded-lg shadow-sm">
-  {startingCashFund > 0 && (
+  {startingCashFund && (
     <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
       <div className="flex justify-between items-center">
         <span className="text-blue-700 font-medium">💰 Caisse de début de journée</span>
