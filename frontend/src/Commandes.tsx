@@ -138,15 +138,11 @@ const [loadingClosing, setLoadingClosing] = useState(false);
   useEffect(() => {
   fetchDailyClosing(selectedDate);
 }, [selectedDate]);
-// Sauvegarder automatiquement le trou après 1 seconde d'inactivité
+// Sauvegarder immédiatement le trou quand il change
 useEffect(() => {
-  const timeoutId = setTimeout(() => {
-    if (trouValue !== (dailyClosing?.trou || 0)) {
-      saveTrouValue(selectedDate, trouValue);
-    }
-  }, 1000); // Délai de 1 seconde après la dernière modification
-
-  return () => clearTimeout(timeoutId);
+  if (trouValue !== (dailyClosing?.trou || 0)) {
+    saveTrouValue(selectedDate, trouValue);
+  }
 }, [trouValue, selectedDate]);
 
   // État pour le formulaire de remboursement
