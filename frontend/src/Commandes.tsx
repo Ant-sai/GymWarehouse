@@ -162,15 +162,16 @@ async function fetchDailyClosing(date: string) {
       setTrouValue(Number(data.trou) || 0);
       setStartingCashFund(Number(data.startingCashFund) || 0);
     } else if (response.status === 404) {
-      // Pas de clôture pour ce jour, récupérer le fond du jour précédent
+      // Pas de clôture pour ce jour, récupérer le fond de caisse du jour précédent
       setDailyClosing(null);
       setTrouValue(0);
       
-      // Récupérer le starting fund du jour précédent
+      // Récupérer le fond de caisse du jour précédent (pas le starting fund)
       const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
       if (startingFundResponse.ok) {
         const fundData = await startingFundResponse.json();
-        setStartingCashFund(Number(fundData.startingCashFund) || 0);
+        // Utiliser fondCaisse si disponible, sinon fallback sur startingCashFund
+        setStartingCashFund(Number(fundData.fondCaisse || fundData.startingCashFund) || 0);
       } else {
         setStartingCashFund(0);
       }
@@ -716,7 +717,7 @@ function handleDeleteStandby(standbyId: string) {
   const dailyStats = getDailyStats(selectedDate);
   const availableDates = getAvailableDates();
   
-  // Calculer le fond de caisse (Espèces - Trou)
+  // Calculer le fond de caisse (Starting Fund + Espèces du jour - Trou)
 const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -831,7 +832,7 @@ const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
 
           {/* Statistiques du jour */}
 <div className="bg-white p-6 rounded-lg shadow-sm">
-  {startingCashFund && (
+  {startingCashFund > 0 && (
     <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
       <div className="flex justify-between items-center">
         <span className="text-blue-700 font-medium">Caisse de début de journée</span>
