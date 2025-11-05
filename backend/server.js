@@ -723,7 +723,7 @@ app.put('/api/daily-closing/:date', async (req, res) => {
             }
         });
         
-        const fondCaisse = cashRevenue - (trou || 0);
+        const fondCaisse = startingCashFund + cashRevenue - (trou || 0);
         
         // Créer ou mettre à jour la clôture
         const dailyClosing = await prisma.dailyClosing.upsert({
@@ -887,11 +887,12 @@ app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
             }
         });
         
-        // Le début du fond de caisse = fond de caisse du jour précédent
-        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
+        // ✅ CORRECTION : Retourner le fond de caisse (pas startingCashFund)
+        const fondCaisse = previousClosing ? previousClosing.fondCaisse : 0;
         
         res.json({
-            startingCashFund,
+            fondCaisse,  // ✅ Champ ajouté
+            startingCashFund: fondCaisse,  // Pour compatibilité
             previousDate: previousClosing?.date || null,
             foundPreviousClosing: !!previousClosing
         });
