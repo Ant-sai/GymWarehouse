@@ -673,6 +673,9 @@ app.put('/api/daily-closing/:date', async (req, res) => {
         const { date } = req.params;
         const { trou } = req.body;
         
+        console.log('🔄 [PUT /api/daily-closing/:date] Mise à jour du trou pour', date);
+        console.log('📥 [PUT] Données reçues:', { trou });
+        
         const closingDate = new Date(date);
         
         // Calculer le fond de caisse du jour précédent
@@ -687,7 +690,15 @@ app.put('/api/daily-closing/:date', async (req, res) => {
             }
         });
         
+        console.log('📊 [PUT] Clôture jour précédent:', previousClosing ? {
+            date: previousClosing.date,
+            fondCaisse: previousClosing.fondCaisse,
+            startingCashFund: previousClosing.startingCashFund
+        } : 'Aucune');
+        
         const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
+        
+        console.log('💰 [PUT] Starting cash fund calculé:', startingCashFund);
         
         // Récupérer les stats du jour pour calculer les revenus
         const dayStart = new Date(closingDate);
@@ -703,6 +714,8 @@ app.put('/api/daily-closing/:date', async (req, res) => {
                 }
             }
         });
+        
+        console.log('🛒 [PUT] Nombre de commandes trouvées:', orders.length);
         
         let cashRevenue = 0;
         let qrRevenue = 0;
@@ -723,7 +736,18 @@ app.put('/api/daily-closing/:date', async (req, res) => {
             }
         });
         
+        console.log('💵 [PUT] Revenus calculés:', { cashRevenue, qrRevenue, creditRevenue });
+        
+        // ✅ CORRECTION : Calculer le fond de caisse correctement
         const fondCaisse = startingCashFund + cashRevenue - (trou || 0);
+        
+        console.log('🏦 [PUT] Calcul fond de caisse:', {
+            startingCashFund,
+            cashRevenue,
+            trou: trou || 0,
+            fondCaisse,
+            formule: `${startingCashFund} + ${cashRevenue} - ${trou || 0} = ${fondCaisse}`
+        });
         
         // Créer ou mettre à jour la clôture
         const dailyClosing = await prisma.dailyClosing.upsert({
@@ -751,16 +775,24 @@ app.put('/api/daily-closing/:date', async (req, res) => {
             }
         });
         
+        console.log('✅ [PUT] Clôture sauvegardée:', {
+            date: dailyClosing.date,
+            trou: dailyClosing.trou,
+            fondCaisse: dailyClosing.fondCaisse,
+            startingCashFund: dailyClosing.startingCashFund
+        });
+        
         res.json(dailyClosing);
         
     } catch (err) {
-        console.error('Error updating daily closing: ', err);
+        console.error('💥 [PUT] Erreur lors de la mise à jour:', err);
         res.status(500).json({ 
             error: 'Failed to update daily closing',
             message: err.message 
         });
     }
 });
+
 // Create or update daily closing with logic for starting cash fund
 app.post('/api/daily-closing', async (req, res) => {
     try {
@@ -849,6 +881,8 @@ app.get('/api/daily-closing/:date', async (req, res) => {
         const { date } = req.params;
         const closingDate = new Date(date);
         
+        console.log('🔍 [GET /api/daily-closing/:date] Recherche clôture pour:', date);
+        
         const dailyClosing = await prisma.dailyClosing.findUnique({
             where: {
                 date: closingDate
@@ -856,13 +890,22 @@ app.get('/api/daily-closing/:date', async (req, res) => {
         });
         
         if (!dailyClosing) {
+            console.log('❌ [GET] Aucune clôture trouvée pour cette date');
             return res.status(404).json({ error: 'Daily closing not found' });
         }
+        
+        console.log('✅ [GET] Clôture trouvée:', {
+            date: dailyClosing.date,
+            trou: dailyClosing.trou,
+            fondCaisse: dailyClosing.fondCaisse,
+            startingCashFund: dailyClosing.startingCashFund,
+            cashRevenue: dailyClosing.cashRevenue
+        });
         
         res.json(dailyClosing);
         
     } catch (err) {
-        console.error('Error fetching daily closing: ', err);
+        console.error('💥 [GET] Erreur:', err);
         res.status(500).json({ error: 'Failed to fetch daily closing' });
     }
 });
@@ -874,6 +917,8 @@ app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
     try {
         const { date } = req.params;
         const currentDate = new Date(date);
+        
+        console.log('🔍 [GET /api/daily-closing/starting-fund/:date] Recherche fond pour:', date);
         
         // Trouver la clôture du jour précédent
         const previousClosing = await prisma.dailyClosing.findFirst({
@@ -887,18 +932,32 @@ app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
             }
         });
         
-        // ✅ CORRECTION : Retourner le fond de caisse (pas startingCashFund)
+        console.log('📊 [GET starting-fund] Clôture jour précédent:', previousClosing ? {
+            date: previousClosing.date,
+            fondCaisse: previousClosing.fondCaisse,
+            startingCashFund: previousClosing.startingCashFund,
+            cashRevenue: previousClosing.cashRevenue,
+            trou: previousClosing.trou
+        } : 'Aucune');
+        
+        // ✅ CORRECTION : Le début du fond de caisse = fond de caisse du jour précédent
         const fondCaisse = previousClosing ? previousClosing.fondCaisse : 0;
         
+        console.log('💰 [GET starting-fund] Valeurs retournées:', {
+            fondCaisse,
+            startingCashFund: fondCaisse,
+            previousDate: previousClosing?.date || null
+        });
+        
         res.json({
-            fondCaisse,  // ✅ Champ ajouté
+            fondCaisse,  // ✅ Champ principal ajouté
             startingCashFund: fondCaisse,  // Pour compatibilité
             previousDate: previousClosing?.date || null,
             foundPreviousClosing: !!previousClosing
         });
         
     } catch (err) {
-        console.error('Error fetching starting cash fund: ', err);
+        console.error('💥 [GET starting-fund] Erreur:', err);
         res.status(500).json({ error: 'Failed to fetch starting cash fund' });
     }
 });

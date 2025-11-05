@@ -136,6 +136,7 @@ const [loadingClosing, setLoadingClosing] = useState(false);
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
   }, []);
   useEffect(() => {
+  console.log('📅 [useEffect] Changement de date détecté:', selectedDate);
   fetchDailyClosing(selectedDate);
 }, [selectedDate]);
 // Sauvegarder immédiatement le trou quand il change
@@ -152,34 +153,73 @@ useEffect(() => {
   const [refundNotes, setRefundNotes] = useState("");
 
 async function fetchDailyClosing(date: string) {
+  console.log('🔍 [fetchDailyClosing] Début du chargement pour la date:', date);
   setLoadingClosing(true);
   try {
     // Récupérer la clôture du jour
+    console.log('📡 [fetchDailyClosing] Appel API: /api/daily-closing/' + date);
     const response = await fetch(`/api/daily-closing/${date}`);
+    
     if (response.ok) {
       const data: DailyClosing = await response.json();
+      console.log('✅ [fetchDailyClosing] Clôture trouvée pour ce jour:', {
+        date: data.date,
+        trou: data.trou,
+        startingCashFund: data.startingCashFund,
+        fondCaisse: data.fondCaisse,
+        cashRevenue: data.cashRevenue
+      });
+      
       setDailyClosing(data);
       setTrouValue(Number(data.trou) || 0);
       setStartingCashFund(Number(data.startingCashFund) || 0);
+      
+      console.log('💾 [fetchDailyClosing] État mis à jour:', {
+        trouValue: Number(data.trou) || 0,
+        startingCashFund: Number(data.startingCashFund) || 0
+      });
+      
     } else if (response.status === 404) {
+      console.log('⚠️ [fetchDailyClosing] Pas de clôture pour ce jour');
+      
       // Pas de clôture pour ce jour, récupérer le fond de caisse du jour précédent
       setDailyClosing(null);
       setTrouValue(0);
       
-      // Récupérer le fond de caisse du jour précédent (pas le starting fund)
+      console.log('📡 [fetchDailyClosing] Appel API: /api/daily-closing/starting-fund/' + date);
       const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
+      
       if (startingFundResponse.ok) {
         const fundData = await startingFundResponse.json();
+        console.log('✅ [fetchDailyClosing] Données du jour précédent reçues:', fundData);
+        
         // Utiliser fondCaisse si disponible, sinon fallback sur startingCashFund
-        setStartingCashFund(Number(fundData.fondCaisse || fundData.startingCashFund) || 0);
+        const fundValue = Number(fundData.fondCaisse || fundData.startingCashFund) || 0;
+        
+        console.log('💰 [fetchDailyClosing] Calcul du fond de départ:', {
+          fondCaisse: fundData.fondCaisse,
+          startingCashFund: fundData.startingCashFund,
+          valeurChoisie: fundValue
+        });
+        
+        setStartingCashFund(fundValue);
+        
+        console.log('💾 [fetchDailyClosing] État mis à jour:', {
+          trouValue: 0,
+          startingCashFund: fundValue
+        });
       } else {
+        console.log('❌ [fetchDailyClosing] Erreur récupération jour précédent:', startingFundResponse.status);
         setStartingCashFund(0);
       }
+    } else {
+      console.log('❌ [fetchDailyClosing] Erreur HTTP inattendue:', response.status);
     }
   } catch (err) {
-    console.error('Erreur lors de la récupération de la clôture journalière:', err);
+    console.error('💥 [fetchDailyClosing] Erreur lors de la récupération:', err);
   } finally {
     setLoadingClosing(false);
+    console.log('🏁 [fetchDailyClosing] Fin du chargement');
   }
 }
 // Sauvegarder automatiquement le trou quand il change
@@ -718,7 +758,17 @@ function handleDeleteStandby(standbyId: string) {
   const availableDates = getAvailableDates();
   
   // Calculer le fond de caisse (Starting Fund + Espèces du jour - Trou)
-const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
+  const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
+  
+  // Log pour déboguer le calcul du fond de caisse
+  console.log('💵 [Calcul fond de caisse]', {
+    date: selectedDate,
+    startingCashFund,
+    cashRevenue: dailyStats.cashRevenue,
+    trouValue,
+    fondCaisse,
+    calcul: `${startingCashFund} + ${dailyStats.cashRevenue} - ${trouValue} = ${fondCaisse}`
+  });
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
