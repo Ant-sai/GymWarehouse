@@ -516,7 +516,7 @@ async function saveTrouValue(date: string, trou: number) {
       const newOrder = await response.json();
       setOrders([newOrder, ...orders]);
 
-
+      await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate)]);
       setShowForm(false);
       setSelectedUser(null);
       setCart([]);
