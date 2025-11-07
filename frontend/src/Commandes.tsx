@@ -882,7 +882,7 @@ function handleDeleteStandby(standbyId: string) {
 
           {/* Statistiques du jour */}
 <div className="bg-white p-6 rounded-lg shadow-sm">
-  {startingCashFund > 0 && (
+  {startingCashFund && (
     <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
       <div className="flex justify-between items-center">
         <span className="text-blue-700 font-medium">Caisse de début de journée</span>
