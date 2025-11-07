@@ -254,6 +254,7 @@ app.delete('/api/products/:id', async (req, res) => {
 // ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
+// Create an order
 app.post('/api/orders', async (req, res) => {
     try {
         const { 
@@ -262,7 +263,6 @@ app.post('/api/orders', async (req, res) => {
             paymentMethod, 
             discount, 
             notes,
-            trou  // Nouveau: accepter le trou dans la requête
         } = req.body;
         
         // Validation
@@ -317,7 +317,7 @@ app.post('/api/orders', async (req, res) => {
                 totalAmount = totalAmount * (1 - discount / 100);
             }
             
-            // Créer la commande avec le trou
+            // Créer la commande
             const order = await prismaTransaction.order.create({
                 data: {
                     clientId: Number(clientId),
@@ -325,7 +325,6 @@ app.post('/api/orders', async (req, res) => {
                     paymentMethod: paymentMethod,
                     discount: discount || 0,
                     notes: notes || null,
-                    trou: trou || null,  // Sauvegarder le trou
                     products: {
                         create: orderDetails
                     }
@@ -365,6 +364,100 @@ app.post('/api/orders', async (req, res) => {
                     }
                 });
             }
+            
+            // ✅ NOUVEAU : Mettre à jour la clôture du jour
+            const orderDate = new Date();
+            orderDate.setHours(0, 0, 0, 0);
+            
+            // Récupérer toutes les commandes du jour (incluant celle qu'on vient de créer)
+            const dayStart = new Date(orderDate);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(orderDate);
+            dayEnd.setHours(23, 59, 59, 999);
+            
+            const allOrdersToday = await prismaTransaction.order.findMany({
+                where: {
+                    date: {
+                        gte: dayStart,
+                        lte: dayEnd
+                    }
+                }
+            });
+            
+            // Calculer les revenus du jour
+            let cashRevenue = 0;
+            let qrRevenue = 0;
+            let creditRevenue = 0;
+            
+            allOrdersToday.forEach(o => {
+                const amount = Number(o.totalAmount);
+                switch (o.paymentMethod) {
+                    case "CASH":
+                        cashRevenue += amount;
+                        break;
+                    case "QRCODE":
+                        qrRevenue += amount;
+                        break;
+                    case "ACCOUNT_DEBIT":
+                        creditRevenue += amount;
+                        break;
+                }
+            });
+            
+            // Récupérer le fond de caisse du jour précédent
+            const previousClosing = await prismaTransaction.dailyClosing.findFirst({
+                where: {
+                    date: {
+                        lt: orderDate
+                    }
+                },
+                orderBy: {
+                    date: 'desc'
+                }
+            });
+            
+            const startingCashFund = previousClosing ? Number(previousClosing.fondCaisse) : 0;
+            
+            // Récupérer le trou actuel (s'il existe)
+            const currentClosing = await prismaTransaction.dailyClosing.findUnique({
+                where: { date: orderDate }
+            });
+            
+            const trou = currentClosing ? Number(currentClosing.trou) : 0;
+            
+            // Calculer le nouveau fond de caisse
+            const fondCaisse = startingCashFund + cashRevenue - trou;
+            
+            console.log('💰 [POST /api/orders] Mise à jour clôture:', {
+                date: orderDate,
+                startingCashFund,
+                cashRevenue,
+                trou,
+                fondCaisse,
+                calcul: `${startingCashFund} + ${cashRevenue} - ${trou} = ${fondCaisse}`
+            });
+            
+            // Mettre à jour ou créer la clôture
+            await prismaTransaction.dailyClosing.upsert({
+                where: { date: orderDate },
+                update: {
+                    cashRevenue,
+                    qrRevenue,
+                    creditRevenue,
+                    fondCaisse,
+                    closedAt: new Date()
+                },
+                create: {
+                    date: orderDate,
+                    cashRevenue,
+                    qrRevenue,
+                    creditRevenue,
+                    trou: 0,
+                    fondCaisse,
+                    startingCashFund,
+                    closedAt: new Date()
+                }
+            });
             
             return order;
         });
@@ -619,7 +712,8 @@ app.post('/api/refunds', async (req, res) => {
                     }
                 }
             });
-            
+            const refundDate = new Date();
+            refundDate.setHours(0, 0, 0, 0);
             return {
                 refund: refundOrder,
                 newBalance: updatedUser.balance,
