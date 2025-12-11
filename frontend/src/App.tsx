@@ -1,3 +1,4 @@
+//app.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import StockPage from './StockPage';
 import Membre from './Membre';
