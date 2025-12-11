@@ -1,6 +1,6 @@
 // services/api/products.ts
 
-import { Product } from '../../types/commandes.types';
+import type { Product } from '../../types/commandes.types';
 
 export const productsApi = {
   async fetchAll(): Promise<Product[]> {

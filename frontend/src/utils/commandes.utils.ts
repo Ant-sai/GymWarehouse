@@ -1,6 +1,6 @@
 // utils/commandes.utils.ts
 
-import { User, Order, DailyStats, PaymentMethod } from '../types/commandes.types';
+import type { User, Order, DailyStats } from '../types/commandes.types';
 
 /**
  * Retourne le nom complet d'un utilisateur

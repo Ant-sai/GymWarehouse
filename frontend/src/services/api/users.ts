@@ -1,6 +1,6 @@
 // services/api/users.ts
 
-import { User, RefundData } from '../../types/commandes.types';
+import type { User, RefundData } from '../../types/commandes.types';
 
 export const usersApi = {
   async fetchAll(): Promise<User[]> {

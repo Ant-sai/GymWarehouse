@@ -1,5 +1,5 @@
 // src/Commandes.tsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
 import PrimeroseVector from './assets/PrimeroseVector.svg';
 
