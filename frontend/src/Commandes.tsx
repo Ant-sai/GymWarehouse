@@ -7,9 +7,24 @@ import PrimeroseVector from './assets/PrimeroseVector.svg';
 import { DateNavigation } from './components/Commandes/DateNavigation';
 import { DailyStatsCard } from './components/Commandes/DailyStats';
 import { OrderCard } from './components/Commandes/OrderCard';
+import {
+  OrderFormModal,
+  RefundModal,
+  EditProductModal,
+  StandbyOrdersModal,
+  AddMemberModal
+} from './components/Modals';
 
 // Import des types depuis le fichier centralisé
-import type { Product, Order, DailyClosing, StandbyOrder } from './types/commandes.types';
+import type { 
+  Product, 
+  Order, 
+  DailyClosing, 
+  StandbyOrder, 
+  User,
+  CreateOrderData,
+  StandbyData
+} from './types/commandes.types';
 
 type DailyStats = {
   date: string;
@@ -42,8 +57,13 @@ export default function CommandesPage() {
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showStandbyList, setShowStandbyList] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [standbyOrders] = useState<StandbyOrder[]>([]); // Pas de setter car géré ailleurs
+
+  // États pour les données
+  const [users, setUsers] = useState<User[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [standbyOrders, setStandbyOrders] = useState<StandbyOrder[]>([]);
 
   // ========== FONCTIONS UTILITAIRES ==========
   function getDailyStats(date: string): DailyStats {
@@ -76,6 +96,7 @@ export default function CommandesPage() {
         case "CASH": stats.cashRevenue += amount; break;
         case "QRCODE": stats.qrRevenue += amount; break;
         case "ACCOUNT_DEBIT": stats.accountDebitRevenue += amount; break;
+        case "FREE": stats.freeRevenue += amount; break;
       }
 
       if (order.client?.role === "TRAINER") {
@@ -109,6 +130,28 @@ export default function CommandesPage() {
       setError("Impossible de récupérer les commandes");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchUsers() {
+    try {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data = await response.json();
+      setUsers(data);
+    } catch (err) {
+      console.error('Erreur lors de la récupération des utilisateurs:', err);
+    }
+  }
+
+  async function fetchProducts() {
+    try {
+      const response = await fetch("/api/products");
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data = await response.json();
+      setProducts(data);
+    } catch (err) {
+      console.error('Erreur lors de la récupération des produits:', err);
     }
   }
 
@@ -174,6 +217,101 @@ export default function CommandesPage() {
     }
   }
 
+  // ========== HANDLERS MODAUX ==========
+  // Handler pour créer une commande
+  const handleCreateOrder = async (orderData: CreateOrderData) => {
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+    }
+
+    // Rafraîchir les données
+    await fetchOrders();
+    await fetchProducts(); // Pour mettre à jour le stock
+  };
+
+  // Handler pour les commandes en standby
+  const handleStandby = (standbyData: StandbyData) => {
+    setStandbyOrders([...standbyOrders, standbyData]);
+  };
+
+  const handleResumeStandby = (standbyId: string) => {
+    // Retirer de la liste standby
+    setStandbyOrders(standbyOrders.filter(order => order.id !== standbyId));
+
+    // Ouvrir le modal de commande avec les données
+    setShowForm(true);
+  };
+
+  const handleDeleteStandby = (standbyId: string) => {
+    setStandbyOrders(standbyOrders.filter(order => order.id !== standbyId));
+  };
+
+  // Handler pour ajouter un membre
+  const handleAddMember = () => {
+    setShowForm(false); // Fermer le modal de commande
+    setShowAddMemberModal(true); // Ouvrir le modal d'ajout de membre
+  };
+
+  const handleAddMemberSubmit = async (userData: Partial<User>) => {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erreur lors de la création du membre');
+    }
+
+    const newUser = await response.json();
+
+    // Rafraîchir la liste des utilisateurs
+    await fetchUsers();
+    setShowAddMemberModal(false);
+    setShowForm(true); // Rouvrir le modal de commande
+
+    return newUser;
+  };
+
+  // Handler pour éditer un produit
+  const handleUpdateProduct = async (productId: number, updatedData: Partial<Product>) => {
+    const response = await fetch(`/api/products/${productId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData)
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la mise à jour du produit');
+    }
+
+    await fetchProducts();
+    await fetchOrders();
+  };
+
+  // Handler pour le remboursement
+  const handleRefund = async (userId: number, amount: number, paymentMethod: 'CASH' | 'QRCODE', notes: string) => {
+    const response = await fetch('/api/refunds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, amount, paymentMethod, notes })
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors du remboursement');
+    }
+
+    await fetchUsers(); // Rafraîchir pour mettre à jour les soldes
+  };
+
   // ========== NAVIGATION ==========
   const navigateDate = (direction: 'prev' | 'next') => {
     const currentDate = new Date(selectedDate);
@@ -192,6 +330,8 @@ export default function CommandesPage() {
   // ========== EFFECTS ==========
   useEffect(() => {
     fetchOrders();
+    fetchUsers();
+    fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -346,83 +486,50 @@ export default function CommandesPage() {
           </div>
         )}
 
-        {/* Modals - Placeholders */}
-        {showForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-md">
-              <h3 className="text-xl font-bold mb-4 text-gray-900">Nouvelle Commande</h3>
-              <p className="mb-4 text-gray-600">
-                Ce modal sera remplacé par OrderFormModal lors de l'intégration finale
-              </p>
-              <button
-                onClick={() => setShowForm(false)}
-                className="w-full bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
+        {/* Modals */}
+        <OrderFormModal
+          isOpen={showForm}
+          users={users}
+          products={products}
+          onClose={() => setShowForm(false)}
+          onCreate={handleCreateOrder}
+          onStandby={handleStandby}
+          onAddMember={handleAddMember}
+        />
+
+        <RefundModal
+          isOpen={showRefundForm}
+          users={users}
+          onClose={() => setShowRefundForm(false)}
+          onRefund={handleRefund}
+        />
+
+        {editingProduct && (
+          <EditProductModal
+            isOpen={showEditForm}
+            product={editingProduct}
+            onClose={() => {
+              setShowEditForm(false);
+              setEditingProduct(null);
+            }}
+            onSave={handleUpdateProduct}
+          />
         )}
 
-        {showRefundForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-md">
-              <h3 className="text-xl font-bold mb-4 text-gray-900">Remboursement</h3>
-              <p className="mb-4 text-gray-600">
-                Ce modal sera remplacé par RefundModal lors de l'intégration finale
-              </p>
-              <button
-                onClick={() => setShowRefundForm(false)}
-                className="w-full bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        )}
+        <StandbyOrdersModal
+          isOpen={showStandbyList}
+          standbyOrders={standbyOrders}
+          products={products}
+          onClose={() => setShowStandbyList(false)}
+          onResume={handleResumeStandby}
+          onDelete={handleDeleteStandby}
+        />
 
-        {showEditForm && editingProduct && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-md">
-              <h3 className="text-xl font-bold mb-4 text-gray-900">Édition Produit</h3>
-              <p className="mb-4 text-gray-600">
-                Produit: <span className="font-semibold">{editingProduct.name}</span>
-              </p>
-              <p className="mb-4 text-sm text-gray-500">
-                Ce modal sera remplacé par EditProductModal lors de l'intégration finale
-              </p>
-              <button
-                onClick={() => {
-                  setShowEditForm(false);
-                  setEditingProduct(null);
-                }}
-                className="w-full bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        )}
-
-        {showStandbyList && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-md">
-              <h3 className="text-xl font-bold mb-4 text-gray-900">Commandes Stand-by</h3>
-              <p className="mb-4 text-gray-600">
-                {standbyOrders.length === 0 ? 'Aucune commande en stand-by' : `${standbyOrders.length} commande(s) en attente`}
-              </p>
-              <p className="mb-4 text-sm text-gray-500">
-                Ce modal sera remplacé par StandbyOrdersModal lors de l'intégration finale
-              </p>
-              <button
-                onClick={() => setShowStandbyList(false)}
-                className="w-full bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        )}
+        <AddMemberModal
+          isOpen={showAddMemberModal}
+          onClose={() => setShowAddMemberModal(false)}
+          onAdd={handleAddMemberSubmit}
+        />
       </main>
     </div>
   );
