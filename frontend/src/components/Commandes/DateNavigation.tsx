@@ -1,77 +1,94 @@
-// src/components/Commandes/DateNavigation.tsx
-
 import React from 'react';
+import type { Order } from '../../Commandes';
 
 interface DateNavigationProps {
   selectedDate: string;
-  availableDates: string[];
   onDateChange: (date: string) => void;
-  onNavigate: (direction: 'prev' | 'next') => void;
-  onToday: () => void;
+  orders: Order[];
 }
 
 export const DateNavigation: React.FC<DateNavigationProps> = ({
   selectedDate,
-  availableDates,
   onDateChange,
-  onNavigate,
-  onToday
+  orders,
 }) => {
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  const getAvailableDates = (): string[] => {
+    const dates = new Set<string>();
+    orders.forEach((order) => {
+      const date = new Date(order.date).toISOString().split("T")[0];
+      dates.add(date);
     });
+    return Array.from(dates).sort().reverse();
   };
 
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => onNavigate('prev')}
-          className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2 transition-colors"
-        >
-          ← Jour précédent
-        </button>
+  const navigateDate = (direction: "prev" | "next") => {
+    const currentDate = new Date(selectedDate);
+    if (direction === "prev") {
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    onDateChange(currentDate.toISOString().split("T")[0]);
+  };
 
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-          />
-          
-          <select
-            value={selectedDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+  const goToToday = () => {
+    onDateChange(new Date().toISOString().split("T")[0]);
+  };
+
+  const availableDates = getAvailableDates();
+
+  return (
+    <div className="mb-8 bg-white rounded-lg p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigateDate("prev")}
+            className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
           >
-            <option value="">Sélectionner une date</option>
-            {availableDates.map(date => (
-              <option key={date} value={date}>
-                {formatDate(date)}
-              </option>
-            ))}
-          </select>
+            ← Jour précédent
+          </button>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <select
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Sélectionner une date</option>
+              {availableDates.map((date) => (
+                <option key={date} value={date}>
+                  {new Date(date).toLocaleDateString("fr-FR", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => navigateDate("next")}
+            className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
+          >
+            Jour suivant →
+          </button>
         </div>
 
         <button
-          onClick={() => onNavigate('next')}
-          className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2 transition-colors"
+          onClick={goToToday}
+          className="bg-[#1E2A47] hover:bg-blue-600 text-white px-4 py-2 rounded"
         >
-          Jour suivant →
+          Aujourd'hui
         </button>
       </div>
-
-      <button
-        onClick={onToday}
-        className="bg-[#1E2A47] hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
-      >
-        Aujourd'hui
-      </button>
     </div>
   );
 };

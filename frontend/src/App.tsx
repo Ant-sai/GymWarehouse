@@ -2,8 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import StockPage from './StockPage';
 import Membre from './Membre';
-import Commandes from './Commandes';
-
+import Commandes from './Commandes'; 
 function App() {
   return (
     <Router>

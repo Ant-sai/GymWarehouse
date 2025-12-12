@@ -1,5 +1,7 @@
+//OldCommandes.tsx
 import React, { useState, useEffect } from "react";
-import { Sidebar, PageHeader, DateNavigation, DailyStatistics, OrdersList } from './components/Commandes';
+import { Link } from 'react-router-dom';
+import PrimeroseVector from './assets/PrimeroseVector.svg';
 
 export type User = {
   id: number;
@@ -39,6 +41,20 @@ export type Order = {
   }>;
 };
 
+type DailyStats = {
+  date: string;
+  orders: Order[];
+  totalRevenue: number;
+  orderCount: number;
+  cashRevenue: number;
+  cardRevenue: number;
+  qrRevenue: number;
+  accountDebitRevenue: number;
+  freeRevenue: number;
+  trainerOrders: number;
+  userOrders: number;
+};
+
 type DailyClosing = {
   id: number;
   date: string;
@@ -60,6 +76,7 @@ export default function DailyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Date sélectionnée pour la vue journalière
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // États pour le formulaire de nouvelle commande
@@ -70,28 +87,33 @@ export default function DailyOrdersPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // États pour la réduction
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [discountComment, setDiscountComment] = useState("");
   const [userSearch, setUserSearch] = useState("");
+  // État pour le filtre de recherche produits
   const [productSearch, setProductSearch] = useState("");
-  const [trouValue, setTrouValue] = useState<number>(0);
-  const [startingCashFund, setStartingCashFund] = useState<number>(0);
+const [trouValue, setTrouValue] = useState<number>(0);
+const [startingCashFund, setStartingCashFund] = useState<number>(0);
 
-  const [standbyOrders, setStandbyOrders] = useState<Array<{
-    id: string;
-    user: User;
-    cart: OrderItem[];
-    paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
-    notes: string;
-    discountValue: number;
-    discountComment: string;
-    timestamp: number;
-  }>>([]);
-  const [showStandbyList, setShowStandbyList] = useState(false);
+// États pour les commandes en stand-by
+const [standbyOrders, setStandbyOrders] = useState<Array<{
+  id: string;
+  user: User;
+  cart: OrderItem[];
+  paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
+  notes: string;
+  discountValue: number;
+  discountComment: string;
+  timestamp: number;
+}>>([]);
+const [showStandbyList, setShowStandbyList] = useState(false);
 
-  const [dailyClosing, setDailyClosing] = useState<DailyClosing | null>(null);
-  const [loadingClosing, setLoadingClosing] = useState(false);
 
+const [dailyClosing, setDailyClosing] = useState<DailyClosing | null>(null);
+const [loadingClosing, setLoadingClosing] = useState(false);
+
+  // Variables pour le formulaire de modification
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
@@ -99,7 +121,7 @@ export default function DailyOrdersPage() {
     price: "",
     trainerPrice: "",
   });
-
+  // États pour l'ajout rapide d'un nouveau membre
   const [showAddMemberForm, setShowAddMemberForm] = useState(false);
   const [newMemberForm, setNewMemberForm] = useState({
     firstName: "",
@@ -110,67 +132,109 @@ export default function DailyOrdersPage() {
 
   const [refundPaymentMethod, setRefundPaymentMethod] = useState<"CASH" | "QRCODE">("CASH");
 
+  // Charger toutes les données au montage
+  useEffect(() => {
+    Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
+  }, []);
+  useEffect(() => {
+  console.log('📅 [useEffect] Changement de date détecté:', selectedDate);
+  fetchDailyClosing(selectedDate);
+}, [selectedDate]);
+// Sauvegarder immédiatement le trou quand il change
+useEffect(() => {
+  if (trouValue !== (dailyClosing?.trou || 0)) {
+    saveTrouValue(selectedDate, trouValue);
+  }
+}, [trouValue, selectedDate]);
+
+  // État pour le formulaire de remboursement
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [refundUser, setRefundUser] = useState<User | null>(null);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [refundNotes, setRefundNotes] = useState("");
 
-  useEffect(() => {
-    Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
-  }, []);
-
-  useEffect(() => {
-    fetchDailyClosing(selectedDate);
-  }, [selectedDate]);
-
-  useEffect(() => {
-    if (trouValue !== (dailyClosing?.trou || 0)) {
-      saveTrouValue(selectedDate, trouValue);
-    }
-  }, [trouValue, selectedDate, dailyClosing?.trou]);
-
-  async function fetchDailyClosing(date: string) {
-    setLoadingClosing(true);
-    try {
-      const response = await fetch(`/api/daily-closing/${date}`);
-
-      if (response.ok) {
-        const data: DailyClosing = await response.json();
-        setDailyClosing(data);
-        setTrouValue(Number(data.trou) || 0);
-        setStartingCashFund(Number(data.startingCashFund) || 0);
-      } else if (response.status === 404) {
-        setDailyClosing(null);
-        setTrouValue(0);
-
-        const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
-
-        if (startingFundResponse.ok) {
-          const fundData = await startingFundResponse.json();
-          const fundValue = Number(fundData.fondCaisse || fundData.startingCashFund) || 0;
-          setStartingCashFund(fundValue);
-        } else {
-          setStartingCashFund(0);
-        }
-      }
-    } catch (err) {
-      console.error('Erreur lors de la récupération:', err);
-    } finally {
-      setLoadingClosing(false);
-    }
-  }
-
-  async function saveTrouValue(date: string, trou: number) {
-    try {
-      await fetch(`/api/daily-closing/${date}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trou })
+async function fetchDailyClosing(date: string) {
+  console.log('🔍 [fetchDailyClosing] Début du chargement pour la date:', date);
+  setLoadingClosing(true);
+  try {
+    // Récupérer la clôture du jour
+    console.log('📡 [fetchDailyClosing] Appel API: /api/daily-closing/' + date);
+    const response = await fetch(`/api/daily-closing/${date}`);
+    
+    if (response.ok) {
+      const data: DailyClosing = await response.json();
+      console.log('✅ [fetchDailyClosing] Clôture trouvée pour ce jour:', {
+        date: data.date,
+        trou: data.trou,
+        startingCashFund: data.startingCashFund,
+        fondCaisse: data.fondCaisse,
+        cashRevenue: data.cashRevenue
       });
-    } catch (err) {
-      console.error('Erreur lors de la sauvegarde du trou:', err);
+      
+      setDailyClosing(data);
+      setTrouValue(Number(data.trou) || 0);
+      setStartingCashFund(Number(data.startingCashFund) || 0);
+      
+      console.log('💾 [fetchDailyClosing] État mis à jour:', {
+        trouValue: Number(data.trou) || 0,
+        startingCashFund: Number(data.startingCashFund) || 0
+      });
+      
+    } else if (response.status === 404) {
+      console.log('⚠️ [fetchDailyClosing] Pas de clôture pour ce jour');
+      
+      // Pas de clôture pour ce jour, récupérer le fond de caisse du jour précédent
+      setDailyClosing(null);
+      setTrouValue(0);
+      
+      console.log('📡 [fetchDailyClosing] Appel API: /api/daily-closing/starting-fund/' + date);
+      const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
+      
+      if (startingFundResponse.ok) {
+        const fundData = await startingFundResponse.json();
+        console.log('✅ [fetchDailyClosing] Données du jour précédent reçues:', fundData);
+        
+        // Utiliser fondCaisse si disponible, sinon fallback sur startingCashFund
+        const fundValue = Number(fundData.fondCaisse || fundData.startingCashFund) || 0;
+        
+        console.log('💰 [fetchDailyClosing] Calcul du fond de départ:', {
+          fondCaisse: fundData.fondCaisse,
+          startingCashFund: fundData.startingCashFund,
+          valeurChoisie: fundValue
+        });
+        
+        setStartingCashFund(fundValue);
+        
+        console.log('💾 [fetchDailyClosing] État mis à jour:', {
+          trouValue: 0,
+          startingCashFund: fundValue
+        });
+      } else {
+        console.log('❌ [fetchDailyClosing] Erreur récupération jour précédent:', startingFundResponse.status);
+        setStartingCashFund(0);
+      }
+    } else {
+      console.log('❌ [fetchDailyClosing] Erreur HTTP inattendue:', response.status);
     }
+  } catch (err) {
+    console.error('💥 [fetchDailyClosing] Erreur lors de la récupération:', err);
+  } finally {
+    setLoadingClosing(false);
+    console.log('🏁 [fetchDailyClosing] Fin du chargement');
   }
+}
+// Sauvegarder automatiquement le trou quand il change
+async function saveTrouValue(date: string, trou: number) {
+  try {
+    await fetch(`/api/daily-closing/${date}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trou })
+    });
+  } catch (err) {
+    console.error('Erreur lors de la sauvegarde du trou:', err);
+  }
+}
 
   async function fetchOrders() {
     try {
@@ -186,12 +250,14 @@ export default function DailyOrdersPage() {
     }
   }
 
+  // Juste après avoir fetch les utilisateurs
   async function fetchUsers() {
     try {
       const response = await fetch("/api/users");
       if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
       const data: User[] = await response.json();
 
+      // Tri par ordre alphabétique (prend d'abord lastName puis firstName)
       const sortedUsers = data.sort((a, b) => {
         const nameA = `${a.lastName || ""} ${a.firstName || ""}`.trim().toLowerCase();
         const nameB = `${b.lastName || ""} ${b.firstName || ""}`.trim().toLowerCase();
@@ -200,6 +266,7 @@ export default function DailyOrdersPage() {
 
       setUsers(sortedUsers);
 
+      // ✅ Sélectionner automatiquement "Vente instantané" ou le premier utilisateur
       const venteInstantUser = sortedUsers.find(u =>
         getFullName(u).toLowerCase().includes("vente instant")
       );
@@ -209,6 +276,7 @@ export default function DailyOrdersPage() {
       console.error('Erreur lors de la récupération des utilisateurs:', err);
     }
   }
+
 
   async function fetchProducts() {
     try {
@@ -221,11 +289,70 @@ export default function DailyOrdersPage() {
     }
   }
 
+  // Calculer les statistiques journalières
+  function getDailyStats(date: string): DailyStats {
+    const dayOrders = orders.filter(order => {
+      const orderDate = new Date(order.date).toISOString().split('T')[0];
+      return orderDate === date;
+    });
+
+    const stats: DailyStats = {
+      date,
+      orders: dayOrders,
+      totalRevenue: 0,
+      orderCount: dayOrders.length,
+      cashRevenue: 0,
+      cardRevenue: 0,
+      qrRevenue: 0,
+      accountDebitRevenue: 0,
+      freeRevenue: 0,
+      trainerOrders: 0,
+      userOrders: 0,
+    };
+    
+
+    dayOrders.forEach(order => {
+      const amount = Number(order.totalAmount);
+      
+
+      // Les commandes gratuites ne contribuent pas au chiffre d'affaires
+      if (order.paymentMethod !== "FREE") {
+        stats.totalRevenue += amount;
+      }
+
+      switch (order.paymentMethod) {
+        case "CASH":
+          stats.cashRevenue += amount;
+          break;
+        case "QRCODE":
+          stats.qrRevenue += amount;
+          break;
+        case "ACCOUNT_DEBIT":
+          stats.accountDebitRevenue += amount;
+          break;
+        case "FREE":
+          // Les commandes gratuites n'ajoutent rien au CA
+          break;
+      }
+
+      if (order.client?.role === "TRAINER") {
+        stats.trainerOrders++;
+      } else {
+        stats.userOrders++;
+      }
+    });
+    
+    return stats;
+  }
+
+
+  // Fonction pour ajouter un nouveau membre rapidement
   async function handleAddMember(e?: React.FormEvent) {
     e?.preventDefault();
     setSaving(true);
 
     try {
+      // Validation côté client
       if (!newMemberForm.firstName?.trim() && !newMemberForm.lastName?.trim()) {
         throw new Error("Au moins le prénom ou le nom est obligatoire");
       }
@@ -249,9 +376,14 @@ export default function DailyOrdersPage() {
       }
 
       const newUser = await response.json();
+
+      // Mettre à jour la liste des utilisateurs
       await fetchUsers();
+
+      // Sélectionner automatiquement le nouveau membre
       setSelectedUser(newUser);
 
+      // Réinitialiser et fermer le formulaire
       setShowAddMemberForm(false);
       setNewMemberForm({
         firstName: "",
@@ -269,6 +401,17 @@ export default function DailyOrdersPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  // Navigation entre les dates
+  function navigateDate(direction: 'prev' | 'next') {
+    const currentDate = new Date(selectedDate);
+    if (direction === 'prev') {
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    setSelectedDate(currentDate.toISOString().split('T')[0]);
   }
 
   function addToCart(product: Product) {
@@ -303,6 +446,7 @@ export default function DailyOrdersPage() {
 
     if (discountValue <= 0) return subtotal;
 
+    // Réduction directe en euros
     return Math.max(0, subtotal - discountValue);
   }
 
@@ -315,6 +459,8 @@ export default function DailyOrdersPage() {
     const subtotal = calculateSubtotal();
     return Math.min(discountValue, subtotal);
   }
+
+
 
   async function handleCreateOrder() {
     if (!selectedUser) {
@@ -394,51 +540,53 @@ export default function DailyOrdersPage() {
       setSaving(false);
     }
   }
-
   function handlePutOnStandby() {
-    if (!selectedUser || cart.length === 0) return;
-
-    const standbyOrder = {
-      id: `standby_${Date.now()}`,
-      user: selectedUser,
-      cart: [...cart],
-      paymentMethod,
-      notes,
-      discountValue,
-      discountComment,
-      timestamp: Date.now()
-    };
-
-    setStandbyOrders([...standbyOrders, standbyOrder]);
-
-    setCart([]);
-    setNotes("");
-    setDiscountValue(0);
-    setDiscountComment("");
-    setShowForm(false);
-  }
-
-  function handleResumeOrder(standbyId: string) {
-    const order = standbyOrders.find(o => o.id === standbyId);
-    if (!order) return;
-
-    setSelectedUser(order.user);
-    setCart(order.cart);
-    setPaymentMethod(order.paymentMethod);
-    setNotes(order.notes);
-    setDiscountValue(order.discountValue);
-    setDiscountComment(order.discountComment);
-
+  if (!selectedUser || cart.length === 0) return;
+  
+  const standbyOrder = {
+    id: `standby_${Date.now()}`,
+    user: selectedUser,
+    cart: [...cart],
+    paymentMethod,
+    notes,
+    discountValue,
+    discountComment,
+    timestamp: Date.now()
+  };
+  
+  setStandbyOrders([...standbyOrders, standbyOrder]);
+  
+  // Réinitialiser le formulaire
+  setCart([]);
+  setNotes("");
+  setDiscountValue(0);
+  setDiscountComment("");
+  setShowForm(false);
+  
+}
+function handleResumeOrder(standbyId: string) {
+  const order = standbyOrders.find(o => o.id === standbyId);
+  if (!order) return;
+  
+  // Restaurer la commande
+  setSelectedUser(order.user);
+  setCart(order.cart);
+  setPaymentMethod(order.paymentMethod);
+  setNotes(order.notes);
+  setDiscountValue(order.discountValue);
+  setDiscountComment(order.discountComment);
+  
+  // Retirer de la liste stand-by
+  setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
+  setShowStandbyList(false);
+  setShowForm(true);
+}
+function handleDeleteStandby(standbyId: string) {
+  if (confirm("Voulez-vous vraiment supprimer cette commande en stand-by ?")) {
     setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
-    setShowStandbyList(false);
-    setShowForm(true);
   }
+}
 
-  function handleDeleteStandby(standbyId: string) {
-    if (confirm("Voulez-vous vraiment supprimer cette commande en stand-by ?")) {
-      setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
-    }
-  }
 
   async function handleCancelOrder(order: Order) {
     try {
@@ -455,8 +603,10 @@ export default function DailyOrdersPage() {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
 
+      // Retirer la commande de la liste locale
       setOrders(orders.filter(o => o.id !== order.id));
 
+      // Recharger les données pour avoir les stocks à jour
       fetchProducts();
       fetchUsers();
 
@@ -464,7 +614,6 @@ export default function DailyOrdersPage() {
       console.error('Erreur lors de l\'annulation:', err);
     }
   }
-
   async function handleRefund() {
     if (!refundUser) {
       alert("Veuillez sélectionner un membre");
@@ -495,16 +644,20 @@ export default function DailyOrdersPage() {
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      await response.json();
+      // Supprimez cette ligne car vous ne l'utilisez pas
+      // const refundTransaction = await response.json();
+      await response.json(); // Si vous voulez juste consommer la réponse
 
       alert(`Remboursement de ${amount.toFixed(2)}€ effectué avec succès !`);
 
+      // Réinitialiser le formulaire
       setShowRefundForm(false);
       setRefundUser(null);
       setRefundAmount("");
       setRefundNotes("");
       setRefundPaymentMethod("CASH");
 
+      // Recharger les données
       fetchOrders();
       fetchUsers();
 
@@ -516,7 +669,6 @@ export default function DailyOrdersPage() {
       setSaving(false);
     }
   }
-
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
     if (!editingProduct) return;
@@ -542,10 +694,12 @@ export default function DailyOrdersPage() {
 
       const updatedProduct = await response.json();
 
+      // Mettre à jour le state local
       setProducts((prev) =>
         prev.map(p => p.id === editingProduct.id ? updatedProduct : p)
       );
 
+      // Réinitialiser le formulaire
       setShowEditForm(false);
       setEditingProduct(null);
       setEditForm({ quantity: "", price: "", trainerPrice: "" });
@@ -567,71 +721,381 @@ export default function DailyOrdersPage() {
     setShowEditForm(true);
   }
 
+
   const getFullName = (user: User | undefined) => {
     if (!user) return "Utilisateur inconnu";
     const parts = [user.firstName, user.lastName].filter(Boolean);
     return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
   };
 
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case "QRCODE": return "QR Code";
+      case "CASH": return "Espèces";
+      case "ACCOUNT_DEBIT": return "Débit compte";
+      case "FREE": return "Gratuit";
+      default: return method;
+    }
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
+  // Filtrer les produits selon la recherche
 
   const filteredUsers = users.filter(user =>
     getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
   );
+  function getAvailableDates(): string[] {
+    const dates = new Set<string>();
+    orders.forEach(order => {
+      const date = new Date(order.date).toISOString().split('T')[0];
+      dates.add(date);
+    });
+    return Array.from(dates).sort().reverse(); // Plus récentes en premier
+  }
 
+  const dailyStats = getDailyStats(selectedDate);
+  const availableDates = getAvailableDates();
+  
+  // Calculer le fond de caisse (Starting Fund + Espèces du jour - Trou)
+  const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
+  
+  // Log pour déboguer le calcul du fond de caisse
+  console.log('💵 [Calcul fond de caisse]', {
+    date: selectedDate,
+    startingCashFund,
+    cashRevenue: dailyStats.cashRevenue,
+    trouValue,
+    fondCaisse,
+    calcul: `${startingCashFund} + ${dailyStats.cashRevenue} - ${trouValue} = ${fondCaisse}`
+  });
   return (
     <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
+      {/* Sidebar */}
+      <aside className="w-60 bg-[#1E2A47] text-white p-8">
+        <img
+          src={PrimeroseVector}
+          alt="Gym Warehouse"
+          className="w-full h-auto mb-8"
+        />        <nav className="space-y-4 text-sm">
+          <Link to="/stock" className="block text-[#AAB4C3] hover:text-white transition-colors">
+            Stock
+          </Link>
+          <Link to="/membres" className="block text-[#AAB4C3] hover:text-white transition-colors">
+            Membres
+          </Link>
+          <div className="font-medium text-white">Commandes Journalières</div>
+        </nav>
+      </aside>
 
+      {/* Main */}
       <main className="flex-1 p-12">
-        <PageHeader
-          onRefresh={fetchOrders}
-          onNewOrder={() => setShowForm(true)}
-          onRefund={() => setShowRefundForm(true)}
-          onStandby={() => setShowStandbyList(true)}
-          standbyCount={standbyOrders.length}
-          loading={loading}
-        />
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-semibold text-black">Vue Journalière</h1>
+            <button
+              onClick={fetchOrders}
+              className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
+              disabled={loading}
+            >
+              {loading ? "⟳" : "↻"} Actualiser
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowRefundForm(true)}
+              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
+            >
+              💰 Remboursement crédit
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
+            >
+              Nouvelle commande
+            </button>
+            <button
+  onClick={() => setShowStandbyList(true)}
+  className="relative px-6 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 font-medium shadow-sm"
+>
+  ⏸️ Stand-by {standbyOrders.length > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+      {standbyOrders.length}
+    </span>
+  )}
+</button>
+          </div>
+        </header>
 
-        <DateNavigation
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
-          orders={orders}
-        />
+        {/* Navigation par date */}
+        <div className="mb-8 bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigateDate('prev')}
+                className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
+              >
+                ← Jour précédent
+              </button>
 
-        <DailyStatistics
-          selectedDate={selectedDate}
-          orders={orders}
-          dailyClosing={dailyClosing}
-          loadingClosing={loadingClosing}
-          trouValue={trouValue}
-          onTrouChange={setTrouValue}
-          startingCashFund={startingCashFund}
-        />
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Sélectionner une date</option>
+                  {availableDates.map(date => (
+                    <option key={date} value={date}>
+                      {new Date(date).toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-        <OrdersList
-          selectedDate={selectedDate}
-          orders={orders}
-          loading={loading}
-          error={error}
-          onCancelOrder={handleCancelOrder}
-          onEditProduct={openEditForm}
-        />
+              <button
+                onClick={() => navigateDate('next')}
+                className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
+              >
+                Jour suivant →
+              </button>
+            </div>
 
-        {/* Modal nouvelle commande */}
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className="bg-[#1E2A47] hover:bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Aujourd'hui
+            </button>
+          </div>
+
+          {/* Statistiques du jour */}
+<div className="bg-white p-6 rounded-lg shadow-sm">
+  {(
+    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="flex justify-between items-center">
+        <span className="text-blue-700 font-medium">Caisse de début de journée</span>
+        <span className="text-xl font-bold text-blue-700">
+          {startingCashFund.toFixed(2)}€
+        </span>
+      </div>
+      <div className="text-xs text-gray-500 mt-1">
+        (Fond de caisse du jour précédent)
+      </div>
+    </div>
+  )}
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">Crédit</span>
+                <span className="text-xl font-bold text-purple-700">
+                  {dailyStats.accountDebitRevenue.toFixed(2)}€
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">QR Code</span>
+                <span className="text-xl font-bold text-blue-700">
+                  {dailyStats.qrRevenue.toFixed(2)}€
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-gray-600">Espèces</span>
+                <span className="text-xl font-bold text-green-700">
+                  {dailyStats.cashRevenue.toFixed(2)}€
+                </span>
+              </div>
+<div className="border-b pb-2">
+  <div className="text-sm text-gray-600 flex items-center gap-2">
+    Trou
+    {loadingClosing && <span className="text-xs">(chargement...)</span>}
+  </div>
+  <div className="flex items-center gap-2">
+    <input
+  type="number"
+  step="0.01"
+  value={trouValue}
+  onChange={(e) => setTrouValue(Number(e.target.value))}
+  className="w-full px-2 py-1 border rounded text-lg font-bold text-red-600"
+  disabled={loadingClosing}
+  placeholder="0.00"
+/>
+    <span className="text-lg font-bold text-red-600">€</span>
+  </div>
+  {dailyClosing && (
+    <div className="text-xs text-gray-500 mt-1">
+      Dernière mise à jour: {new Date(dailyClosing.closedAt).toLocaleTimeString('fr-FR')}
+    </div>
+  )}
+</div>
+              <div className="flex justify-between items-center py-2 bg-green-50 px-2 rounded">
+                <span className="text-gray-700 font-medium">Fond de caisse</span>
+                <span className={`text-xl font-bold ${fondCaisse >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {fondCaisse.toFixed(2)}€
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Répartition par méthode de paiement */}
+          {/* <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.cashRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Espèces</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.qrRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">QR Code</div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded text-center">
+              <div className="font-semibold text-gray-700">{dailyStats.accountDebitRevenue.toFixed(2)}€</div>
+              <div className="text-sm text-gray-500">Crédit</div>
+            </div>
+          </div> */}
+
+        </div>
+
+        {/* États de chargement et d'erreur */}
+        {loading && (
+          <div className="text-center py-8">
+            <div className="text-gray-600">Chargement des commandes...</div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="text-red-700 font-medium">Erreur</div>
+            <div className="text-red-600 text-sm">{error}</div>
+          </div>
+        )}
+
+        {/* Liste des commandes du jour */}
+        {!loading && !error && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4 text-black">
+              Commandes du {new Date(selectedDate).toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </h2>
+
+            <div className="space-y-4">
+              {dailyStats.orders.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Aucune commande pour cette date</div>
+                  <div className="text-sm text-gray-400 mt-2">
+                    Sélectionnez une autre date ou créez une nouvelle commande
+                  </div>
+                </div>
+              )}
+
+              {dailyStats.orders.map((order) => (
+                <div key={order.id} className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <p className="text-gray-900 font-medium">
+                          {order.client ? getFullName(order.client) : "Client inconnu"}
+                        </p>
+                        {order.client?.role === "TRAINER" && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            Entraîneur
+                          </span>
+                        )}
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${order.paymentMethod === "CASH"
+                            ? "bg-green-100 text-green-800"
+                            : order.paymentMethod === "QRCODE"
+                              ? "bg-blue-100 text-blue-800"
+                              : order.paymentMethod === "ACCOUNT_DEBIT"
+                                ? "bg-purple-100 text-purple-800"
+                                : order.paymentMethod === "FREE"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                          }`}>
+                          {getPaymentMethodLabel(order.paymentMethod)}
+                        </span>
+                        <p className="text-gray-500 text-sm">
+                          {new Date(order.date).toLocaleTimeString('fr-FR')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="text-2xl font-bold text-green-600">
+                        {Number(order.totalAmount).toFixed(2)}€
+                      </div>
+                      <button
+                        onClick={() => handleCancelOrder(order)}
+                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors mt-2"
+                        title="Annuler cette commande (restaure stocks et solde)"
+                      >
+                        🗑️ Annuler
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-2">Produits:</h4>
+                    <div className="space-y-1">
+                      {order.products?.map((item, index) => (
+                        <div key={index} className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{item.product?.name || "Produit inconnu"} × {item.quantity}</span>
+                            <button
+                              onClick={() => openEditForm(item.product)}
+                              className="p-1 hover:bg-blue-50 rounded"
+                              title="Modifier ce produit"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
+                          <span>{Number(item.totalPrice).toFixed(2)}€</span>
+                        </div>
+                      )) || <div className="text-gray-500">Aucun produit</div>}
+                    </div>
+                    {order.notes && (
+                      <div className="mt-3 text-sm text-gray-600">
+                        <strong>Notes:</strong> {order.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modals (inchangés) */}
         {showForm && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowForm(false)} />
             <div className="relative bg-white rounded-lg p-12 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
               <h3 className="text-xl font-semibold mb-6 text-black">Nouvelle commande</h3>
 
+
+
+              {/* Sélection des produits */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Produits disponibles
                 </label>
 
+                {/* Filtre de recherche */}
                 <div className="mb-4">
                   <input
                     type="text"
@@ -676,6 +1140,8 @@ export default function DailyOrdersPage() {
                 </div>
               </div>
 
+
+              {/* Panier */}
               {cart.length > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Panier</label>
@@ -710,6 +1176,7 @@ export default function DailyOrdersPage() {
                       );
                     })}
 
+                    {/* Section Réduction avec commentaire */}
                     {paymentMethod !== "FREE" && (
                       <div className="mt-4 pt-4 border-t">
                         <div className="flex items-center gap-4 mb-2">
@@ -738,6 +1205,7 @@ export default function DailyOrdersPage() {
                           )}
                         </div>
 
+                        {/* Commentaire pour la réduction */}
                         {discountValue > 0 && (
                           <div className="mt-2">
                             <input
@@ -752,6 +1220,7 @@ export default function DailyOrdersPage() {
                       </div>
                     )}
 
+                    {/* Totaux */}
                     <div className="mt-4 text-right space-y-1">
                       <div className="text-sm text-gray-600">
                         Sous-total: {calculateSubtotal().toFixed(2)}€
@@ -770,6 +1239,7 @@ export default function DailyOrdersPage() {
                 </div>
               )}
 
+              {/* Méthode de paiement */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
                 <div className="grid grid-cols-3 gap-3">
@@ -823,10 +1293,11 @@ export default function DailyOrdersPage() {
                   </div>
                 )}
               </div>
-
+              {/* Sélection du client */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
 
+                {/* Barre de recherche */}
                 <input
                   type="text"
                   placeholder="Rechercher un client..."
@@ -868,6 +1339,7 @@ export default function DailyOrdersPage() {
                 </div>
               </div>
 
+              {/* Notes */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
                 <textarea
@@ -898,14 +1370,14 @@ export default function DailyOrdersPage() {
                 >
                   Fermer
                 </button>
-                <button
-                  type="button"
-                  onClick={handlePutOnStandby}
-                  disabled={saving || cart.length === 0}
-                  className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  ⏸️ Mettre en stand-by
-                </button>
+                    <button
+      type="button"
+      onClick={handlePutOnStandby}
+      disabled={saving || cart.length === 0}
+      className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+    >
+      ⏸️ Mettre en stand-by
+    </button>
                 <button
                   onClick={handleCreateOrder}
                   disabled={saving || !selectedUser || cart.length === 0}
@@ -993,7 +1465,6 @@ export default function DailyOrdersPage() {
             </form>
           </div>
         )}
-
         {/* Modal remboursement */}
         {showRefundForm && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
@@ -1002,6 +1473,7 @@ export default function DailyOrdersPage() {
               <h3 className="text-xl font-semibold mb-6 text-black">Remboursement</h3>
 
               <div className="space-y-4">
+                {/* Sélection du membre */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Membre à rembourser *
@@ -1028,6 +1500,7 @@ export default function DailyOrdersPage() {
                   )}
                 </div>
 
+                {/* Montant */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Montant du remboursement (€) *
@@ -1050,6 +1523,8 @@ export default function DailyOrdersPage() {
                   )}
                 </div>
 
+                {/* Notes */}
+                {/* Méthode de paiement du remboursement */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Moyen de paiement du remboursement *
@@ -1106,7 +1581,6 @@ export default function DailyOrdersPage() {
             </div>
           </div>
         )}
-
         {/* Modal d'ajout rapide de membre */}
         {showAddMemberForm && (
           <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -1192,96 +1666,96 @@ export default function DailyOrdersPage() {
             </form>
           </div>
         )}
-
         {/* Modal des commandes en stand-by */}
-        {showStandbyList && (
-          <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowStandbyList(false)} />
-            <div className="relative bg-white rounded-lg p-6 w-[800px] max-h-[80vh] overflow-y-auto shadow-lg z-50">
-              <h3 className="text-xl font-semibold mb-4 text-black">
-                Commandes en stand-by ({standbyOrders.length})
-              </h3>
-
-              {standbyOrders.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Aucune commande en stand-by</p>
-              ) : (
-                <div className="space-y-4">
-                  {standbyOrders.map((order) => {
-                    const total = order.cart.reduce((sum, item) => {
-                      return sum + (item.quantity * item.unitPrice);
-                    }, 0);
-                    const finalTotal = Math.max(0, total - order.discountValue);
-
+{showStandbyList && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black/40" onClick={() => setShowStandbyList(false)} />
+    <div className="relative bg-white rounded-lg p-6 w-[800px] max-h-[80vh] overflow-y-auto shadow-lg z-50">
+      <h3 className="text-xl font-semibold mb-4 text-black">
+        Commandes en stand-by ({standbyOrders.length})
+      </h3>
+      
+      {standbyOrders.length === 0 ? (
+        <p className="text-gray-500 text-center py-8">Aucune commande en stand-by</p>
+      ) : (
+        <div className="space-y-4">
+          {standbyOrders.map((order) => {
+  const total = order.cart.reduce((sum, item) => {
+    return sum + (item.quantity * item.unitPrice);
+  }, 0);
+  const finalTotal = Math.max(0, total - order.discountValue);
+            
+            return (
+              <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-semibold text-lg text-black">
+                      {getFullName(order.user)}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      {new Date(order.timestamp).toLocaleString('fr-FR')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-600">
+                      {finalTotal.toFixed(2)}€
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {order.cart.length} article{order.cart.length > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mb-3 space-y-1">
+                  {order.cart.map((item, idx) => {
+                    const product = products.find(p => p.id === item.productId);
                     return (
-                      <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-semibold text-lg text-black">
-                              {getFullName(order.user)}
-                            </h4>
-                            <p className="text-sm text-gray-500">
-                              {new Date(order.timestamp).toLocaleString('fr-FR')}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-green-600">
-                              {finalTotal.toFixed(2)}€
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {order.cart.length} article{order.cart.length > 1 ? 's' : ''}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mb-3 space-y-1">
-                          {order.cart.map((item, idx) => {
-                            const product = products.find(p => p.id === item.productId);
-                            return (
-                              <div key={idx} className="text-sm text-gray-600 flex justify-between">
-                                <span>{product?.name} x{item.quantity}</span>
-                                <span>{(item.quantity * item.unitPrice).toFixed(2)}€</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {order.notes && (
-                          <p className="text-sm text-gray-600 mb-3">
-                            📝 {order.notes}
-                          </p>
-                        )}
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleResumeOrder(order.id)}
-                            className="flex-1 px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 font-medium"
-                          >
-                            ▶️ Reprendre
-                          </button>
-                          <button
-                            onClick={() => handleDeleteStandby(order.id)}
-                            className="px-4 py-2 rounded border border-red-300 text-red-600 hover:bg-red-50"
-                          >
-                            🗑️ Supprimer
-                          </button>
-                        </div>
+                      <div key={idx} className="text-sm text-gray-600 flex justify-between">
+                        <span>{product?.name} x{item.quantity}</span>
+                        <span>{(item.quantity * item.unitPrice).toFixed(2)}€</span>
                       </div>
                     );
                   })}
                 </div>
-              )}
-
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setShowStandbyList(false)}
-                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Fermer
-                </button>
+                
+                {order.notes && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    📝 {order.notes}
+                  </p>
+                )}
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleResumeOrder(order.id)}
+                    className="flex-1 px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 font-medium"
+                  >
+                    ▶️ Reprendre
+                  </button>
+                  <button
+                    onClick={() => handleDeleteStandby(order.id)}
+                    className="px-4 py-2 rounded border border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    🗑️ Supprimer
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            );
+          })}
+        </div>
+      )}
+      
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={() => setShowStandbyList(false)}
+          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+        
       </main>
     </div>
   );
