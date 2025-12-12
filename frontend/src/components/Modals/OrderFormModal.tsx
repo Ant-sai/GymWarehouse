@@ -216,10 +216,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-40">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black/30" 
+      <div
+        className="absolute inset-0 bg-black/30 z-40"
         onClick={handleClose}
       />
 
