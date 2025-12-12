@@ -65,6 +65,12 @@ export default function CommandesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [standbyOrders, setStandbyOrders] = useState<StandbyOrder[]>([]);
 
+  // États pour restaurer une commande en standby
+  const [restoredStandby, setRestoredStandby] = useState<StandbyOrder | null>(null);
+
+  // État pour le nouveau membre créé (à auto-sélectionner)
+  const [newlyCreatedUser, setNewlyCreatedUser] = useState<User | null>(null);
+
   // ========== FONCTIONS UTILITAIRES ==========
   function getDailyStats(date: string): DailyStats {
     const dayOrders = orders.filter(order => {
@@ -231,9 +237,17 @@ export default function CommandesPage() {
       throw new Error(errorData.error || 'Erreur lors de la création de la commande');
     }
 
-    // Rafraîchir les données
-    await fetchOrders();
-    await fetchProducts(); // Pour mettre à jour le stock
+    // Rafraîchir toutes les données
+    await Promise.all([
+      fetchOrders(),
+      fetchProducts(), // Pour mettre à jour le stock
+      fetchUsers(), // Pour mettre à jour les soldes
+      fetchDailyClosing(selectedDate) // Pour mettre à jour la clôture
+    ]);
+
+    // Réinitialiser les états de restauration
+    setRestoredStandby(null);
+    setNewlyCreatedUser(null);
   };
 
   // Handler pour les commandes en standby
@@ -242,10 +256,17 @@ export default function CommandesPage() {
   };
 
   const handleResumeStandby = (standbyId: string) => {
-    // Retirer de la liste standby
-    setStandbyOrders(standbyOrders.filter(order => order.id !== standbyId));
+    const order = standbyOrders.find(o => o.id === standbyId);
+    if (!order) return;
 
-    // Ouvrir le modal de commande avec les données
+    // Restaurer la commande pour passer au modal
+    setRestoredStandby(order);
+
+    // Retirer de la liste standby
+    setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
+
+    // Fermer le modal standby et ouvrir le modal de commande
+    setShowStandbyList(false);
     setShowForm(true);
   };
 
@@ -275,8 +296,13 @@ export default function CommandesPage() {
 
     // Rafraîchir la liste des utilisateurs
     await fetchUsers();
+
+    // Marquer ce nouvel utilisateur pour auto-sélection
+    setNewlyCreatedUser(newUser);
+
+    // Fermer le modal d'ajout et rouvrir le modal de commande
     setShowAddMemberModal(false);
-    setShowForm(true); // Rouvrir le modal de commande
+    setShowForm(true);
 
     return newUser;
   };
@@ -491,10 +517,20 @@ export default function CommandesPage() {
           isOpen={showForm}
           users={users}
           products={products}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setRestoredStandby(null);
+            setNewlyCreatedUser(null);
+          }}
           onCreate={handleCreateOrder}
           onStandby={handleStandby}
           onAddMember={handleAddMember}
+          initialUser={restoredStandby?.user || newlyCreatedUser}
+          initialCart={restoredStandby?.cart}
+          initialPaymentMethod={restoredStandby?.paymentMethod}
+          initialNotes={restoredStandby?.notes}
+          initialDiscountValue={restoredStandby?.discountValue}
+          initialDiscountComment={restoredStandby?.discountComment}
         />
 
         <RefundModal

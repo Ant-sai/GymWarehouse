@@ -229,53 +229,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           Nouvelle commande
         </h3>
 
-        {/* Sélection du client */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Client *
-          </label>
-
-          <input
-            type="text"
-            placeholder="Rechercher un client..."
-            value={userSearch}
-            onChange={(e) => setUserSearch(e.target.value)}
-            className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-          />
-
-          <div className="flex gap-2">
-            <select
-              value={selectedUser?.id || ""}
-              onChange={(e) => {
-                const user = users.find(u => u.id === Number(e.target.value));
-                setSelectedUser(user || null);
-              }}
-              className="flex-1 border rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-            >
-              {filteredUsers.length === 0 ? (
-                <option value="">Aucun client trouvé</option>
-              ) : (
-                filteredUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {getFullName(user)}
-                  </option>
-                ))
-              )}
-            </select>
-            <button
-              type="button"
-              onClick={onAddMember}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
-              title="Ajouter un nouveau membre"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              Nouveau
-            </button>
-          </div>
-        </div>
-
         {/* Sélection des produits */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -482,6 +435,53 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               )}
             </div>
           )}
+        </div>
+
+        {/* Sélection du client */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Client *
+          </label>
+
+          <input
+            type="text"
+            placeholder="Rechercher un client..."
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+            className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+          />
+
+          <div className="flex gap-2">
+            <select
+              value={selectedUser?.id || ""}
+              onChange={(e) => {
+                const user = users.find(u => u.id === Number(e.target.value));
+                setSelectedUser(user || null);
+              }}
+              className="flex-1 border rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+            >
+              {filteredUsers.length === 0 ? (
+                <option value="">Aucun client trouvé</option>
+              ) : (
+                filteredUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {getFullName(user)}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              type="button"
+              onClick={onAddMember}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
+              title="Ajouter un nouveau membre"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              Nouveau
+            </button>
+          </div>
         </div>
 
         {/* Notes */}
