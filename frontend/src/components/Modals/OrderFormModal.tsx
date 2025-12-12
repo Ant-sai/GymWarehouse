@@ -51,7 +51,16 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
   // Restaurer les valeurs initiales quand elles changent
   useEffect(() => {
+    console.log('🔄 [useEffect] Modal ouvert:', isOpen);
     if (isOpen) {
+      console.log('🔄 [useEffect] Restauration des valeurs initiales:', {
+        initialUser,
+        initialCart,
+        initialPaymentMethod,
+        initialNotes,
+        initialDiscountValue,
+        initialDiscountComment
+      });
       setSelectedUser(initialUser);
       setCart(initialCart);
       setPaymentMethod(initialPaymentMethod);
@@ -63,15 +72,32 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
   // Sélectionner automatiquement "Vente instantané" au premier chargement
   useEffect(() => {
+    console.log('👤 [useEffect] Auto-sélection utilisateur:', {
+      isOpen,
+      hasInitialUser: !!initialUser,
+      usersCount: users.length,
+      hasSelectedUser: !!selectedUser
+    });
+
     if (isOpen && !initialUser && users.length > 0 && !selectedUser) {
-      const venteInstant = users.find(u => 
+      const venteInstant = users.find(u =>
         getFullName(u).toLowerCase().includes('vente instant')
       );
+      console.log('👤 [useEffect] Utilisateur sélectionné:', venteInstant || users[0]);
       setSelectedUser(venteInstant || users[0]);
     }
   }, [isOpen, users, initialUser, selectedUser]);
 
   if (!isOpen) return null;
+
+  console.log('🎨 [Render] Modal OrderFormModal rendu');
+  console.log('🎨 [Render] État actuel:', {
+    selectedUser,
+    cartLength: cart.length,
+    paymentMethod,
+    usersLength: users.length,
+    productsLength: products.length
+  });
 
   const getFullName = (user: User) => {
     const parts = [user.firstName, user.lastName].filter(Boolean);
@@ -88,27 +114,43 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
   // Gestion du panier
   const addToCart = (product: Product) => {
+    console.log('🛒 [addToCart] Ajout au panier:', product.name);
+    console.log('🛒 [addToCart] selectedUser:', selectedUser);
+
     const price = selectedUser?.role === "TRAINER" ? product.trainerPrice : product.price;
+    console.log('🛒 [addToCart] Prix calculé:', price);
+
     const existingItem = cart.find(item => item.productId === product.id);
+    console.log('🛒 [addToCart] Item existant?', existingItem);
 
     if (existingItem) {
-      setCart(cart.map(item =>
+      const newCart = cart.map(item =>
         item.productId === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
-      ));
+      );
+      console.log('🛒 [addToCart] Mise à jour panier:', newCart);
+      setCart(newCart);
     } else {
-      setCart([...cart, { productId: product.id, quantity: 1, unitPrice: price }]);
+      const newCart = [...cart, { productId: product.id, quantity: 1, unitPrice: price }];
+      console.log('🛒 [addToCart] Nouveau panier:', newCart);
+      setCart(newCart);
     }
   };
 
   const updateCartQuantity = (productId: number, quantity: number) => {
+    console.log('📝 [updateCartQuantity] Mise à jour quantité:', productId, quantity);
+
     if (quantity <= 0) {
-      setCart(cart.filter(item => item.productId !== productId));
+      const newCart = cart.filter(item => item.productId !== productId);
+      console.log('📝 [updateCartQuantity] Retrait du panier:', newCart);
+      setCart(newCart);
     } else {
-      setCart(cart.map(item =>
+      const newCart = cart.map(item =>
         item.productId === productId ? { ...item, quantity } : item
-      ));
+      );
+      console.log('📝 [updateCartQuantity] Nouveau panier:', newCart);
+      setCart(newCart);
     }
   };
 
@@ -263,7 +305,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                           : product.price}€
                       </div>
                       <button
-                        onClick={() => addToCart(product)}
+                        onClick={(e) => {
+                          console.log('➕ [Clic] Bouton Ajouter cliqué pour:', product.name);
+                          console.log('➕ [Clic] Event:', e);
+                          console.log('➕ [Clic] Stock disponible:', product.quantity);
+                          addToCart(product);
+                        }}
                         className="mt-0.5 bg-[#1E2A47] text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors"
                         disabled={product.quantity <= 0}
                       >
@@ -385,7 +432,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
-              onClick={() => setPaymentMethod("CASH")}
+              onClick={() => {
+                console.log('💳 [Clic] Changement méthode de paiement: CASH');
+                setPaymentMethod("CASH");
+              }}
               className={`px-4 py-3 rounded-lg border-2 transition-all ${
                 paymentMethod === "CASH"
                   ? "border-green-500 bg-green-50 text-green-700 font-semibold"
@@ -397,7 +447,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
             <button
               type="button"
-              onClick={() => setPaymentMethod("QRCODE")}
+              onClick={() => {
+                console.log('💳 [Clic] Changement méthode de paiement: QRCODE');
+                setPaymentMethod("QRCODE");
+              }}
               className={`px-4 py-3 rounded-lg border-2 transition-all ${
                 paymentMethod === "QRCODE"
                   ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
@@ -410,7 +463,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             {selectedUser && !getFullName(selectedUser).toLowerCase().includes("vente instant") && (
               <button
                 type="button"
-                onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
+                onClick={() => {
+                  console.log('💳 [Clic] Changement méthode de paiement: ACCOUNT_DEBIT');
+                  setPaymentMethod("ACCOUNT_DEBIT");
+                }}
                 className={`px-4 py-3 rounded-lg border-2 transition-all ${
                   paymentMethod === "ACCOUNT_DEBIT"
                     ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
