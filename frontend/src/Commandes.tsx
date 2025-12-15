@@ -114,6 +114,7 @@ export default function DailyOrdersPage() {
   const [refundUser, setRefundUser] = useState<User | null>(null);
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [refundNotes, setRefundNotes] = useState("");
+  const [refundUserSearch, setRefundUserSearch] = useState("");
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
@@ -581,6 +582,10 @@ export default function DailyOrdersPage() {
     getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
   );
 
+  const filteredRefundUsers = users.filter(user =>
+    getFullName(user).toLowerCase().includes(refundUserSearch.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       <Sidebar />
@@ -588,7 +593,10 @@ export default function DailyOrdersPage() {
       <main className="flex-1 p-12">
         <PageHeader
           onRefresh={fetchOrders}
-          onNewOrder={() => setShowForm(true)}
+          onNewOrder={() => {
+            setProductSearch(""); // Réinitialiser la recherche de produit
+            setShowForm(true);
+          }}
           onRefund={() => setShowRefundForm(true)}
           onStandby={() => setShowStandbyList(true)}
           standbyCount={standbyOrders.length}
@@ -1006,6 +1014,16 @@ export default function DailyOrdersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Membre à rembourser *
                   </label>
+
+                  {/* Champ de recherche */}
+                  <input
+                    type="text"
+                    placeholder="Rechercher un membre..."
+                    value={refundUserSearch}
+                    onChange={(e) => setRefundUserSearch(e.target.value)}
+                    className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+
                   <select
                     value={refundUser?.id || ""}
                     onChange={(e) => {
@@ -1015,7 +1033,7 @@ export default function DailyOrdersPage() {
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="">Sélectionner un membre</option>
-                    {users.map(user => (
+                    {filteredRefundUsers.map(user => (
                       <option key={user.id} value={user.id}>
                         {getFullName(user)}
                       </option>
@@ -1089,6 +1107,7 @@ export default function DailyOrdersPage() {
                     setRefundAmount("");
                     setRefundNotes("");
                     setRefundPaymentMethod("CASH");
+                    setRefundUserSearch("");
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
