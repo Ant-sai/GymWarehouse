@@ -313,9 +313,9 @@ app.post('/api/orders', async (req, res) => {
                 });
             }
             
-            // Appliquer la réduction
+            // Appliquer la réduction (en euros)
             if (discount && discount > 0) {
-                totalAmount = totalAmount * (1 - discount / 100);
+                totalAmount = Math.max(0, totalAmount - discount);
             }
             
             // Créer la commande
