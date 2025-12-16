@@ -110,16 +110,14 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <input
-              type="text"
-              inputMode="decimal"
+              type="number"
+              step="0.01"
+              min="0"
               value={trouValue || ''}
-              onChange={(e) => {
-                const normalized = e.target.value.replace(',', '.');
-                onTrouChange(Number(normalized) || 0);
-              }}
+              onChange={(e) => onTrouChange(Number(e.target.value) || 0)}
               className="w-full px-2 py-1 border rounded text-lg font-bold text-red-600"
               disabled={loadingClosing}
-              placeholder="0,00"
+              placeholder="0.00"
             />
             <span className="text-lg font-bold text-red-600">€</span>
           </div>

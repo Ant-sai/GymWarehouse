@@ -571,12 +571,6 @@ export default function DailyOrdersPage() {
     return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
   };
 
-  // Fonction pour normaliser les nombres (virgule → point)
-  const normalizeNumber = (value: string): number => {
-    const normalized = value.replace(',', '.');
-    return Number(normalized) || 0;
-  };
-
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
@@ -726,17 +720,18 @@ export default function DailyOrdersPage() {
                         <div className="flex items-center gap-4 mb-2">
                           <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                           <input
-                            type="text"
-                            inputMode="decimal"
+                            type="number"
+                            step="0.01"
+                            min="0"
                             value={discountValue || ''}
-                            onChange={(e) => setDiscountValue(normalizeNumber(e.target.value))}
+                            onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
                             onBlur={(e) => {
-                              const value = normalizeNumber(e.target.value);
+                              const value = Number(e.target.value) || 0;
                               if (value < 0) setDiscountValue(0);
                               if (value > calculateSubtotal()) setDiscountValue(calculateSubtotal());
                             }}
                             className="border rounded px-2 py-1 text-sm w-24"
-                            placeholder="0,00"
+                            placeholder="0.00"
                           />
                           <span className="text-sm text-gray-600">€</span>
                           {discountValue > 0 && (
@@ -945,26 +940,28 @@ export default function DailyOrdersPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Prix *</label>
                   <input
-                    type="text"
-                    inputMode="decimal"
+                    type="number"
+                    step="0.01"
+                    min="0"
                     value={editForm.price}
-                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value.replace(',', '.') })}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     required
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Prix Entraîneur *</label>
                   <input
-                    type="text"
-                    inputMode="decimal"
+                    type="number"
+                    step="0.01"
+                    min="0"
                     value={editForm.trainerPrice}
-                    onChange={(e) => setEditForm({ ...editForm, trainerPrice: e.target.value.replace(',', '.') })}
+                    onChange={(e) => setEditForm({ ...editForm, trainerPrice: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     required
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -1039,12 +1036,13 @@ export default function DailyOrdersPage() {
                     Montant du remboursement (€) *
                   </label>
                   <input
-                    type="text"
-                    inputMode="decimal"
+                    type="number"
+                    step="0.01"
+                    min="0"
                     value={refundAmount}
-                    onChange={(e) => setRefundAmount(e.target.value.replace(',', '.'))}
+                    onChange={(e) => setRefundAmount(e.target.value)}
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                   {refundUser && refundAmount && Number(refundAmount) > 0 && (
                     <div className="text-sm mt-2 text-green-600">
@@ -1160,12 +1158,12 @@ export default function DailyOrdersPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Solde initial</label>
                   <input
-                    type="text"
-                    inputMode="decimal"
+                    type="number"
+                    step="0.01"
                     value={newMemberForm.balance}
-                    onChange={(e) => setNewMemberForm({ ...newMemberForm, balance: e.target.value.replace(',', '.') })}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, balance: e.target.value })}
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="0,00"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
