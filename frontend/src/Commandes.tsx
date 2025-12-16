@@ -71,7 +71,6 @@ export default function DailyOrdersPage() {
   const [saving, setSaving] = useState(false);
 
   const [discountValue, setDiscountValue] = useState<number>(0);
-  const [discountComment, setDiscountComment] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [trouValue, setTrouValue] = useState<number>(0);
@@ -84,7 +83,6 @@ export default function DailyOrdersPage() {
     paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
     notes: string;
     discountValue: number;
-    discountComment: string;
     timestamp: number;
   }>>([]);
   const [showStandbyList, setShowStandbyList] = useState(false);
@@ -125,10 +123,14 @@ export default function DailyOrdersPage() {
   }, [selectedDate]);
 
   useEffect(() => {
+    // Ne pas sauvegarder pendant le chargement
+    if (loadingClosing) return;
+
+    // Sauvegarder seulement si la valeur a changé par rapport à celle chargée
     if (trouValue !== (dailyClosing?.trou || 0)) {
       saveTrouValue(selectedDate, trouValue);
     }
-  }, [trouValue, selectedDate, dailyClosing?.trou]);
+  }, [trouValue, selectedDate, dailyClosing?.trou, loadingClosing]);
 
   async function fetchDailyClosing(date: string) {
     setLoadingClosing(true);
@@ -351,7 +353,6 @@ export default function DailyOrdersPage() {
         paymentMethod: paymentMethod,
         notes: notes,
         discount: discountValue,
-        discountComment: discountComment,
         products: cart.map(item => ({
           productId: item.productId,
           quantity: item.quantity
@@ -379,7 +380,6 @@ export default function DailyOrdersPage() {
       setPaymentMethod("CASH");
       setNotes("");
       setDiscountValue(0);
-      setDiscountComment("");
       setUserSearch("");
       setProductSearch("");
       alert("Commande créée avec succès !");
@@ -406,7 +406,6 @@ export default function DailyOrdersPage() {
       paymentMethod,
       notes,
       discountValue,
-      discountComment,
       timestamp: Date.now()
     };
 
@@ -415,7 +414,6 @@ export default function DailyOrdersPage() {
     setCart([]);
     setNotes("");
     setDiscountValue(0);
-    setDiscountComment("");
     setShowForm(false);
   }
 
@@ -428,7 +426,6 @@ export default function DailyOrdersPage() {
     setPaymentMethod(order.paymentMethod);
     setNotes(order.notes);
     setDiscountValue(order.discountValue);
-    setDiscountComment(order.discountComment);
 
     setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
     setShowStandbyList(false);
@@ -744,28 +741,13 @@ export default function DailyOrdersPage() {
                           <span className="text-sm text-gray-600">€</span>
                           {discountValue > 0 && (
                             <button
-                              onClick={() => {
-                                setDiscountValue(0);
-                                setDiscountComment("");
-                              }}
+                              onClick={() => setDiscountValue(0)}
                               className="text-red-500 text-sm hover:text-red-700"
                             >
                               ✕ Supprimer
                             </button>
                           )}
                         </div>
-
-                        {discountValue > 0 && (
-                          <div className="mt-2">
-                            <input
-                              type="text"
-                              value={discountComment}
-                              onChange={(e) => setDiscountComment(e.target.value)}
-                              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                              placeholder="Raison de la réduction (optionnel)..."
-                            />
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -908,7 +890,6 @@ export default function DailyOrdersPage() {
                     setDiscountValue(0);
                     setProductSearch("");
                     setUserSearch("");
-                    setDiscountComment("");
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
