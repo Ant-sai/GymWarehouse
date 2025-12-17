@@ -603,6 +603,222 @@ app.get('/api/orders/:id', async (req, res) => {
     }
 });
 
+// Update an order
+app.put('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            clientId,
+            products,
+            paymentMethod,
+            discount,
+            notes,
+        } = req.body;
+
+        // Validation
+        if (!clientId || !products || products.length === 0 || !paymentMethod) {
+            return res.status(400).json({
+                error: 'Missing required fields: clientId, products, and paymentMethod'
+            });
+        }
+
+        const result = await prisma.$transaction(async (prismaTransaction) => {
+            // Récupérer la commande existante
+            const existingOrder = await prismaTransaction.order.findUnique({
+                where: { id: Number(id) },
+                include: {
+                    client: true,
+                    products: {
+                        include: {
+                            product: true
+                        }
+                    }
+                }
+            });
+
+            if (!existingOrder) {
+                throw new Error('Order not found');
+            }
+
+            // Restaurer le stock des anciens produits
+            for (const orderDetail of existingOrder.products) {
+                await prismaTransaction.product.update({
+                    where: { id: orderDetail.productId },
+                    data: {
+                        quantity: {
+                            increment: orderDetail.quantity
+                        }
+                    }
+                });
+            }
+
+            // Restaurer le solde du client si c'était un débit de compte
+            if (existingOrder.paymentMethod === 'ACCOUNT_DEBIT') {
+                await prismaTransaction.user.update({
+                    where: { id: existingOrder.clientId },
+                    data: {
+                        balance: {
+                            increment: existingOrder.totalAmount
+                        }
+                    }
+                });
+            }
+
+            // Supprimer les anciens détails de commande
+            await prismaTransaction.orderDetail.deleteMany({
+                where: { orderId: Number(id) }
+            });
+
+            // Calculer le nouveau montant total
+            let totalAmount = 0;
+            const orderDetails = [];
+
+            for (const item of products) {
+                const product = await prismaTransaction.product.findUnique({
+                    where: { id: item.productId }
+                });
+
+                if (!product) {
+                    throw new Error(`Product with id ${item.productId} not found`);
+                }
+
+                if (product.quantity < item.quantity) {
+                    throw new Error(`Insufficient stock for product ${product.name}`);
+                }
+
+                const unitPrice = product.price;
+                const totalPrice = unitPrice * item.quantity;
+                totalAmount += Number(totalPrice);
+
+                orderDetails.push({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPrice: unitPrice,
+                    totalPrice: totalPrice
+                });
+
+                // Décrémenter le stock
+                await prismaTransaction.product.update({
+                    where: { id: item.productId },
+                    data: {
+                        quantity: {
+                            decrement: item.quantity
+                        }
+                    }
+                });
+            }
+
+            // Appliquer la réduction (en euros)
+            if (discount && discount > 0) {
+                totalAmount = Math.max(0, totalAmount - discount);
+            }
+
+            // Débiter le compte du nouveau client si nécessaire
+            if (paymentMethod === 'ACCOUNT_DEBIT') {
+                await prismaTransaction.user.update({
+                    where: { id: Number(clientId) },
+                    data: {
+                        balance: {
+                            decrement: totalAmount
+                        }
+                    }
+                });
+            }
+
+            // Mettre à jour la commande
+            const order = await prismaTransaction.order.update({
+                where: { id: Number(id) },
+                data: {
+                    clientId: Number(clientId),
+                    totalAmount: totalAmount,
+                    paymentMethod: paymentMethod,
+                    discount: discount || 0,
+                    notes: notes || null,
+                    products: {
+                        create: orderDetails
+                    }
+                },
+                include: {
+                    client: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            role: true,
+                            balance: true
+                        }
+                    },
+                    products: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    description: true,
+                                    price: true,
+                                    trainerPrice: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Mettre à jour la clôture journalière
+            const orderDate = new Date(order.date);
+            const dateStr = orderDate.toISOString().split('T')[0];
+
+            const allOrdersForDay = await prismaTransaction.order.findMany({
+                where: {
+                    date: {
+                        gte: new Date(dateStr),
+                        lt: new Date(new Date(dateStr).getTime() + 24 * 60 * 60 * 1000)
+                    }
+                }
+            });
+
+            const stats = {
+                cashRevenue: 0,
+                qrRevenue: 0,
+                creditRevenue: 0
+            };
+
+            allOrdersForDay.forEach(o => {
+                const amount = Number(o.totalAmount);
+                if (o.paymentMethod === 'CASH') {
+                    stats.cashRevenue += amount;
+                } else if (o.paymentMethod === 'QRCODE') {
+                    stats.qrRevenue += amount;
+                } else if (o.paymentMethod === 'ACCOUNT_DEBIT') {
+                    stats.creditRevenue += amount;
+                }
+            });
+
+            const existingClosing = await prismaTransaction.dailyClosing.findUnique({
+                where: { date: dateStr }
+            });
+
+            if (existingClosing) {
+                await prismaTransaction.dailyClosing.update({
+                    where: { date: dateStr },
+                    data: {
+                        cashRevenue: stats.cashRevenue,
+                        qrRevenue: stats.qrRevenue,
+                        creditRevenue: stats.creditRevenue,
+                    }
+                });
+            }
+
+            return order;
+        });
+
+        res.json(result);
+    } catch (err) {
+        console.error('Error updating order: ', err);
+        res.status(500).json({ error: err.message || 'Failed to update order' });
+    }
+});
+
 // Hard delete an order with balance restoration
 app.delete('/api/orders/:id/hard', async (req, res) => {
     try {

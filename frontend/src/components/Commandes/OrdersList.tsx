@@ -9,6 +9,7 @@ interface OrdersListProps {
   error: string | null;
   onCancelOrder: (order: Order) => Promise<void>;
   onEditProduct: (product: Product) => void;
+  onEditOrder: (order: Order) => void;
 }
 
 export const OrdersList: React.FC<OrdersListProps> = ({
@@ -18,6 +19,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({
   error,
   onCancelOrder,
   onEditProduct,
+  onEditOrder,
 }) => {
   const dayOrders = orders.filter(order => {
     const orderDate = new Date(order.date).toISOString().split('T')[0];
@@ -69,6 +71,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({
             order={order}
             onCancel={onCancelOrder}
             onEditProduct={onEditProduct}
+            onEditOrder={onEditOrder}
           />
         ))}
       </div>

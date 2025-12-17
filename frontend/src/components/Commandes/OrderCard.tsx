@@ -5,12 +5,14 @@ interface OrderCardProps {
   order: Order;
   onCancel: (order: Order) => Promise<void>;
   onEditProduct: (product: Product) => void;
+  onEditOrder: (order: Order) => void;
 }
 
 export const OrderCard: React.FC<OrderCardProps> = ({
   order,
   onCancel,
   onEditProduct,
+  onEditOrder,
 }) => {
   const getFullName = (user: typeof order.client) => {
     if (!user) return "Utilisateur inconnu";
@@ -76,13 +78,22 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           <div className="text-2xl font-bold text-green-600">
             {Number(order.totalAmount).toFixed(2)}€
           </div>
-          <button
-            onClick={handleCancel}
-            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors mt-2"
-            title="Annuler cette commande (restaure stocks et solde)"
-          >
-            🗑️ Annuler
-          </button>
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => onEditOrder(order)}
+              className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
+              title="Modifier cette commande"
+            >
+              ✏️ Modifier
+            </button>
+            <button
+              onClick={handleCancel}
+              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+              title="Annuler cette commande (restaure stocks et solde)"
+            >
+              🗑️ Annuler
+            </button>
+          </div>
         </div>
       </div>
 
