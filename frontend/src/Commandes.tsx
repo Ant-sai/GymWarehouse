@@ -131,9 +131,33 @@ export default function DailyOrdersPage() {
 
     // Sauvegarder seulement si la valeur a changé par rapport à celle chargée
     if (trouValue !== (dailyClosing?.trou || 0)) {
-      saveTrouValue(selectedDate, trouValue);
+      const saveTrou = async () => {
+        try {
+          // Calculer les revenus en espèces du jour
+          const dayOrders = orders.filter(order => {
+            const orderDate = new Date(order.date).toISOString().split('T')[0];
+            return orderDate === selectedDate;
+          });
+
+          const cashRevenue = dayOrders
+            .filter(order => order.paymentMethod === 'CASH')
+            .reduce((sum, order) => sum + Number(order.totalAmount), 0);
+
+          // Calculer le fond de caisse
+          const fondCaisse = startingCashFund + cashRevenue - trouValue;
+
+          await fetch(`/api/daily-closing/${selectedDate}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ trou: trouValue, fondCaisse })
+          });
+        } catch (err) {
+          console.error('Erreur lors de la sauvegarde du trou:', err);
+        }
+      };
+      saveTrou();
     }
-  }, [trouValue, selectedDate, dailyClosing?.trou, loadingClosing]);
+  }, [trouValue, selectedDate, dailyClosing?.trou, loadingClosing, orders, startingCashFund]);
 
   async function fetchDailyClosing(date: string) {
     setLoadingClosing(true);
@@ -163,18 +187,6 @@ export default function DailyOrdersPage() {
       console.error('Erreur lors de la récupération:', err);
     } finally {
       setLoadingClosing(false);
-    }
-  }
-
-  async function saveTrouValue(date: string, trou: number) {
-    try {
-      await fetch(`/api/daily-closing/${date}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trou })
-      });
-    } catch (err) {
-      console.error('Erreur lors de la sauvegarde du trou:', err);
     }
   }
 

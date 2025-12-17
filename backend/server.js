@@ -1035,18 +1035,18 @@ app.get('/api/daily-closing/previous/:date', async (req, res) => {
 app.put('/api/daily-closing/:date', async (req, res) => {
     try {
         const { date } = req.params;
-        const { trou } = req.body;
-        
+        const { trou, fondCaisse: fondCaisseFromFrontend } = req.body;
+
         console.log('🔄 [PUT /api/daily-closing/:date] Mise à jour du trou pour', date);
-        console.log('📥 [PUT] Données reçues:', { trou });
-        
+        console.log('📥 [PUT] Données reçues:', { trou, fondCaisse: fondCaisseFromFrontend });
+
         const closingDate = new Date(date);
-        
+
         // Vérifier si une clôture existe déjà
         const existingClosing = await prisma.dailyClosing.findUnique({
             where: { date: closingDate }
         });
-        
+
         if (existingClosing) {
             // ✅ La clôture existe : NE TOUCHER QUE LE TROU ET LE FOND DE CAISSE
             console.log('📊 [PUT] Clôture existante trouvée:', {
@@ -1055,18 +1055,21 @@ app.put('/api/daily-closing/:date', async (req, res) => {
                 cashRevenue: existingClosing.cashRevenue,
                 ancienTrou: existingClosing.trou
             });
-            
-            // Recalculer uniquement le fond de caisse avec le nouveau trou
-            const fondCaisse = Number(existingClosing.startingCashFund) + Number(existingClosing.cashRevenue) - (trou || 0);
-            
+
+            // Utiliser le fond de caisse envoyé par le frontend, ou recalculer si non fourni
+            const fondCaisse = fondCaisseFromFrontend !== undefined
+                ? fondCaisseFromFrontend
+                : Number(existingClosing.startingCashFund) + Number(existingClosing.cashRevenue) - (trou || 0);
+
             console.log('💰 [PUT] Nouveau calcul fond de caisse:', {
                 startingCashFund: existingClosing.startingCashFund,
                 cashRevenue: existingClosing.cashRevenue,
                 trou: trou || 0,
                 fondCaisse,
-                formule: `${existingClosing.startingCashFund} + ${existingClosing.cashRevenue} - ${trou || 0} = ${fondCaisse}`
+                source: fondCaisseFromFrontend !== undefined ? 'frontend' : 'calculé',
+                formule: fondCaisseFromFrontend !== undefined ? 'fourni par frontend' : `${existingClosing.startingCashFund} + ${existingClosing.cashRevenue} - ${trou || 0} = ${fondCaisse}`
             });
-            
+
             // Mettre à jour UNIQUEMENT trou, fondCaisse et closedAt
             const updated = await prisma.dailyClosing.update({
                 where: { date: closingDate },
@@ -1077,14 +1080,14 @@ app.put('/api/daily-closing/:date', async (req, res) => {
                     // ⚠️ PAS DE startingCashFund ici !
                 }
             });
-            
+
             console.log('✅ [PUT] Clôture mise à jour:', {
                 date: updated.date,
                 trou: updated.trou,
                 fondCaisse: updated.fondCaisse,
                 startingCashFund: updated.startingCashFund
             });
-            
+
             return res.json(updated);
         }
         
