@@ -366,29 +366,29 @@ app.post('/api/orders', async (req, res) => {
                 });
             }
             
-            // ✅ NOUVEAU : Mettre à jour la clôture du jour
+            // Mettre à jour la clôture du jour
             const orderDate = new Date();
             orderDate.setHours(0, 0, 0, 0);
-            
+
             // Vérifier si une clôture existe déjà pour ce jour
             const existingClosing = await prismaTransaction.dailyClosing.findUnique({
                 where: { date: orderDate }
             });
-            
+
             if (existingClosing) {
-                // ✅ Clôture existe : mettre à jour les revenus SANS toucher au startingCashFund
+                // Clôture existe : mettre à jour les revenus SANS toucher au startingCashFund
                 console.log('📊 [POST /api/orders] Mise à jour clôture existante:', {
                     date: existingClosing.date,
                     startingCashFund: existingClosing.startingCashFund,
                     ancienCashRevenue: existingClosing.cashRevenue
                 });
-                
+
                 // Recalculer les revenus du jour
                 const dayStart = new Date(orderDate);
                 dayStart.setHours(0, 0, 0, 0);
                 const dayEnd = new Date(orderDate);
                 dayEnd.setHours(23, 59, 59, 999);
-                
+
                 const allOrdersToday = await prismaTransaction.order.findMany({
                     where: {
                         date: {
@@ -397,11 +397,11 @@ app.post('/api/orders', async (req, res) => {
                         }
                     }
                 });
-                
+
                 let cashRevenue = 0;
                 let qrRevenue = 0;
                 let creditRevenue = 0;
-                
+
                 allOrdersToday.forEach(o => {
                     const amount = Number(o.totalAmount);
                     if (o.paymentMethod !== "FREE") {
@@ -418,11 +418,11 @@ app.post('/api/orders', async (req, res) => {
                         }
                     }
                 });
-                
-                // Recalculer le fond de caisse avec le startingCashFund EXISTANT
+
+                // Formule: Fond de caisse = Fond de début + Espèces - Le Trou
                 const trou = Number(existingClosing.trou) || 0;
                 const fondCaisse = Number(existingClosing.startingCashFund) + cashRevenue - trou;
-                
+
                 console.log('💰 [POST /api/orders] Nouveau calcul fond de caisse:', {
                     startingCashFund: existingClosing.startingCashFund,
                     cashRevenue,
@@ -430,7 +430,7 @@ app.post('/api/orders', async (req, res) => {
                     fondCaisse,
                     calcul: `${existingClosing.startingCashFund} + ${cashRevenue} - ${trou} = ${fondCaisse}`
                 });
-                
+
                 await prismaTransaction.dailyClosing.update({
                     where: { date: orderDate },
                     data: {
@@ -439,26 +439,26 @@ app.post('/api/orders', async (req, res) => {
                         creditRevenue,
                         fondCaisse,
                         closedAt: new Date()
-                        // ⚠️ PAS DE startingCashFund ici !
                     }
                 });
             } else {
-                // ✅ Pas de clôture : en créer une nouvelle avec le bon startingCashFund
+                // Pas de clôture : en créer une nouvelle
+                // startingCashFund = fond de caisse du jour précédent
                 const previousClosing = await prismaTransaction.dailyClosing.findFirst({
                     where: {
                         date: { lt: orderDate }
                     },
                     orderBy: { date: 'desc' }
                 });
-                
+
                 const startingCashFund = previousClosing ? Number(previousClosing.fondCaisse) : 0;
-                
+
                 // Calculer les revenus du jour
                 const dayStart = new Date(orderDate);
                 dayStart.setHours(0, 0, 0, 0);
                 const dayEnd = new Date(orderDate);
                 dayEnd.setHours(23, 59, 59, 999);
-                
+
                 const allOrdersToday = await prismaTransaction.order.findMany({
                     where: {
                         date: {
@@ -467,11 +467,11 @@ app.post('/api/orders', async (req, res) => {
                         }
                     }
                 });
-                
+
                 let cashRevenue = 0;
                 let qrRevenue = 0;
                 let creditRevenue = 0;
-                
+
                 allOrdersToday.forEach(o => {
                     const amount = Number(o.totalAmount);
                     if (o.paymentMethod !== "FREE") {
@@ -488,9 +488,10 @@ app.post('/api/orders', async (req, res) => {
                         }
                     }
                 });
-                
+
+                // Formule: Fond de caisse = Fond de début + Espèces - Le Trou (initialement 0)
                 const fondCaisse = startingCashFund + cashRevenue;
-                
+
                 console.log('💰 [POST /api/orders] Création nouvelle clôture:', {
                     date: orderDate,
                     startingCashFund,
@@ -498,7 +499,7 @@ app.post('/api/orders', async (req, res) => {
                     fondCaisse,
                     calcul: `${startingCashFund} + ${cashRevenue} = ${fondCaisse}`
                 });
-                
+
                 await prismaTransaction.dailyClosing.create({
                     data: {
                         date: orderDate,
@@ -1035,10 +1036,10 @@ app.get('/api/daily-closing/previous/:date', async (req, res) => {
 app.put('/api/daily-closing/:date', async (req, res) => {
     try {
         const { date } = req.params;
-        const { trou, fondCaisse: fondCaisseFromFrontend } = req.body;
+        const { trou } = req.body;
 
         console.log('🔄 [PUT /api/daily-closing/:date] Mise à jour du trou pour', date);
-        console.log('📥 [PUT] Données reçues:', { trou, fondCaisse: fondCaisseFromFrontend });
+        console.log('📥 [PUT] Données reçues:', { trou });
 
         const closingDate = new Date(date);
 
@@ -1048,7 +1049,7 @@ app.put('/api/daily-closing/:date', async (req, res) => {
         });
 
         if (existingClosing) {
-            // ✅ La clôture existe : NE TOUCHER QUE LE TROU ET LE FOND DE CAISSE
+            // La clôture existe : mettre à jour le trou et recalculer le fond de caisse
             console.log('📊 [PUT] Clôture existante trouvée:', {
                 date: existingClosing.date,
                 startingCashFund: existingClosing.startingCashFund,
@@ -1056,28 +1057,25 @@ app.put('/api/daily-closing/:date', async (req, res) => {
                 ancienTrou: existingClosing.trou
             });
 
-            // Utiliser le fond de caisse envoyé par le frontend, ou recalculer si non fourni
-            const fondCaisse = fondCaisseFromFrontend !== undefined
-                ? fondCaisseFromFrontend
-                : Number(existingClosing.startingCashFund) + Number(existingClosing.cashRevenue) - (trou || 0);
+            // Formule: Fond de caisse = Fond de début + Espèces - Le Trou
+            const nouvelleTrou = trou !== undefined ? Number(trou) : Number(existingClosing.trou);
+            const fondCaisse = Number(existingClosing.startingCashFund) + Number(existingClosing.cashRevenue) - nouvelleTrou;
 
             console.log('💰 [PUT] Nouveau calcul fond de caisse:', {
                 startingCashFund: existingClosing.startingCashFund,
                 cashRevenue: existingClosing.cashRevenue,
-                trou: trou || 0,
+                trou: nouvelleTrou,
                 fondCaisse,
-                source: fondCaisseFromFrontend !== undefined ? 'frontend' : 'calculé',
-                formule: fondCaisseFromFrontend !== undefined ? 'fourni par frontend' : `${existingClosing.startingCashFund} + ${existingClosing.cashRevenue} - ${trou || 0} = ${fondCaisse}`
+                formule: `${existingClosing.startingCashFund} + ${existingClosing.cashRevenue} - ${nouvelleTrou} = ${fondCaisse}`
             });
 
             // Mettre à jour UNIQUEMENT trou, fondCaisse et closedAt
             const updated = await prisma.dailyClosing.update({
                 where: { date: closingDate },
                 data: {
-                    trou: trou || 0,
+                    trou: nouvelleTrou,
                     fondCaisse,
                     closedAt: new Date()
-                    // ⚠️ PAS DE startingCashFund ici !
                 }
             });
 
@@ -1090,28 +1088,28 @@ app.put('/api/daily-closing/:date', async (req, res) => {
 
             return res.json(updated);
         }
-        
+
         // Si pas de clôture existante, en créer une nouvelle
         console.log('⚠️ [PUT] Aucune clôture existante, création...');
-        
-        // Calculer le fond de caisse du jour précédent
+
+        // startingCashFund = fond de caisse du jour précédent
         const previousClosing = await prisma.dailyClosing.findFirst({
             where: {
                 date: { lt: closingDate }
             },
             orderBy: { date: 'desc' }
         });
-        
+
         const startingCashFund = previousClosing ? Number(previousClosing.fondCaisse) : 0;
-        
+
         console.log('💰 [PUT] Starting cash fund pour nouvelle clôture:', startingCashFund);
-        
+
         // Récupérer les stats du jour pour calculer les revenus
         const dayStart = new Date(closingDate);
         dayStart.setHours(0, 0, 0, 0);
         const dayEnd = new Date(closingDate);
         dayEnd.setHours(23, 59, 59, 999);
-        
+
         const orders = await prisma.order.findMany({
             where: {
                 date: {
@@ -1120,11 +1118,11 @@ app.put('/api/daily-closing/:date', async (req, res) => {
                 }
             }
         });
-        
+
         let cashRevenue = 0;
         let qrRevenue = 0;
         let creditRevenue = 0;
-        
+
         orders.forEach(order => {
             const amount = Number(order.totalAmount);
             if (order.paymentMethod !== "FREE") {
@@ -1141,44 +1139,46 @@ app.put('/api/daily-closing/:date', async (req, res) => {
                 }
             }
         });
-        
-        const fondCaisse = startingCashFund + cashRevenue - (trou || 0);
-        
+
+        // Formule: Fond de caisse = Fond de début + Espèces - Le Trou
+        const nouvelleTrou = trou !== undefined ? Number(trou) : 0;
+        const fondCaisse = startingCashFund + cashRevenue - nouvelleTrou;
+
         console.log('🏦 [PUT] Création nouvelle clôture:', {
             startingCashFund,
             cashRevenue,
-            trou: trou || 0,
+            trou: nouvelleTrou,
             fondCaisse,
-            formule: `${startingCashFund} + ${cashRevenue} - ${trou || 0} = ${fondCaisse}`
+            formule: `${startingCashFund} + ${cashRevenue} - ${nouvelleTrou} = ${fondCaisse}`
         });
-        
+
         const dailyClosing = await prisma.dailyClosing.create({
             data: {
                 date: closingDate,
                 cashRevenue,
                 qrRevenue,
                 creditRevenue,
-                trou: trou || 0,
+                trou: nouvelleTrou,
                 fondCaisse,
                 startingCashFund,
                 closedAt: new Date()
             }
         });
-        
+
         console.log('✅ [PUT] Nouvelle clôture créée:', {
             date: dailyClosing.date,
             trou: dailyClosing.trou,
             fondCaisse: dailyClosing.fondCaisse,
             startingCashFund: dailyClosing.startingCashFund
         });
-        
+
         res.json(dailyClosing);
-        
+
     } catch (err) {
         console.error('💥 [PUT] Erreur lors de la mise à jour:', err);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to update daily closing',
-            message: err.message 
+            message: err.message
         });
     }
 });
@@ -1186,24 +1186,20 @@ app.put('/api/daily-closing/:date', async (req, res) => {
 // Create or update daily closing with logic for starting cash fund
 app.post('/api/daily-closing', async (req, res) => {
     try {
-        const { 
-            date, 
-            cashRevenue, 
-            qrRevenue, 
-            creditRevenue, 
-            trou, 
-            fondCaisse, 
-            notes, 
-            closedBy 
+        const {
+            date,
+            trou,
+            notes,
+            closedBy
         } = req.body;
-        
+
         // Validation
         if (!date) {
             return res.status(400).json({ error: 'Date is required' });
         }
-        
+
         const closingDate = new Date(date);
-        
+
         // Récupérer le fond de caisse du jour précédent
         const previousClosing = await prisma.dailyClosing.findFirst({
             where: {
@@ -1215,11 +1211,60 @@ app.post('/api/daily-closing', async (req, res) => {
                 date: 'desc'
             }
         });
-        
-        // Le début du fond de caisse est le fond de caisse du jour précédent
-        // Si c'est le premier jour, on utilise 0 ou une valeur par défaut
-        const startingCashFund = previousClosing ? previousClosing.fondCaisse : 0;
-        
+
+        // Le début du fond de caisse = fond de caisse du jour précédent
+        const startingCashFund = previousClosing ? Number(previousClosing.fondCaisse) : 0;
+
+        // Calculer les revenus du jour à partir des commandes
+        const dayStart = new Date(closingDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(closingDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const orders = await prisma.order.findMany({
+            where: {
+                date: {
+                    gte: dayStart,
+                    lte: dayEnd
+                }
+            }
+        });
+
+        let cashRevenue = 0;
+        let qrRevenue = 0;
+        let creditRevenue = 0;
+
+        orders.forEach(order => {
+            const amount = Number(order.totalAmount);
+            if (order.paymentMethod !== "FREE") {
+                switch (order.paymentMethod) {
+                    case "CASH":
+                        cashRevenue += amount;
+                        break;
+                    case "QRCODE":
+                        qrRevenue += amount;
+                        break;
+                    case "ACCOUNT_DEBIT":
+                        creditRevenue += amount;
+                        break;
+                }
+            }
+        });
+
+        // Formule: Fond de caisse = Fond de début + Espèces - Le Trou
+        const trouValue = trou !== undefined ? Number(trou) : 0;
+        const fondCaisse = startingCashFund + cashRevenue - trouValue;
+
+        console.log('🏦 [POST /api/daily-closing] Calcul clôture:', {
+            startingCashFund,
+            cashRevenue,
+            qrRevenue,
+            creditRevenue,
+            trou: trouValue,
+            fondCaisse,
+            formule: `${startingCashFund} + ${cashRevenue} - ${trouValue} = ${fondCaisse}`
+        });
+
         // Créer ou mettre à jour la clôture journalière
         const dailyClosing = await prisma.dailyClosing.upsert({
             where: {
@@ -1229,9 +1274,8 @@ app.post('/api/daily-closing', async (req, res) => {
                 cashRevenue,
                 qrRevenue,
                 creditRevenue,
-                trou: trou || 0,
+                trou: trouValue,
                 fondCaisse,
-                startingCashFund, // Sauvegarde du début de fond de caisse
                 notes,
                 closedBy,
                 closedAt: new Date()
@@ -1241,26 +1285,26 @@ app.post('/api/daily-closing', async (req, res) => {
                 cashRevenue,
                 qrRevenue,
                 creditRevenue,
-                trou: trou || 0,
+                trou: trouValue,
                 fondCaisse,
-                startingCashFund, // Sauvegarde du début de fond de caisse
+                startingCashFund,
                 notes,
                 closedBy,
                 closedAt: new Date()
             }
         });
-        
+
         res.status(201).json({
             success: true,
             data: dailyClosing,
             message: 'Daily closing saved successfully'
         });
-        
+
     } catch (err) {
         console.error('Error creating daily closing: ', err);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to create daily closing',
-            message: err.message 
+            message: err.message
         });
     }
 });
@@ -1307,9 +1351,9 @@ app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
     try {
         const { date } = req.params;
         const currentDate = new Date(date);
-        
+
         console.log('🔍 [GET /api/daily-closing/starting-fund/:date] Recherche fond pour:', date);
-        
+
         // Trouver la clôture du jour précédent
         const previousClosing = await prisma.dailyClosing.findFirst({
             where: {
@@ -1321,7 +1365,7 @@ app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
                 date: 'desc'
             }
         });
-        
+
         console.log('📊 [GET starting-fund] Clôture jour précédent:', previousClosing ? {
             date: previousClosing.date,
             fondCaisse: previousClosing.fondCaisse,
@@ -1329,23 +1373,21 @@ app.get('/api/daily-closing/starting-fund/:date', async (req, res) => {
             cashRevenue: previousClosing.cashRevenue,
             trou: previousClosing.trou
         } : 'Aucune');
-        
-        // ✅ CORRECTION : Le début du fond de caisse = fond de caisse du jour précédent
-        const fondCaisse = previousClosing ? previousClosing.fondCaisse : 0;
-        
+
+        // Le début du fond de caisse = fond de caisse du jour précédent
+        const startingCashFund = previousClosing ? Number(previousClosing.fondCaisse) : 0;
+
         console.log('💰 [GET starting-fund] Valeurs retournées:', {
-            fondCaisse,
-            startingCashFund: fondCaisse,
+            startingCashFund,
             previousDate: previousClosing?.date || null
         });
-        
+
         res.json({
-            fondCaisse,  // ✅ Champ principal ajouté
-            startingCashFund: fondCaisse,  // Pour compatibilité
+            startingCashFund,
             previousDate: previousClosing?.date || null,
             foundPreviousClosing: !!previousClosing
         });
-        
+
     } catch (err) {
         console.error('💥 [GET starting-fund] Erreur:', err);
         res.status(500).json({ error: 'Failed to fetch starting cash fund' });
