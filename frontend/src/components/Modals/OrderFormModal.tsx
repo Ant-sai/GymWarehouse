@@ -42,11 +42,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [notes, setNotes] = useState(initialNotes);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue);
   const [discountComment, setDiscountComment] = useState(initialDiscountComment);
-  
+  const [useTrainerPrice, setUseTrainerPrice] = useState(false);
+
   // États de recherche
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
-  
+
   const [saving, setSaving] = useState(false);
 
   // Restaurer les valeurs initiales quand elles changent
@@ -117,8 +118,8 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     console.log('🛒 [addToCart] Ajout au panier:', product.name);
     console.log('🛒 [addToCart] selectedUser:', selectedUser);
 
-    const price = selectedUser?.role === "TRAINER" ? product.trainerPrice : product.price;
-    console.log('🛒 [addToCart] Prix calculé:', price);
+    const price = useTrainerPrice ? product.trainerPrice : product.price;
+    console.log('🛒 [addToCart] Prix calculé:', price, 'useTrainerPrice:', useTrainerPrice);
 
     const existingItem = cart.find(item => item.productId === product.id);
     console.log('🛒 [addToCart] Item existant?', existingItem);
@@ -208,6 +209,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         notes: notes,
         discount: discountValue,
         discountComment: discountComment,
+        useTrainerPrice: useTrainerPrice,
         products: cart.map(item => ({
           productId: item.productId,
           quantity: item.quantity
@@ -252,6 +254,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     setNotes("");
     setDiscountValue(0);
     setDiscountComment("");
+    setUseTrainerPrice(false);
     setUserSearch("");
     setProductSearch("");
     onClose();
@@ -300,7 +303,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-sm">
-                        {selectedUser?.role === "TRAINER"
+                        {useTrainerPrice
                           ? product.trainerPrice
                           : product.price}€
                       </div>
@@ -423,6 +426,31 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Checkbox Prix Entraîneur */}
+        <div className="mb-6">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useTrainerPrice}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setUseTrainerPrice(checked);
+                // Recalculer les prix du panier
+                setCart(cart.map(item => {
+                  const product = products.find(p => p.id === item.productId);
+                  if (!product) return item;
+                  const newPrice = checked ? product.trainerPrice : product.price;
+                  return { ...item, unitPrice: newPrice };
+                }));
+              }}
+              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              Appliquer le prix entraîneur sur toute la commande
+            </span>
+          </label>
+        </div>
 
         {/* Méthode de paiement */}
         <div className="mb-6">

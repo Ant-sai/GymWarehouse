@@ -88,6 +88,7 @@ export type CreateOrderData = {
   notes: string;
   discount: number;
   discountComment: string;
+  useTrainerPrice?: boolean;
   products: Array<{
     productId: number;
     quantity: number;
