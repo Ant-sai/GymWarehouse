@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(node -c:*)"
+      "Bash(node -c:*)",
+      "Bash(npx prisma migrate:*)"
     ]
   }
 }

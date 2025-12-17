@@ -111,20 +111,21 @@ model CashMovement {
   @@map("cash_movements")
 }
 
-model DailyClosing {
-  id                Int      @id @default(autoincrement())
-  date              DateTime @unique @db.Date
-  cashRevenue       Decimal  @db.Decimal(10, 2) @map("cash_revenue")
-  qrRevenue         Decimal  @db.Decimal(10, 2) @map("qr_revenue")
-  creditRevenue     Decimal  @db.Decimal(10, 2) @map("credit_revenue")
-  trou              Decimal  @default(0) @db.Decimal(10, 2)
-  fondCaisse        Decimal  @db.Decimal(10, 2) @map("fond_caisse")
-  startingCashFund  Decimal  @db.Decimal(10, 2) @map("starting_cash_fund") 
-  notes             String?
-  closedBy          Int?     @map("closed_by")
-  closedAt          DateTime @default(now()) @map("closed_at")
+model DailyReport {
+  id               Int      @id @default(autoincrement())
+  date             DateTime @unique @db.Date
+  startingCash     Decimal  @default(0) @db.Decimal(10, 2) @map("starting_cash")    // Fond de caisse de début = Fond de fin du jour précédent
+  cashRevenue      Decimal  @default(0) @db.Decimal(10, 2) @map("cash_revenue")     // Espèces du jour
+  qrRevenue        Decimal  @default(0) @db.Decimal(10, 2) @map("qr_revenue")       // QR Code du jour
+  creditRevenue    Decimal  @default(0) @db.Decimal(10, 2) @map("credit_revenue")   // Crédit du jour
+  trou             Decimal  @default(0) @db.Decimal(10, 2)                           // Le Trou (valeur manuelle)
+  endingCash       Decimal  @default(0) @db.Decimal(10, 2) @map("ending_cash")      // Fond de caisse de fin = startingCash + cashRevenue - trou
+  notes            String?
+  closedBy         Int?     @map("closed_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  @@map("daily_closings")
+  @@map("daily_reports")
 }
 
 enum Role {
