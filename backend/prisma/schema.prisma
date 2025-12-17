@@ -40,17 +40,18 @@ model Product {
 }
 
 model Order {
-  id            Int            @id @default(autoincrement())
-  clientId      Int
-  totalAmount   Decimal        @map("total_amount") @db.Decimal(10, 2)
-  date          DateTime       @default(now())
-  paymentMethod PaymentType    @map("payment_method")
-  notes         String?
-  discount      Float?         @default(0)
-  trou          Decimal?       @db.Decimal(10, 2)  // Nouveau champ pour sauvegarder le trou
-  cashMovements CashMovement[]
-  products      OrderDetail[]
-  client        User           @relation(fields: [clientId], references: [id])
+  id              Int            @id @default(autoincrement())
+  clientId        Int
+  totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
+  date            DateTime       @default(now())
+  paymentMethod   PaymentType    @map("payment_method")
+  notes           String?
+  discount        Float?         @default(0)
+  trou            Decimal?       @db.Decimal(10, 2)
+  useTrainerPrice Boolean        @default(false) @map("use_trainer_price")  // Appliquer le prix entraîneur
+  cashMovements   CashMovement[]
+  products        OrderDetail[]
+  client          User           @relation(fields: [clientId], references: [id])
 
   @@index([clientId], map: "orders_clientId_fkey")
   @@map("orders")

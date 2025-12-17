@@ -258,50 +258,52 @@ app.delete('/api/products/:id', async (req, res) => {
 // Create an order
 app.post('/api/orders', async (req, res) => {
     try {
-        const { 
-            clientId, 
-            products, 
-            paymentMethod, 
-            discount, 
+        const {
+            clientId,
+            products,
+            paymentMethod,
+            discount,
             notes,
+            useTrainerPrice = false,
         } = req.body;
-        
+
         // Validation
         if (!clientId || !products || products.length === 0 || !paymentMethod) {
             return res.status(400).json({
                 error: 'Missing required fields: clientId, products, and paymentMethod'
             });
         }
-        
+
         const result = await prisma.$transaction(async (prismaTransaction) => {
             // Calculer le montant total
             let totalAmount = 0;
             const orderDetails = [];
-            
+
             for (const item of products) {
                 const product = await prismaTransaction.product.findUnique({
                     where: { id: item.productId }
                 });
-                
+
                 if (!product) {
                     throw new Error(`Product with id ${item.productId} not found`);
                 }
-                
+
                 if (product.quantity < item.quantity) {
                     throw new Error(`Insufficient stock for product ${product.name}`);
                 }
-                
-                const unitPrice = product.price;
+
+                // Appliquer le prix entraîneur si useTrainerPrice est true
+                const unitPrice = useTrainerPrice ? product.trainerPrice : product.price;
                 const totalPrice = unitPrice * item.quantity;
                 totalAmount += Number(totalPrice);
-                
+
                 orderDetails.push({
                     productId: item.productId,
                     quantity: item.quantity,
                     unitPrice: unitPrice,
                     totalPrice: totalPrice
                 });
-                
+
                 // Décrémenter le stock
                 await prismaTransaction.product.update({
                     where: { id: item.productId },
@@ -312,12 +314,12 @@ app.post('/api/orders', async (req, res) => {
                     }
                 });
             }
-            
+
             // Appliquer la réduction (en euros)
             if (discount && discount > 0) {
                 totalAmount = Math.max(0, totalAmount - discount);
             }
-            
+
             // Créer la commande
             const order = await prismaTransaction.order.create({
                 data: {
@@ -326,6 +328,7 @@ app.post('/api/orders', async (req, res) => {
                     paymentMethod: paymentMethod,
                     discount: discount || 0,
                     notes: notes || null,
+                    useTrainerPrice: useTrainerPrice,
                     products: {
                         create: orderDetails
                     }
@@ -552,6 +555,7 @@ app.put('/api/orders/:id', async (req, res) => {
             paymentMethod,
             discount,
             notes,
+            useTrainerPrice = false,
         } = req.body;
 
         // Validation
@@ -625,7 +629,8 @@ app.put('/api/orders/:id', async (req, res) => {
                     throw new Error(`Insufficient stock for product ${product.name}`);
                 }
 
-                const unitPrice = product.price;
+                // Appliquer le prix entraîneur si useTrainerPrice est true
+                const unitPrice = useTrainerPrice ? product.trainerPrice : product.price;
                 const totalPrice = unitPrice * item.quantity;
                 totalAmount += Number(totalPrice);
 
@@ -673,6 +678,7 @@ app.put('/api/orders/:id', async (req, res) => {
                     paymentMethod: paymentMethod,
                     discount: discount || 0,
                     notes: notes || null,
+                    useTrainerPrice: useTrainerPrice,
                     products: {
                         create: orderDetails
                     }
