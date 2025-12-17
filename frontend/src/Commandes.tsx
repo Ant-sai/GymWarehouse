@@ -1098,28 +1098,66 @@ export default function DailyOrdersPage() {
                     type="text"
                     placeholder="Rechercher un membre..."
                     value={refundUserSearch}
-                    onChange={(e) => setRefundUserSearch(e.target.value)}
+                    onChange={(e) => {
+                      setRefundUserSearch(e.target.value);
+                      if (!e.target.value) {
+                        setRefundUser(null);
+                      }
+                    }}
                     className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
 
-                  <select
-                    value={refundUser?.id || ""}
-                    onChange={(e) => {
-                      const user = users.find(u => u.id === Number(e.target.value));
-                      setRefundUser(user || null);
-                    }}
-                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="">Sélectionner un membre</option>
-                    {filteredRefundUsers.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {getFullName(user)}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Liste de résultats */}
+                  {refundUserSearch && !refundUser && (
+                    <div className="border border-gray-300 rounded max-h-60 overflow-y-auto mb-2">
+                      {filteredRefundUsers.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">
+                          Aucun membre trouvé
+                        </div>
+                      ) : (
+                        filteredRefundUsers.map(user => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => {
+                              setRefundUser(user);
+                              setRefundUserSearch(getFullName(user));
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                          >
+                            <div className="font-medium">{getFullName(user)}</div>
+                            <div className="text-xs text-gray-600">
+                              Solde: {Number(user.balance).toFixed(2)}€
+                              {user.role === "TRAINER" && " • Entraîneur"}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Membre sélectionné */}
                   {refundUser && (
-                    <div className="text-sm mt-2 text-gray-600">
-                      Solde actuel: <span className="font-medium">{Number(refundUser.balance).toFixed(2)}€</span>
+                    <div className="p-3 bg-blue-50 rounded border border-blue-200 mb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium text-blue-900">{getFullName(refundUser)}</div>
+                          <div className="text-sm text-blue-700">
+                            Solde actuel: <span className="font-medium">{Number(refundUser.balance).toFixed(2)}€</span>
+                            {refundUser.role === "TRAINER" && " • Entraîneur"}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRefundUser(null);
+                            setRefundUserSearch("");
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          ✕ Changer
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
