@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar, PageHeader, DateNavigation, DailyStatistics, OrdersList } from './components/Commandes';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
+import { TrouModal } from './components/Modals/TrouModal';
 import type { User, Product, OrderItem, Order, CreateOrderData, StandbyData } from './types/commandes.types';
 
 export type { User, Product, OrderItem, Order };
@@ -17,6 +18,7 @@ type DailyClosing = {
   notes?: string;
   closedBy?: string;
   closedAt: string;
+  updatedAt: string;
 };
 
 export default function DailyOrdersPage() {
@@ -73,6 +75,8 @@ export default function DailyOrdersPage() {
   const [showEditOrderForm, setShowEditOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
+  const [showTrouModal, setShowTrouModal] = useState(false);
+
   // États pour le modal d'édition de commande
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -88,40 +92,6 @@ export default function DailyOrdersPage() {
   useEffect(() => {
     fetchDailyClosing(selectedDate);
   }, [selectedDate]);
-
-  useEffect(() => {
-    // Ne pas sauvegarder pendant le chargement
-    if (loadingClosing) return;
-
-    // Sauvegarder seulement si la valeur a changé par rapport à celle chargée
-    if (trouValue !== (dailyClosing?.trou || 0)) {
-      const saveTrou = async () => {
-        try {
-          // Calculer les revenus en espèces du jour
-          const dayOrders = orders.filter(order => {
-            const orderDate = new Date(order.date).toISOString().split('T')[0];
-            return orderDate === selectedDate;
-          });
-
-          const cashRevenue = dayOrders
-            .filter(order => order.paymentMethod === 'CASH')
-            .reduce((sum, order) => sum + Number(order.totalAmount), 0);
-
-          // Calculer le fond de caisse
-          const fondCaisse = startingCashFund + cashRevenue - trouValue;
-
-          await fetch(`/api/daily-closing/${selectedDate}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ trou: trouValue, fondCaisse })
-          });
-        } catch (err) {
-          console.error('Erreur lors de la sauvegarde du trou:', err);
-        }
-      };
-      saveTrou();
-    }
-  }, [trouValue, selectedDate, dailyClosing?.trou, loadingClosing, orders, startingCashFund]);
 
   async function fetchDailyClosing(date: string) {
     setLoadingClosing(true);
@@ -374,6 +344,30 @@ export default function DailyOrdersPage() {
     }
   }
 
+  async function handleSaveTrou(trou: number) {
+    try {
+      const response = await fetch(`/api/daily-reports/${selectedDate}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trou })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
+      // Mettre à jour la valeur locale
+      setTrouValue(trou);
+
+      // Rafraîchir les données
+      await fetchDailyClosing(selectedDate);
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde du trou:', err);
+      throw err;
+    }
+  }
+
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
     if (!editingProduct) return;
@@ -595,7 +589,7 @@ export default function DailyOrdersPage() {
           dailyClosing={dailyClosing}
           loadingClosing={loadingClosing}
           trouValue={trouValue}
-          onTrouChange={setTrouValue}
+          onTrouClick={() => setShowTrouModal(true)}
           startingCashFund={startingCashFund}
         />
 
@@ -1303,6 +1297,15 @@ export default function DailyOrdersPage() {
             </div>
           </div>
         )}
+
+        {/* Modal Trou de caisse */}
+        <TrouModal
+          isOpen={showTrouModal}
+          currentTrou={trouValue}
+          date={selectedDate}
+          onClose={() => setShowTrouModal(false)}
+          onSave={handleSaveTrou}
+        />
       </main>
     </div>
   );
