@@ -67,7 +67,8 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   };
 
   const dailyStats = getDailyStats();
-  const fondCaisse = startingCashFund + dailyStats.cashRevenue - trouValue;
+  // Le trou est stocké en négatif, donc on l'additionne (ce qui revient à soustraire sa valeur absolue)
+  const fondCaisse = startingCashFund + dailyStats.cashRevenue + trouValue;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
