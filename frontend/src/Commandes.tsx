@@ -13,11 +13,11 @@ type DailyClosing = {
   qrRevenue: number;
   creditRevenue: number;
   trou: number;
-  fondCaisse: number;
-  startingCashFund: number;
+  startingCash: number;
+  endingCash: number;
   notes?: string;
-  closedBy?: string;
-  closedAt: string;
+  closedBy?: number;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -96,22 +96,22 @@ export default function DailyOrdersPage() {
   async function fetchDailyClosing(date: string) {
     setLoadingClosing(true);
     try {
-      const response = await fetch(`/api/daily-closing/${date}`);
+      const response = await fetch(`/api/daily-reports/${date}`);
 
       if (response.ok) {
         const data: DailyClosing = await response.json();
         setDailyClosing(data);
         setTrouValue(Number(data.trou) || 0);
-        setStartingCashFund(Number(data.startingCashFund) || 0);
+        setStartingCashFund(Number(data.startingCash) || 0);
       } else if (response.status === 404) {
         setDailyClosing(null);
         setTrouValue(0);
 
-        const startingFundResponse = await fetch(`/api/daily-closing/starting-fund/${date}`);
+        const startingFundResponse = await fetch(`/api/daily-reports/starting-cash/${date}`);
 
         if (startingFundResponse.ok) {
           const fundData = await startingFundResponse.json();
-          const fundValue = Number(fundData.fondCaisse || fundData.startingCashFund) || 0;
+          const fundValue = Number(fundData.startingCash) || 0;
           setStartingCashFund(fundValue);
         } else {
           setStartingCashFund(0);

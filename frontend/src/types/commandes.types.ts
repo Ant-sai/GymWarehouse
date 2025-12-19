@@ -50,11 +50,12 @@ export type DailyClosing = {
   qrRevenue: number;
   creditRevenue: number;
   trou: number;
-  fondCaisse: number;
-  startingCashFund: number;
+  startingCash: number;
+  endingCash: number;
   notes?: string;
-  closedBy?: string;
-  closedAt: string;
+  closedBy?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type DailyStats = {
