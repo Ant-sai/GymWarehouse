@@ -1,43 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar, PageHeader, DateNavigation, DailyStatistics, OrdersList } from './components/Commandes';
+import { OrderFormModal } from './components/Modals/OrderFormModal';
+import type { User, Product, OrderItem, Order, CreateOrderData, StandbyData } from './types/commandes.types';
 
-export type User = {
-  id: number;
-  firstName?: string;
-  lastName?: string;
-  role: "USER" | "TRAINER";
-  balance: number;
-};
-
-export type Product = {
-  id: number;
-  name: string;
-  quantity: number;
-  price: number;
-  trainerPrice: number;
-  isActive: boolean;
-};
-
-export type OrderItem = {
-  productId: number;
-  quantity: number;
-  unitPrice: number;
-};
-
-export type Order = {
-  id: number;
-  client: User;
-  totalAmount: number;
-  date: string;
-  paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
-  notes?: string;
-  products: Array<{
-    product: Product;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-  }>;
-};
+export type { User, Product, OrderItem, Order };
 
 type DailyClosing = {
   id: number;
@@ -64,27 +30,17 @@ export default function DailyOrdersPage() {
 
   // États pour le formulaire de nouvelle commande
   const [showForm, setShowForm] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [cart, setCart] = useState<OrderItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE">("CASH");
-  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const [discountValue, setDiscountValue] = useState<number>(0);
-  const [userSearch, setUserSearch] = useState("");
-  const [productSearch, setProductSearch] = useState("");
+  const [initialUser, setInitialUser] = useState<User | null>(null);
+  const [initialCart, setInitialCart] = useState<OrderItem[]>([]);
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE">("CASH");
+  const [initialNotes, setInitialNotes] = useState("");
+  const [initialDiscountValue, setInitialDiscountValue] = useState(0);
+  const [initialDiscountComment, setInitialDiscountComment] = useState("");
   const [trouValue, setTrouValue] = useState<number>(0);
   const [startingCashFund, setStartingCashFund] = useState<number>(0);
 
-  const [standbyOrders, setStandbyOrders] = useState<Array<{
-    id: string;
-    user: User;
-    cart: OrderItem[];
-    paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
-    notes: string;
-    discountValue: number;
-    timestamp: number;
-  }>>([]);
+  const [standbyOrders, setStandbyOrders] = useState<StandbyData[]>([]);
   const [showStandbyList, setShowStandbyList] = useState(false);
 
   const [dailyClosing, setDailyClosing] = useState<DailyClosing | null>(null);
@@ -116,6 +72,14 @@ export default function DailyOrdersPage() {
 
   const [showEditOrderForm, setShowEditOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+
+  // États pour le modal d'édition de commande
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [cart, setCart] = useState<OrderItem[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE">("CASH");
+  const [notes, setNotes] = useState("");
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
@@ -289,158 +253,38 @@ export default function DailyOrdersPage() {
     }
   }
 
-  function addToCart(product: Product) {
-    const price = selectedUser?.role === "TRAINER" ? product.trainerPrice : product.price;
-    const existingItem = cart.find(item => item.productId === product.id);
 
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.productId === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { productId: product.id, quantity: 1, unitPrice: price }]);
-    }
-  }
+  async function handleCreateOrder(orderData: CreateOrderData) {
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData),
+    });
 
-  function updateCartQuantity(productId: number, quantity: number) {
-    if (quantity <= 0) {
-      setCart(cart.filter(item => item.productId !== productId));
-    } else {
-      setCart(cart.map(item =>
-        item.productId === productId ? { ...item, quantity } : item
-      ));
-    }
-  }
-
-  function calculateTotal() {
-    if (paymentMethod === "FREE") return 0;
-
-    const subtotal = calculateSubtotal();
-
-    if (discountValue <= 0) return subtotal;
-
-    return Math.max(0, subtotal - discountValue);
-  }
-
-  function calculateSubtotal() {
-    return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
-  }
-
-  function calculateDiscount() {
-    if (discountValue <= 0 || paymentMethod === "FREE") return 0;
-    const subtotal = calculateSubtotal();
-    return Math.min(discountValue, subtotal);
-  }
-
-  async function handleCreateOrder() {
-    if (!selectedUser) {
-      alert("Veuillez sélectionner un client");
-      return;
-    }
-    if (cart.length === 0) {
-      alert("Veuillez ajouter au moins un produit");
-      return;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
     }
 
-    const total = calculateTotal();
-
-    if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
-      const newBalance = Number(selectedUser.balance) - total;
-      const confirmNegative = window.confirm(
-        `Cette transaction créera un solde négatif.\n\n` +
-        `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
-        `Montant à débiter: ${total.toFixed(2)}€\n` +
-        `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
-        `Voulez-vous continuer ?`
-      );
-
-      if (!confirmNegative) {
-        return;
-      }
-    }
-
-    setSaving(true);
-    try {
-      const orderData = {
-        clientId: selectedUser.id,
-        paymentMethod: paymentMethod,
-        notes: notes,
-        discount: discountValue,
-        products: cart.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity
-        }))
-      };
-
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
-      }
-
-      const newOrder = await response.json();
-      setOrders([newOrder, ...orders]);
-
-      await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate)]);
-      setShowForm(false);
-      setSelectedUser(null);
-      setCart([]);
-      setPaymentMethod("CASH");
-      setNotes("");
-      setDiscountValue(0);
-      setUserSearch("");
-      setProductSearch("");
-      alert("Commande créée avec succès !");
-
-      fetchProducts();
-      fetchUsers();
-
-    } catch (err) {
-      console.error('Erreur lors de la création de la commande:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible de créer la commande";
-      alert(errorMessage);
-    } finally {
-      setSaving(false);
-    }
+    await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate)]);
+    fetchProducts();
+    fetchUsers();
   }
 
-  function handlePutOnStandby() {
-    if (!selectedUser || cart.length === 0) return;
-
-    const standbyOrder = {
-      id: `standby_${Date.now()}`,
-      user: selectedUser,
-      cart: [...cart],
-      paymentMethod,
-      notes,
-      discountValue,
-      timestamp: Date.now()
-    };
-
-    setStandbyOrders([...standbyOrders, standbyOrder]);
-
-    setCart([]);
-    setNotes("");
-    setDiscountValue(0);
-    setShowForm(false);
+  function handlePutOnStandby(standbyData: StandbyData) {
+    setStandbyOrders([...standbyOrders, standbyData]);
   }
 
   function handleResumeOrder(standbyId: string) {
     const order = standbyOrders.find(o => o.id === standbyId);
     if (!order) return;
 
-    setSelectedUser(order.user);
-    setCart(order.cart);
-    setPaymentMethod(order.paymentMethod);
-    setNotes(order.notes);
-    setDiscountValue(order.discountValue);
+    setInitialUser(order.user);
+    setInitialCart(order.cart);
+    setInitialPaymentMethod(order.paymentMethod);
+    setInitialNotes(order.notes);
+    setInitialDiscountValue(order.discountValue);
+    setInitialDiscountComment(order.discountComment);
 
     setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
     setShowStandbyList(false);
@@ -653,7 +497,6 @@ export default function DailyOrdersPage() {
       setPaymentMethod("CASH");
       setNotes("");
       setDiscountValue(0);
-      setUserSearch("");
       setProductSearch("");
       alert("Commande modifiée avec succès !");
 
@@ -675,12 +518,51 @@ export default function DailyOrdersPage() {
     return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
   };
 
+  // Fonctions pour le modal d'édition de commande
+  function addToCart(product: Product) {
+    const price = selectedUser?.role === "TRAINER" ? product.trainerPrice : product.price;
+    const existingItem = cart.find(item => item.productId === product.id);
+
+    if (existingItem) {
+      setCart(cart.map(item =>
+        item.productId === product.id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, { productId: product.id, quantity: 1, unitPrice: price }]);
+    }
+  }
+
+  function updateCartQuantity(productId: number, quantity: number) {
+    if (quantity <= 0) {
+      setCart(cart.filter(item => item.productId !== productId));
+    } else {
+      setCart(cart.map(item =>
+        item.productId === productId ? { ...item, quantity } : item
+      ));
+    }
+  }
+
+  function calculateTotal() {
+    if (paymentMethod === "FREE") return 0;
+    const subtotal = calculateSubtotal();
+    if (discountValue <= 0) return subtotal;
+    return Math.max(0, subtotal - discountValue);
+  }
+
+  function calculateSubtotal() {
+    return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+  }
+
+  function calculateDiscount() {
+    if (discountValue <= 0 || paymentMethod === "FREE") return 0;
+    const subtotal = calculateSubtotal();
+    return Math.min(discountValue, subtotal);
+  }
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearch.toLowerCase())
-  );
-
-  const filteredUsers = users.filter(user =>
-    getFullName(user).toLowerCase().includes(userSearch.toLowerCase())
   );
 
   const filteredRefundUsers = users.filter(user =>
@@ -694,10 +576,7 @@ export default function DailyOrdersPage() {
       <main className="flex-1 p-12">
         <PageHeader
           onRefresh={fetchOrders}
-          onNewOrder={() => {
-            setProductSearch(""); // Réinitialiser la recherche de produit
-            setShowForm(true);
-          }}
+          onNewOrder={() => setShowForm(true)}
           onRefund={() => setShowRefundForm(true)}
           onStandby={() => setShowStandbyList(true)}
           standbyCount={standbyOrders.length}
@@ -731,293 +610,29 @@ export default function DailyOrdersPage() {
         />
 
         {/* Modal nouvelle commande */}
-        {showForm && (
-          <div className="fixed inset-0 flex items-center justify-center z-40">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setShowForm(false)} />
-            <div className="relative bg-white rounded-lg p-12 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
-              <h3 className="text-xl font-semibold mb-6 text-black">Nouvelle commande</h3>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Produits disponibles
-                </label>
-
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Rechercher un produit..."
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 max-h-60 overflow-y-auto border rounded p-4">
-                  {filteredProducts.length === 0 ? (
-                    <div className="col-span-3 text-center text-gray-500 py-4">
-                      {productSearch ? "Aucun produit trouvé" : "Aucun produit disponible"}
-                    </div>
-                  ) : (
-                    filteredProducts.map(product => (
-                      <div key={product.id} className="border rounded p-2">
-                        <div className="flex justify-between items-start mb-1">
-                          <div>
-                            <h4 className="font-medium text-sm">{product.name}</h4>
-                            <p className="text-xs text-gray-600">Stock: {product.quantity}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-sm">
-                              {selectedUser?.role === "TRAINER"
-                                ? product.trainerPrice
-                                : product.price}€
-                            </div>
-                            <button
-                              onClick={() => addToCart(product)}
-                              className="mt-0.5 bg-[#1E2A47] text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
-                              disabled={product.quantity <= 0}
-                            >
-                              Ajouter
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {cart.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Panier</label>
-                  <div className="border rounded p-4">
-                    {cart.map(item => {
-                      const product = products.find(p => p.id === item.productId);
-                      return (
-                        <div key={item.productId} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                          <div>
-                            <span className="font-medium">{product?.name}</span>
-                            <span className="text-gray-600 ml-2">({item.unitPrice}€/unité)</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                              className="bg-gray-200 px-2 py-1 rounded text-sm"
-                            >
-                              -
-                            </button>
-                            <span className="px-2">{item.quantity}</span>
-                            <button
-                              onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
-                              className="bg-gray-200 px-2 py-1 rounded text-sm"
-                            >
-                              +
-                            </button>
-                            <span className="ml-4 font-medium">
-                              {(item.quantity * item.unitPrice).toFixed(2)}€
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {paymentMethod !== "FREE" && (
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex items-center gap-4 mb-2">
-                          <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={discountValue || ''}
-                            onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
-                            onBlur={(e) => {
-                              const value = Number(e.target.value) || 0;
-                              if (value < 0) setDiscountValue(0);
-                              if (value > calculateSubtotal()) setDiscountValue(calculateSubtotal());
-                            }}
-                            className="border rounded px-2 py-1 text-sm w-24"
-                            placeholder="0.00"
-                          />
-                          <span className="text-sm text-gray-600">€</span>
-                          {discountValue > 0 && (
-                            <button
-                              onClick={() => setDiscountValue(0)}
-                              className="text-red-500 text-sm hover:text-red-700"
-                            >
-                              ✕ Supprimer
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-4 text-right space-y-1">
-                      <div className="text-sm text-gray-600">
-                        Sous-total: {calculateSubtotal().toFixed(2)}€
-                      </div>
-                      {discountValue > 0 && paymentMethod !== "FREE" && (
-                        <div className="text-sm text-red-600">
-                          Réduction: -{calculateDiscount().toFixed(2)}€
-                        </div>
-                      )}
-                      <div className={`text-xl font-bold ${paymentMethod === "FREE" ? "text-red-600" : ""}`}>
-                        Total: {calculateTotal().toFixed(2)}€
-                        {paymentMethod === "FREE" && <span className="text-sm ml-2">(GRATUIT)</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("CASH")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "CASH"
-                        ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                      }`}
-                  >
-                    💵 Espèces
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("QRCODE")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "QRCODE"
-                        ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                      }`}
-                  >
-                    📱 QR Code
-                  </button>
-
-                  {selectedUser && !getFullName(selectedUser).includes("Vente instentané") && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
-                      className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "ACCOUNT_DEBIT"
-                          ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                        }`}
-                    >
-                      💳 Débit compte
-                    </button>
-                  )}
-                </div>
-
-                {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
-                  <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg">
-                    <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                      Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
-                      {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
-                    </span>
-                    {cart.length > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-
-                <input
-                  type="text"
-                  placeholder="Rechercher un client..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-
-                <div className="flex gap-2">
-                  <select
-                    value={selectedUser?.id || ""}
-                    onChange={(e) => {
-                      const user = users.find(u => u.id === Number(e.target.value));
-                      setSelectedUser(user || null);
-                    }}
-                    className="flex-1 border rounded px-3 py-2"
-                  >
-                    {filteredUsers.length === 0 ? (
-                      <option value="">Aucun client trouvé</option>
-                    ) : (
-                      filteredUsers.map(user => (
-                        <option key={user.id} value={user.id}>
-                          {getFullName(user)}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddMemberForm(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
-                    title="Ajouter un nouveau membre"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    Nouveau
-                  </button>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Commentaires sur la commande..."
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setSelectedUser(null);
-                    setCart([]);
-                    setPaymentMethod("CASH");
-                    setNotes("");
-                    setDiscountValue(0);
-                    setProductSearch("");
-                    setUserSearch("");
-                  }}
-                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  disabled={saving}
-                >
-                  Fermer
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePutOnStandby}
-                  disabled={saving || cart.length === 0}
-                  className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  ⏸️ Mettre en stand-by
-                </button>
-                <button
-                  onClick={handleCreateOrder}
-                  disabled={saving || !selectedUser || cart.length === 0}
-                  className={`px-4 py-2 rounded text-white disabled:opacity-50 disabled:cursor-not-allowed ${paymentMethod === "FREE"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-[#1E2A47] hover:bg-[#2A3B5A]"
-                    }`}
-                >
-                  {saving ? "Création..." : paymentMethod === "FREE" ? "Créer commande gratuite" : "Créer la commande"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <OrderFormModal
+          isOpen={showForm}
+          users={users}
+          products={products}
+          onClose={() => {
+            setShowForm(false);
+            setInitialUser(null);
+            setInitialCart([]);
+            setInitialPaymentMethod("CASH");
+            setInitialNotes("");
+            setInitialDiscountValue(0);
+            setInitialDiscountComment("");
+          }}
+          onCreate={handleCreateOrder}
+          onStandby={handlePutOnStandby}
+          onAddMember={() => setShowAddMemberForm(true)}
+          initialUser={initialUser}
+          initialCart={initialCart}
+          initialPaymentMethod={initialPaymentMethod}
+          initialNotes={initialNotes}
+          initialDiscountValue={initialDiscountValue}
+          initialDiscountComment={initialDiscountComment}
+        />
 
         {/* Modal modification produit */}
         {showEditForm && editingProduct && (
@@ -1443,7 +1058,6 @@ export default function DailyOrdersPage() {
                 setNotes("");
                 setDiscountValue(0);
                 setProductSearch("");
-                setUserSearch("");
               }
             }} />
             <div className="relative bg-white rounded-lg p-12 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
@@ -1671,7 +1285,6 @@ export default function DailyOrdersPage() {
                       setNotes("");
                       setDiscountValue(0);
                       setProductSearch("");
-                      setUserSearch("");
                     }
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
