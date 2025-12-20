@@ -832,18 +832,24 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
             });
 
             // Update DailyReport for the order's date
-            const orderDate = new Date(existingOrder.date).toISOString().split('T')[0];
+            const orderDate = new Date(existingOrder.date);
+            orderDate.setHours(0, 0, 0, 0);
             const dailyReport = await prisma.dailyReport.findUnique({
                 where: { date: orderDate }
             });
 
             if (dailyReport) {
                 // Recalculate revenues for this date
+                const dayStart = new Date(orderDate);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(orderDate);
+                dayEnd.setHours(23, 59, 59, 999);
+
                 const dayOrders = await prisma.order.findMany({
                     where: {
                         date: {
-                            gte: new Date(orderDate + 'T00:00:00.000Z'),
-                            lt: new Date(new Date(orderDate).setDate(new Date(orderDate).getDate() + 1))
+                            gte: dayStart,
+                            lt: dayEnd
                         }
                     }
                 });
@@ -868,7 +874,8 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 });
 
                 // Calculate new endingCash
-                const endingCash = dailyReport.startingCash + cashRevenue + dailyReport.trou;
+                // endingCash = startingCash + cashRevenue + trou (trou peut être négatif pour une dépense)
+                const endingCash = Number(dailyReport.startingCash) + cashRevenue + Number(dailyReport.trou);
 
                 // Update the daily report
                 await prisma.dailyReport.update({
@@ -884,12 +891,12 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 // Update startingCash for all subsequent days
                 const nextDate = new Date(orderDate);
                 nextDate.setDate(nextDate.getDate() + 1);
-                const nextDateStr = nextDate.toISOString().split('T')[0];
+                nextDate.setHours(0, 0, 0, 0);
 
                 const subsequentReports = await prisma.dailyReport.findMany({
                     where: {
                         date: {
-                            gte: nextDateStr
+                            gte: nextDate
                         }
                     },
                     orderBy: {
@@ -897,10 +904,10 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                     }
                 });
 
-                // Update each subsequent report's startingCash
+                // Update each subsequent report's startingCash and endingCash
                 let previousEndingCash = endingCash;
                 for (const report of subsequentReports) {
-                    const newEndingCash = previousEndingCash + report.cashRevenue + report.trou;
+                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou);
 
                     await prisma.dailyReport.update({
                         where: { id: report.id },
