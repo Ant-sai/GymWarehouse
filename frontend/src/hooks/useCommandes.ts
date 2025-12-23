@@ -108,8 +108,8 @@ export function useCommandes() {
   const cancelOrder = useCallback(async (order: Order) => {
     await ordersApi.hardDelete(order.id, true);
     setOrders(orders.filter(o => o.id !== order.id));
-    await Promise.all([fetchProducts(), fetchUsers()]);
-  }, [orders, fetchProducts, fetchUsers]);
+    await Promise.all([fetchProducts(), fetchUsers(), fetchDailyClosing(selectedDate)]);
+  }, [orders, fetchProducts, fetchUsers, fetchDailyClosing, selectedDate]);
 
   // Update product
   const updateProduct = useCallback(async (productId: number, updates: Partial<Product>) => {
@@ -128,8 +128,8 @@ export function useCommandes() {
   // Refund
   const refund = useCallback(async (refundData: RefundData) => {
     await usersApi.refund(refundData);
-    await Promise.all([fetchOrders(), fetchUsers()]);
-  }, [fetchOrders, fetchUsers]);
+    await Promise.all([fetchOrders(), fetchUsers(), fetchDailyClosing(selectedDate)]);
+  }, [fetchOrders, fetchUsers, fetchDailyClosing, selectedDate]);
 
   // Standby orders management
   const putOrderOnStandby = useCallback((standbyOrder: StandbyOrder) => {
