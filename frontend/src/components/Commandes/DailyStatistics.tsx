@@ -72,6 +72,15 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   // Exemple: 100€ + 200€ + (-50€) = 250€
   const fondCaisse = startingCashFund + dailyStats.cashRevenue + trouValue;
 
+  // Log pour déboguer le calcul
+  console.log(`💰 [DailyStatistics] ${selectedDate}:`, {
+    startingCashFund,
+    cashRevenue: dailyStats.cashRevenue,
+    trouValue,
+    fondCaisse,
+    calcul: `${startingCashFund}€ + ${dailyStats.cashRevenue}€ + ${trouValue}€ = ${fondCaisse}€`
+  });
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
       <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">

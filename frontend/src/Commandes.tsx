@@ -94,16 +94,25 @@ export default function DailyOrdersPage() {
   }, [selectedDate]);
 
   async function fetchDailyClosing(date: string) {
+    console.log(`\n📅 [FRONTEND] Chargement des données pour ${date}`);
     setLoadingClosing(true);
     try {
       const response = await fetch(`/api/daily-reports/${date}`);
 
       if (response.ok) {
         const data: DailyClosing = await response.json();
+        console.log('✅ [FRONTEND] Rapport trouvé:', {
+          date,
+          startingCash: data.startingCash,
+          cashRevenue: data.cashRevenue,
+          trou: data.trou,
+          endingCash: data.endingCash
+        });
         setDailyClosing(data);
         setTrouValue(Number(data.trou) || 0);
         setStartingCashFund(Number(data.startingCash) || 0);
       } else if (response.status === 404) {
+        console.log('⚠️  [FRONTEND] Pas de rapport pour ce jour, récupération du fond de départ...');
         setDailyClosing(null);
         setTrouValue(0);
 
@@ -112,13 +121,15 @@ export default function DailyOrdersPage() {
         if (startingFundResponse.ok) {
           const fundData = await startingFundResponse.json();
           const fundValue = Number(fundData.startingCash) || 0;
+          console.log(`✅ [FRONTEND] Fond de départ récupéré: ${fundValue}€ (du ${fundData.previousDate ? new Date(fundData.previousDate).toISOString().split('T')[0] : 'aucun jour précédent'})`);
           setStartingCashFund(fundValue);
         } else {
+          console.log('⚠️  [FRONTEND] Impossible de récupérer le fond de départ, défaut à 0€');
           setStartingCashFund(0);
         }
       }
     } catch (err) {
-      console.error('Erreur lors de la récupération:', err);
+      console.error('❌ [FRONTEND] Erreur lors de la récupération:', err);
     } finally {
       setLoadingClosing(false);
     }
