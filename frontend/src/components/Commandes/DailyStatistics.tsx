@@ -67,7 +67,9 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   };
 
   const dailyStats = getDailyStats();
-  // Le trou est stocké en négatif, donc on l'additionne (ce qui revient à soustraire sa valeur absolue)
+  // Le trou est stocké en négatif (ex: -50 pour 50€ manquants)
+  // Formule: Fond de fin = Fond de début + Espèces du jour + Trou (négatif)
+  // Exemple: 100€ + 200€ + (-50€) = 250€
   const fondCaisse = startingCashFund + dailyStats.cashRevenue + trouValue;
 
   return (
