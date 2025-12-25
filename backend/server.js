@@ -27,6 +27,76 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// -----------------------------------------------
+// ------------ Helper Functions -----------------
+// -----------------------------------------------
+
+// 🔄 Fonction helper pour recalculer tous les jours suivants
+async function recalculateFollowingDays(startDate) {
+    try {
+        console.log('\n🔄 ========== RECALCUL EN CASCADE ==========');
+        console.log(`📅 Date de départ: ${startDate.toISOString().split('T')[0]}`);
+
+        // Récupérer tous les rapports après la date donnée
+        const followingReports = await prisma.dailyReport.findMany({
+            where: {
+                date: {
+                    gt: startDate
+                }
+            },
+            orderBy: {
+                date: 'asc'
+            }
+        });
+
+        console.log(`📊 Nombre de jours à recalculer: ${followingReports.length}`);
+
+        // Pour chaque rapport, recalculer le startingCash et endingCash
+        for (const report of followingReports) {
+            const reportDate = new Date(report.date).toISOString().split('T')[0];
+
+            // Récupérer le rapport du jour précédent
+            const previousReport = await prisma.dailyReport.findFirst({
+                where: {
+                    date: {
+                        lt: report.date
+                    }
+                },
+                orderBy: {
+                    date: 'desc'
+                }
+            });
+
+            const oldStartingCash = Number(report.startingCash);
+            const oldEndingCash = Number(report.endingCash);
+
+            const newStartingCash = previousReport ? Number(previousReport.endingCash) : 0;
+            const cashRevenue = Number(report.cashRevenue);
+            const trou = Number(report.trou);
+            const newEndingCash = newStartingCash + cashRevenue + trou;
+
+            console.log(`\n  📆 ${reportDate}:`);
+            console.log(`    Ancien: startingCash=${oldStartingCash}€, endingCash=${oldEndingCash}€`);
+            console.log(`    Calcul: ${newStartingCash}€ (début) + ${cashRevenue}€ (espèces) + ${trou}€ (trou) = ${newEndingCash}€`);
+            console.log(`    Nouveau: startingCash=${newStartingCash}€, endingCash=${newEndingCash}€`);
+
+            await prisma.dailyReport.update({
+                where: { date: report.date },
+                data: {
+                    startingCash: newStartingCash,
+                    endingCash: newEndingCash
+                }
+            });
+        }
+
+        console.log(`\n✅ Recalculé ${followingReports.length} jours suivants`);
+        console.log('🔄 =========================================\n');
+    } catch (error) {
+        console.error('❌ Erreur lors du recalcul des jours suivants:', error);
+        throw error;
+    }
+}
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🌐 CORS origin: ${process.env.FRONTEND_API_URL}`);
@@ -457,9 +527,16 @@ app.post('/api/orders', async (req, res) => {
             
             return order;
         });
-        
+
+        // 🔄 Recalculer les jours suivants car les revenus ont changé
+        const orderDate = new Date();
+        orderDate.setHours(0, 0, 0, 0);
+        await recalculateFollowingDays(orderDate).catch(err => {
+            console.error('⚠️ Erreur lors du recalcul (non bloquant):', err);
+        });
+
         res.status(201).json(result);
-        
+
     } catch (err) {
         console.error('Error creating order: ', err);
         res.status(500).json({
@@ -709,49 +786,87 @@ app.put('/api/orders/:id', async (req, res) => {
                 }
             });
 
-            // Mettre à jour la clôture journalière
+            // Mettre à jour le rapport quotidien
             const orderDate = new Date(order.date);
-            const dateStr = orderDate.toISOString().split('T')[0];
+            orderDate.setHours(0, 0, 0, 0);
+
+            const dayStart = new Date(orderDate);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(orderDate);
+            dayEnd.setHours(23, 59, 59, 999);
 
             const allOrdersForDay = await prismaTransaction.order.findMany({
                 where: {
                     date: {
-                        gte: new Date(dateStr),
-                        lt: new Date(new Date(dateStr).getTime() + 24 * 60 * 60 * 1000)
+                        gte: dayStart,
+                        lt: dayEnd
                     }
                 }
             });
 
-            const stats = {
-                cashRevenue: 0,
-                qrRevenue: 0,
-                creditRevenue: 0
-            };
+            let cashRevenue = 0;
+            let qrRevenue = 0;
+            let creditRevenue = 0;
 
             allOrdersForDay.forEach(o => {
                 const amount = Number(o.totalAmount);
                 if (o.paymentMethod === 'CASH') {
-                    stats.cashRevenue += amount;
+                    cashRevenue += amount;
                 } else if (o.paymentMethod === 'QRCODE') {
-                    stats.qrRevenue += amount;
+                    qrRevenue += amount;
                 } else if (o.paymentMethod === 'ACCOUNT_DEBIT') {
-                    stats.creditRevenue += amount;
+                    creditRevenue += amount;
                 }
             });
 
-            const existingClosing = await prismaTransaction.dailyClosing.findUnique({
-                where: { date: dateStr }
+            const existingReport = await prismaTransaction.dailyReport.findUnique({
+                where: { date: orderDate }
             });
 
-            if (existingClosing) {
-                await prismaTransaction.dailyClosing.update({
-                    where: { date: dateStr },
+            if (existingReport) {
+                // Recalculer endingCash avec les nouveaux revenus
+                const endingCash = Number(existingReport.startingCash) + cashRevenue + Number(existingReport.trou);
+
+                await prismaTransaction.dailyReport.update({
+                    where: { date: orderDate },
                     data: {
-                        cashRevenue: stats.cashRevenue,
-                        qrRevenue: stats.qrRevenue,
-                        creditRevenue: stats.creditRevenue,
+                        cashRevenue,
+                        qrRevenue,
+                        creditRevenue,
+                        endingCash
                     }
                 });
+
+                // Mettre à jour les jours suivants
+                const nextDate = new Date(orderDate);
+                nextDate.setDate(nextDate.getDate() + 1);
+                nextDate.setHours(0, 0, 0, 0);
+
+                const subsequentReports = await prismaTransaction.dailyReport.findMany({
+                    where: {
+                        date: {
+                            gte: nextDate
+                        }
+                    },
+                    orderBy: {
+                        date: 'asc'
+                    }
+                });
+
+                let previousEndingCash = endingCash;
+                for (const report of subsequentReports) {
+                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou);
+
+                    await prismaTransaction.dailyReport.update({
+                        where: { id: report.id },
+                        data: {
+                            startingCash: previousEndingCash,
+                            endingCash: newEndingCash
+                        }
+                    });
+
+                    previousEndingCash = newEndingCash;
+                }
             }
 
             return order;
@@ -1018,8 +1133,122 @@ app.post('/api/refunds', async (req, res) => {
                     }
                 }
             });
+
+            // Mettre à jour le rapport quotidien
             const refundDate = new Date();
             refundDate.setHours(0, 0, 0, 0);
+
+            // Calculer les revenus du jour
+            const dayStart = new Date(refundDate);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(refundDate);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const allOrdersToday = await prismaTransaction.order.findMany({
+                where: {
+                    date: {
+                        gte: dayStart,
+                        lte: dayEnd
+                    }
+                }
+            });
+
+            let cashRevenue = 0;
+            let qrRevenue = 0;
+            let creditRevenue = 0;
+
+            allOrdersToday.forEach(o => {
+                const amount = Number(o.totalAmount);
+                if (o.paymentMethod !== "FREE") {
+                    switch (o.paymentMethod) {
+                        case "CASH":
+                            cashRevenue += amount;
+                            break;
+                        case "QRCODE":
+                            qrRevenue += amount;
+                            break;
+                        case "ACCOUNT_DEBIT":
+                            creditRevenue += amount;
+                            break;
+                    }
+                }
+            });
+
+            // Vérifier si un rapport existe pour ce jour
+            const existingReport = await prismaTransaction.dailyReport.findUnique({
+                where: { date: refundDate }
+            });
+
+            if (existingReport) {
+                // Rapport existe : mettre à jour les revenus et recalculer endingCash
+                const trou = Number(existingReport.trou) || 0;
+                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou;
+
+                await prismaTransaction.dailyReport.update({
+                    where: { date: refundDate },
+                    data: {
+                        cashRevenue,
+                        qrRevenue,
+                        creditRevenue,
+                        endingCash
+                    }
+                });
+
+                // Mettre à jour les jours suivants
+                const nextDate = new Date(refundDate);
+                nextDate.setDate(nextDate.getDate() + 1);
+                nextDate.setHours(0, 0, 0, 0);
+
+                const subsequentReports = await prismaTransaction.dailyReport.findMany({
+                    where: {
+                        date: {
+                            gte: nextDate
+                        }
+                    },
+                    orderBy: {
+                        date: 'asc'
+                    }
+                });
+
+                let previousEndingCash = endingCash;
+                for (const report of subsequentReports) {
+                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou);
+
+                    await prismaTransaction.dailyReport.update({
+                        where: { id: report.id },
+                        data: {
+                            startingCash: previousEndingCash,
+                            endingCash: newEndingCash
+                        }
+                    });
+
+                    previousEndingCash = newEndingCash;
+                }
+            } else {
+                // Pas de rapport : en créer un nouveau
+                const previousReport = await prismaTransaction.dailyReport.findFirst({
+                    where: {
+                        date: { lt: refundDate }
+                    },
+                    orderBy: { date: 'desc' }
+                });
+
+                const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
+                const endingCash = startingCash + cashRevenue;
+
+                await prismaTransaction.dailyReport.create({
+                    data: {
+                        date: refundDate,
+                        startingCash,
+                        cashRevenue,
+                        qrRevenue,
+                        creditRevenue,
+                        trou: 0,
+                        endingCash
+                    }
+                });
+            }
+
             return {
                 refund: refundOrder,
                 newBalance: updatedUser.balance,
@@ -1073,6 +1302,11 @@ app.put('/api/daily-reports/:date', async (req, res) => {
         const { trou } = req.body;
 
         const reportDate = new Date(date);
+        const dateStr = reportDate.toISOString().split('T')[0];
+
+        console.log('\n💰 ========== MISE À JOUR DU TROU ==========');
+        console.log(`📅 Date: ${dateStr}`);
+        console.log(`🔢 Nouveau trou: ${trou}€`);
 
         // Récupérer le rapport existant
         const existingReport = await prisma.dailyReport.findUnique({
@@ -1080,9 +1314,17 @@ app.put('/api/daily-reports/:date', async (req, res) => {
         });
 
         if (existingReport) {
+            console.log(`📊 Rapport existant trouvé:`);
+            console.log(`   - startingCash: ${existingReport.startingCash}€`);
+            console.log(`   - cashRevenue: ${existingReport.cashRevenue}€`);
+            console.log(`   - trou actuel: ${existingReport.trou}€`);
+            console.log(`   - endingCash actuel: ${existingReport.endingCash}€`);
+
             // Formule: endingCash = startingCash + cashRevenue + trou (le trou est négatif)
             const nouvelleTrou = trou !== undefined ? Number(trou) : Number(existingReport.trou);
             const endingCash = Number(existingReport.startingCash) + Number(existingReport.cashRevenue) + nouvelleTrou;
+
+            console.log(`🧮 Calcul: ${existingReport.startingCash}€ + ${existingReport.cashRevenue}€ + ${nouvelleTrou}€ = ${endingCash}€`);
 
             const updated = await prisma.dailyReport.update({
                 where: { date: reportDate },
@@ -1091,6 +1333,13 @@ app.put('/api/daily-reports/:date', async (req, res) => {
                     endingCash
                 }
             });
+
+            console.log(`✅ Rapport mis à jour - nouveau endingCash: ${endingCash}€`);
+
+            // 🔄 RECALCULER tous les jours suivants car le fond de début change
+            await recalculateFollowingDays(reportDate);
+
+            console.log('💰 ==========================================\n');
 
             return res.json(updated);
         }
@@ -1277,26 +1526,114 @@ app.post('/api/daily-reports', async (req, res) => {
     }
 });
 
-// Get daily report for a specific date
+// Get daily report for a specific date (avec création automatique si manquant)
 app.get('/api/daily-reports/:date', async (req, res) => {
     try {
         const { date } = req.params;
         const reportDate = new Date(date);
+        const dateStr = reportDate.toISOString().split('T')[0];
 
-        const dailyReport = await prisma.dailyReport.findUnique({
+        console.log(`\n📖 GET /api/daily-reports/${dateStr}`);
+
+        let dailyReport = await prisma.dailyReport.findUnique({
             where: {
                 date: reportDate
             }
         });
 
         if (!dailyReport) {
-            return res.status(404).json({ error: 'Daily report not found' });
+            console.log(`   ⚠️  Rapport non trouvé pour ${dateStr}, création automatique...`);
+
+            // Récupérer le rapport du jour précédent pour avoir le startingCash
+            const previousReport = await prisma.dailyReport.findFirst({
+                where: {
+                    date: { lt: reportDate }
+                },
+                orderBy: { date: 'desc' }
+            });
+
+            const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
+
+            if (previousReport) {
+                const prevDate = new Date(previousReport.date).toISOString().split('T')[0];
+                console.log(`   📅 Jour précédent trouvé: ${prevDate} (endingCash: ${previousReport.endingCash}€)`);
+            } else {
+                console.log(`   📅 Aucun jour précédent, startingCash par défaut: 0€`);
+            }
+
+            // Calculer les revenus du jour à partir des commandes
+            const dayStart = new Date(reportDate);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(reportDate);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const orders = await prisma.order.findMany({
+                where: {
+                    date: {
+                        gte: dayStart,
+                        lte: dayEnd
+                    }
+                }
+            });
+
+            let cashRevenue = 0;
+            let qrRevenue = 0;
+            let creditRevenue = 0;
+
+            orders.forEach(order => {
+                const amount = Number(order.totalAmount);
+                if (order.paymentMethod !== "FREE") {
+                    switch (order.paymentMethod) {
+                        case "CASH":
+                            cashRevenue += amount;
+                            break;
+                        case "QRCODE":
+                            qrRevenue += amount;
+                            break;
+                        case "ACCOUNT_DEBIT":
+                            creditRevenue += amount;
+                            break;
+                    }
+                }
+            });
+
+            const trou = 0; // Par défaut, pas de trou
+            const endingCash = startingCash + cashRevenue + trou;
+
+            console.log(`   💰 Calcul du rapport:`);
+            console.log(`      - startingCash: ${startingCash}€`);
+            console.log(`      - cashRevenue: ${cashRevenue}€ (${orders.length} commandes)`);
+            console.log(`      - qrRevenue: ${qrRevenue}€`);
+            console.log(`      - creditRevenue: ${creditRevenue}€`);
+            console.log(`      - trou: ${trou}€`);
+            console.log(`      - endingCash: ${endingCash}€`);
+
+            // Créer le rapport
+            dailyReport = await prisma.dailyReport.create({
+                data: {
+                    date: reportDate,
+                    startingCash,
+                    cashRevenue,
+                    qrRevenue,
+                    creditRevenue,
+                    trou,
+                    endingCash
+                }
+            });
+
+            console.log(`   ✅ Rapport créé automatiquement pour ${dateStr}`);
+        } else {
+            console.log(`   ✅ Rapport trouvé:`);
+            console.log(`      - startingCash: ${dailyReport.startingCash}€`);
+            console.log(`      - cashRevenue: ${dailyReport.cashRevenue}€`);
+            console.log(`      - trou: ${dailyReport.trou}€`);
+            console.log(`      - endingCash: ${dailyReport.endingCash}€`);
         }
 
         res.json(dailyReport);
 
     } catch (err) {
-        console.error('Error fetching daily report:', err);
+        console.error('Error fetching/creating daily report:', err);
         res.status(500).json({ error: 'Failed to fetch daily report' });
     }
 });
@@ -1321,6 +1658,9 @@ app.get('/api/daily-reports/starting-cash/:date', async (req, res) => {
     try {
         const { date } = req.params;
         const currentDate = new Date(date);
+        const dateStr = currentDate.toISOString().split('T')[0];
+
+        console.log(`\n💵 GET /api/daily-reports/starting-cash/${dateStr}`);
 
         const previousReport = await prisma.dailyReport.findFirst({
             where: {
@@ -1334,6 +1674,16 @@ app.get('/api/daily-reports/starting-cash/:date', async (req, res) => {
         });
 
         const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
+
+        if (previousReport) {
+            const prevDate = new Date(previousReport.date).toISOString().split('T')[0];
+            console.log(`   ✅ Jour précédent trouvé: ${prevDate}`);
+            console.log(`      - endingCash du jour précédent: ${previousReport.endingCash}€`);
+            console.log(`      → startingCash pour ${dateStr}: ${startingCash}€`);
+        } else {
+            console.log(`   ⚠️  Aucun jour précédent trouvé`);
+            console.log(`      → startingCash pour ${dateStr}: 0€ (par défaut)`);
+        }
 
         res.json({
             startingCash,
