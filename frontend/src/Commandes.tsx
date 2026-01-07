@@ -246,7 +246,9 @@ export default function DailyOrdersPage() {
 
       const newUser = await response.json();
       await fetchUsers();
-      setSelectedUser(newUser);
+
+      // Sélectionner le nouveau membre dans le modal de commande
+      setInitialUser(newUser);
 
       setShowAddMemberForm(false);
       setNewMemberForm({
