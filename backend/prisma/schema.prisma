@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id                  Int            @id @default(autoincrement())
+  id                  Int             @id @default(autoincrement())
   firstName           String?
   lastName            String?
-  role                Role           @default(USER)
-  balance             Decimal        @default(0.00) @db.Decimal(10, 2)
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
+  role                Role            @default(USER)
+  balance             Decimal         @default(0.00) @db.Decimal(10, 2)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
   cashMovements       CashMovement[]
-  closedCashRegisters CashRegister[] @relation("ClosedBy")
-  openedCashRegisters CashRegister[] @relation("OpenedBy")
+  closedCashRegisters CashRegister[]  @relation("ClosedBy")
+  openedCashRegisters CashRegister[]  @relation("OpenedBy")
   orders              Order[]
+  standbyOrders       StandbyOrder[]
 
   @@map("users")
 }
@@ -127,6 +128,22 @@ model DailyReport {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("daily_reports")
+}
+
+model StandbyOrder {
+  id              Int         @id @default(autoincrement())
+  userId          Int         @map("user_id")
+  paymentMethod   PaymentType @map("payment_method")
+  notes           String?     @db.Text
+  discountValue   Float       @default(0) @map("discount_value")
+  discountComment String?     @map("discount_comment") @db.Text
+  cartData        String      @map("cart_data") @db.Text  // JSON string du panier
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "standby_orders_userId_fkey")
+  @@map("standby_orders")
 }
 
 enum Role {

@@ -9,7 +9,10 @@
       "Bash(git push:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(pm2 logs:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(npx prisma generate)"
     ]
   }
 }

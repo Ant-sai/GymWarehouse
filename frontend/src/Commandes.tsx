@@ -86,7 +86,7 @@ export default function DailyOrdersPage() {
   const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
-    Promise.all([fetchOrders(), fetchUsers(), fetchProducts()]);
+    Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders()]);
   }, []);
 
   useEffect(() => {
@@ -184,6 +184,39 @@ export default function DailyOrdersPage() {
     }
   }
 
+  async function fetchStandbyOrders() {
+    try {
+      const response = await fetch("/api/standby-orders");
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data = await response.json();
+
+      // Convertir les données de la BDD au format StandbyData
+      const standbyData: StandbyData[] = data.map((order: {
+        id: number;
+        user: User;
+        cart: OrderItem[];
+        paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
+        notes: string | null;
+        discountValue: number;
+        discountComment: string | null;
+        createdAt: string;
+      }) => ({
+        id: order.id.toString(),
+        user: order.user,
+        cart: order.cart,
+        paymentMethod: order.paymentMethod,
+        notes: order.notes || "",
+        discountValue: order.discountValue || 0,
+        discountComment: order.discountComment || "",
+        timestamp: order.createdAt
+      }));
+
+      setStandbyOrders(standbyData);
+    } catch (err) {
+      console.error('Erreur lors de la récupération des commandes en standby:', err);
+    }
+  }
+
   async function handleAddMember(e?: React.FormEvent) {
     e?.preventDefault();
     setSaving(true);
@@ -252,11 +285,34 @@ export default function DailyOrdersPage() {
     fetchUsers();
   }
 
-  function handlePutOnStandby(standbyData: StandbyData) {
-    setStandbyOrders([...standbyOrders, standbyData]);
+  async function handlePutOnStandby(standbyData: StandbyData) {
+    try {
+      const response = await fetch("/api/standby-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: standbyData.user.id,
+          cart: standbyData.cart,
+          paymentMethod: standbyData.paymentMethod,
+          notes: standbyData.notes,
+          discountValue: standbyData.discountValue,
+          discountComment: standbyData.discountComment
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // Rafraîchir la liste des standby orders
+      await fetchStandbyOrders();
+    } catch (err) {
+      console.error('Erreur lors de la mise en standby:', err);
+      alert("Erreur lors de la mise en standby de la commande");
+    }
   }
 
-  function handleResumeOrder(standbyId: string) {
+  async function handleResumeOrder(standbyId: string) {
     const order = standbyOrders.find(o => o.id === standbyId);
     if (!order) return;
 
@@ -267,14 +323,43 @@ export default function DailyOrdersPage() {
     setInitialDiscountValue(order.discountValue);
     setInitialDiscountComment(order.discountComment);
 
-    setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
+    // Supprimer de la base de données
+    try {
+      const response = await fetch(`/api/standby-orders/${standbyId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // Rafraîchir la liste des standby orders
+      await fetchStandbyOrders();
+    } catch (err) {
+      console.error('Erreur lors de la suppression du standby:', err);
+    }
+
     setShowStandbyList(false);
     setShowForm(true);
   }
 
-  function handleDeleteStandby(standbyId: string) {
+  async function handleDeleteStandby(standbyId: string) {
     if (confirm("Voulez-vous vraiment supprimer cette commande en stand-by ?")) {
-      setStandbyOrders(standbyOrders.filter(o => o.id !== standbyId));
+      try {
+        const response = await fetch(`/api/standby-orders/${standbyId}`, {
+          method: "DELETE"
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+
+        // Rafraîchir la liste des standby orders
+        await fetchStandbyOrders();
+      } catch (err) {
+        console.error('Erreur lors de la suppression du standby:', err);
+        alert("Erreur lors de la suppression de la commande en standby");
+      }
     }
   }
 

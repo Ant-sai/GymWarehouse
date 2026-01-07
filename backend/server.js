@@ -1292,6 +1292,116 @@ app.get('/api/daily-reports/previous/:date', async (req, res) => {
 });
 
 // -----------------------------------------------
+// ------------ Standby Orders routes ------------
+// -----------------------------------------------
+
+// Get all standby orders
+app.get('/api/standby-orders', async (req, res) => {
+    try {
+        const standbyOrders = await prisma.standbyOrder.findMany({
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true,
+                        balance: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'asc'
+            }
+        });
+
+        // Parse cartData JSON for each order
+        const ordersWithParsedCart = standbyOrders.map(order => ({
+            ...order,
+            cart: JSON.parse(order.cartData)
+        }));
+
+        res.json(ordersWithParsedCart);
+    } catch (err) {
+        console.error('Error fetching standby orders:', err);
+        res.status(500).json({ error: 'Failed to fetch standby orders' });
+    }
+});
+
+// Create a standby order
+app.post('/api/standby-orders', async (req, res) => {
+    try {
+        const {
+            userId,
+            cart,
+            paymentMethod,
+            notes,
+            discountValue,
+            discountComment
+        } = req.body;
+
+        // Validation
+        if (!userId || !cart || cart.length === 0 || !paymentMethod) {
+            return res.status(400).json({
+                error: 'Missing required fields: userId, cart, and paymentMethod'
+            });
+        }
+
+        const standbyOrder = await prisma.standbyOrder.create({
+            data: {
+                userId: Number(userId),
+                paymentMethod: paymentMethod,
+                notes: notes || null,
+                discountValue: discountValue || 0,
+                discountComment: discountComment || null,
+                cartData: JSON.stringify(cart)
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true,
+                        balance: true
+                    }
+                }
+            }
+        });
+
+        res.status(201).json({
+            ...standbyOrder,
+            cart: JSON.parse(standbyOrder.cartData)
+        });
+    } catch (err) {
+        console.error('Error creating standby order:', err);
+        res.status(500).json({
+            error: 'Failed to create standby order',
+            message: err.message
+        });
+    }
+});
+
+// Delete a standby order
+app.delete('/api/standby-orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await prisma.standbyOrder.delete({
+            where: { id: Number(id) }
+        });
+
+        res.status(204).send();
+    } catch (err) {
+        console.error('Error deleting standby order:', err);
+        if (err.code === 'P2025') {
+            return res.status(404).json({ error: 'Standby order not found' });
+        }
+        res.status(500).json({ error: 'Failed to delete standby order' });
+    }
+});
+
+// -----------------------------------------------
 // ------------ Daily Reports routes -------------
 // -----------------------------------------------
 
