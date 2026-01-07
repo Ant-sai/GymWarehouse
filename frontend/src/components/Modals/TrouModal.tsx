@@ -110,28 +110,15 @@ export const TrouModal: React.FC<TrouModalProps> = ({
             Date: <span className="font-medium">{formatDate(date)}</span>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-2">
-              <div className="text-blue-600 mt-0.5">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-                  <path d="M12 16v-4M12 8h.01" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-            </div>
-          </div>
-
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Montant manquant (€) *
           </label>
           <input
             type="number"
             step="0.01"
-            min="0"
             value={trouValue}
             onChange={(e) => setTrouValue(e.target.value)}
             className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-            placeholder="0.00"
             required
             autoFocus
             disabled={saving}
