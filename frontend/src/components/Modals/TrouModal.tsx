@@ -128,33 +128,6 @@ export const TrouModal: React.FC<TrouModalProps> = ({
             autoFocus
             disabled={saving}
           />
-
-          <div className="mt-2 text-xs text-gray-500">
-            Valeur positive = Trou (manque d'argent) <br />
-            Valeur négative = Surplus (argent en plus)
-          </div>
-
-          {trouValue && !isNaN(Number(trouValue)) && Number(trouValue) !== 0 && (
-            <div className="mt-2 p-2 rounded text-sm">
-              <span className={Number(trouValue) > 0 ? "text-red-600" : "text-green-600"}>
-                {Number(trouValue) > 0
-                  ? `⚠️ Trou de ${Number(trouValue).toFixed(2)}€ (argent manquant)`
-                  : `✅ Surplus de ${Math.abs(Number(trouValue)).toFixed(2)}€ (argent en plus)`
-                }
-              </span>
-            </div>
-          )}
-
-          {currentTrou !== 0 && (
-            <div className="mt-2 text-sm text-gray-600">
-              Valeur actuelle: <span className={`font-medium ${currentTrou < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {currentTrou < 0
-                  ? `Trou de ${Math.abs(currentTrou).toFixed(2)}€`
-                  : `Surplus de ${currentTrou.toFixed(2)}€`
-                }
-              </span>
-            </div>
-          )}
         </div>
 
         {error && (
