@@ -475,7 +475,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               📱 QR Code
             </button>
 
-            {selectedUser && !getFullName(selectedUser).toLowerCase().includes("vente instant") && (
+            
               <button
                 type="button"
                 onClick={() => {
@@ -490,7 +490,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               >
                 💳 Débit compte
               </button>
-            )}
           </div>
 
           {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
@@ -572,7 +571,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                         }}
                         className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
                       >
-                        {getFullName(user)}
+                        <div className="flex justify-between items-center">
+                          <span>{getFullName(user)}</span>
+                          <span className={`font-medium ${Number(user.balance) < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                            {Number(user.balance).toFixed(2)}€
+                          </span>
+                        </div>
                       </button>
                     ))
                   )}
@@ -581,19 +585,24 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
               {/* Affichage du client sélectionné */}
               {selectedUser && (
-                <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
-                  <span>Client sélectionné: <span className="font-medium">{getFullName(selectedUser)}</span></span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedUser(null);
-                      setUserSearch('');
-                    }}
-                    className="text-red-500 hover:text-red-700 transition-colors"
-                    title="Changer de client"
-                  >
-                    ✕
-                  </button>
+                <div className="mt-2 text-sm text-gray-600 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{getFullName(selectedUser)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUser(null);
+                        setUserSearch('');
+                      }}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      title="Changer de client"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <span className={`font-medium ${Number(selectedUser.balance) < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    Solde: {Number(selectedUser.balance).toFixed(2)}€
+                  </span>
                 </div>
               )}
             </div>
