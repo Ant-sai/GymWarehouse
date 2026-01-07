@@ -81,14 +81,11 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       hasSelectedUser: !!selectedUser
     });
 
-    if (isOpen && !initialUser && users.length > 0 && !selectedUser) {
-      const venteInstant = users.find(u =>
-        getFullName(u).toLowerCase().includes('vente instant')
-      );
-      console.log('👤 [useEffect] Utilisateur sélectionné:', venteInstant || users[0]);
-      setSelectedUser(venteInstant || users[0]);
+    if (isOpen && initialUser && !selectedUser) {
+      console.log('👤 [useEffect] Utilisateur initial:', initialUser);
+      setSelectedUser(initialUser);
     }
-  }, [isOpen, users, initialUser, selectedUser]);
+  }, [isOpen, initialUser, selectedUser]);
 
   // Fermer le dropdown quand on clique en dehors
   useEffect(() => {
@@ -547,10 +544,9 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               <input
                 type="text"
                 placeholder="Rechercher un client..."
-                value={selectedUser ? getFullName(selectedUser) : userSearch}
+                value={userSearch}
                 onChange={(e) => {
                   setUserSearch(e.target.value);
-                  setSelectedUser(null);
                   setShowUserDropdown(true);
                 }}
                 onFocus={() => setShowUserDropdown(true)}
@@ -558,7 +554,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               />
 
               {/* Dropdown de résultats */}
-              {showUserDropdown && !selectedUser && (
+              {showUserDropdown && userSearch && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
                   {filteredUsers.length === 0 ? (
                     <div className="px-3 py-2 text-gray-500 text-sm">
