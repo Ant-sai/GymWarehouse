@@ -23,8 +23,13 @@ export const TrouModal: React.FC<TrouModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Initialiser avec la valeur absolue (positive) pour l'affichage
-      setTrouValue(currentTrou.toString());
+      // Initialiser avec un champ vide, sauf si un trou existe déjà
+      if (currentTrou !== 0) {
+        // Inverser le signe pour l'affichage : trou négatif = valeur positive affichée
+        setTrouValue((-currentTrou).toString());
+      } else {
+        setTrouValue("");
+      }
       setError("");
     }
   }, [isOpen, currentTrou]);
@@ -45,8 +50,10 @@ export const TrouModal: React.FC<TrouModalProps> = ({
     setError("");
 
     try {
-      // Le trou est toujours négatif, donc on envoie la valeur négative
-      await onSave(-Math.abs(value));
+      // Inverser le signe :
+      // - Si l'utilisateur entre 50 (manque), on envoie -50
+      // - Si l'utilisateur entre -50 (surplus), on envoie +50
+      await onSave(-value);
       onClose();
     } catch (err) {
       console.error('Erreur lors de la sauvegarde du trou:', err);
@@ -108,22 +115,44 @@ export const TrouModal: React.FC<TrouModalProps> = ({
 
 
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Montant manquant (€) *
+            Montant (€) *
           </label>
           <input
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={trouValue}
             onChange={(e) => setTrouValue(e.target.value)}
             className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
             required
-            placeholder=''
+            placeholder="Ex: 50 (manque) ou -50 (surplus)"
             autoFocus
             disabled={saving}
           />
 
+          <div className="mt-2 text-xs text-gray-500">
+            Valeur positive = Trou (manque d'argent) <br />
+            Valeur négative = Surplus (argent en plus)
+          </div>
+
+          {trouValue && !isNaN(Number(trouValue)) && Number(trouValue) !== 0 && (
+            <div className="mt-2 p-2 rounded text-sm">
+              <span className={Number(trouValue) > 0 ? "text-red-600" : "text-green-600"}>
+                {Number(trouValue) > 0
+                  ? `⚠️ Trou de ${Number(trouValue).toFixed(2)}€ (argent manquant)`
+                  : `✅ Surplus de ${Math.abs(Number(trouValue)).toFixed(2)}€ (argent en plus)`
+                }
+              </span>
+            </div>
+          )}
+
           {currentTrou !== 0 && (
             <div className="mt-2 text-sm text-gray-600">
-              Valeur actuelle: <span className="font-medium text-red-600">{currentTrou.toFixed(2)}€</span>
+              Valeur actuelle: <span className={`font-medium ${currentTrou < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {currentTrou < 0
+                  ? `Trou de ${Math.abs(currentTrou).toFixed(2)}€`
+                  : `Surplus de ${currentTrou.toFixed(2)}€`
+                }
+              </span>
             </div>
           )}
         </div>
