@@ -47,6 +47,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   // États de recherche
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -88,6 +89,21 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setSelectedUser(venteInstant || users[0]);
     }
   }, [isOpen, users, initialUser, selectedUser]);
+
+  // Fermer le dropdown quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.user-search-container')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    if (showUserDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showUserDropdown]);
 
   if (!isOpen) return null;
 
@@ -257,6 +273,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     setUseTrainerPrice(false);
     setUserSearch("");
     setProductSearch("");
+    setShowUserDropdown(false);
     onClose();
   };
 
@@ -525,33 +542,66 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             Client *
           </label>
 
-          <input
-            type="text"
-            placeholder="Rechercher un client..."
-            value={userSearch}
-            onChange={(e) => setUserSearch(e.target.value)}
-            className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-          />
-
           <div className="flex gap-2">
-            <select
-              value={selectedUser?.id || ""}
-              onChange={(e) => {
-                const user = users.find(u => u.id === Number(e.target.value));
-                setSelectedUser(user || null);
-              }}
-              className="flex-1 border rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-            >
-              {filteredUsers.length === 0 ? (
-                <option value="">Aucun client trouvé</option>
-              ) : (
-                filteredUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {getFullName(user)}
-                  </option>
-                ))
+            <div className="flex-1 relative user-search-container">
+              <input
+                type="text"
+                placeholder="Rechercher un client..."
+                value={selectedUser ? getFullName(selectedUser) : userSearch}
+                onChange={(e) => {
+                  setUserSearch(e.target.value);
+                  setSelectedUser(null);
+                  setShowUserDropdown(true);
+                }}
+                onFocus={() => setShowUserDropdown(true)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              />
+
+              {/* Dropdown de résultats */}
+              {showUserDropdown && !selectedUser && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
+                  {filteredUsers.length === 0 ? (
+                    <div className="px-3 py-2 text-gray-500 text-sm">
+                      Aucun client trouvé
+                    </div>
+                  ) : (
+                    filteredUsers.map(user => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setUserSearch('');
+                          setShowUserDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
+                      >
+                        {getFullName(user)}
+                      </button>
+                    ))
+                  )}
+                </div>
               )}
-            </select>
+
+              {/* Affichage du client sélectionné */}
+              {selectedUser && (
+                <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
+                  <span>Client sélectionné: <span className="font-medium">{getFullName(selectedUser)}</span></span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setUserSearch('');
+                    }}
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                    title="Changer de client"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={onAddMember}
