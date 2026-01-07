@@ -303,9 +303,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-sm">
-                        {useTrainerPrice
-                          ? product.trainerPrice
-                          : product.price}€
+                        M : {product.trainerPrice}€ / C : {product.price}€
                       </div>
                       <button
                         onClick={(e) => {
@@ -374,7 +372,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       type="number"
                       min="0"
                       max={calculateSubtotal()}
-                      step={0.01}
+                      step="0.01"
                       value={discountValue}
                       onChange={(e) => setDiscountValue(Number(e.target.value))}
                       className="border rounded px-2 py-1 text-sm w-24 outline-none focus:ring-2 focus:ring-blue-300"
