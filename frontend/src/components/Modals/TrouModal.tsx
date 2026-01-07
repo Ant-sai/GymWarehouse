@@ -41,11 +41,6 @@ export const TrouModal: React.FC<TrouModalProps> = ({
       return;
     }
 
-    if (value < 0) {
-      setError("Le montant doit être positif (il sera automatiquement converti en valeur négative)");
-      return;
-    }
-
     setSaving(true);
     setError("");
 
