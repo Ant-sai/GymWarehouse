@@ -134,9 +134,14 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
             <span className={`text-xl font-bold ${trouValue !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
               {trouValue.toFixed(2)}€
             </span>
-            {trouValue !== 0 && (
+            {trouValue < 0 && (
               <span className="text-xs text-gray-500">
                 (manquant)
+              </span>
+            )}
+            {trouValue > 0 && (
+              <span className="text-xs text-gray-500">
+                (surplus)
               </span>
             )}
           </div>
