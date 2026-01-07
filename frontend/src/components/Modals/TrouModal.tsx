@@ -111,7 +111,6 @@ export const TrouModal: React.FC<TrouModalProps> = ({
             Montant manquant (€) *
           </label>
           <input
-            type="number"
             step="0.01"
             value={trouValue}
             onChange={(e) => setTrouValue(e.target.value)}
