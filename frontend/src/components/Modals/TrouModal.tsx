@@ -45,7 +45,8 @@ export const TrouModal: React.FC<TrouModalProps> = ({
     setError("");
 
     try {
-      await onSave(value);
+      // Le trou est toujours négatif, donc on envoie la valeur négative
+      await onSave(-Math.abs(value));
       onClose();
     } catch (err) {
       console.error('Erreur lors de la sauvegarde du trou:', err);
@@ -103,6 +104,21 @@ export const TrouModal: React.FC<TrouModalProps> = ({
         <div className="mb-4">
           <div className="text-sm text-gray-600 mb-4">
             Date: <span className="font-medium">{formatDate(date)}</span>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-2">
+              <div className="text-blue-600 mt-0.5">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                  <path d="M12 16v-4M12 8h.01" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Le "trou" est toujours une valeur négative</p>
+                <p>Entrez le montant manquant (valeur positive), il sera automatiquement converti en négatif dans la comptabilité.</p>
+              </div>
+            </div>
           </div>
 
           <label className="block text-sm font-medium text-gray-700 mb-2">
