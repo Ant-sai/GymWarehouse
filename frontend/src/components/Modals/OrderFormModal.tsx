@@ -48,6 +48,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userManuallyCleared, setUserManuallyCleared] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -69,6 +70,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setNotes(initialNotes);
       setDiscountValue(initialDiscountValue);
       setDiscountComment(initialDiscountComment);
+      setUserManuallyCleared(false);
     }
   }, [isOpen, initialUser, initialCart, initialPaymentMethod, initialNotes, initialDiscountValue, initialDiscountComment]);
 
@@ -78,14 +80,15 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       isOpen,
       hasInitialUser: !!initialUser,
       usersCount: users.length,
-      hasSelectedUser: !!selectedUser
+      hasSelectedUser: !!selectedUser,
+      userManuallyCleared
     });
 
-    if (isOpen && initialUser && !selectedUser) {
+    if (isOpen && initialUser && !selectedUser && !userManuallyCleared) {
       console.log('👤 [useEffect] Utilisateur initial:', initialUser);
       setSelectedUser(initialUser);
     }
-  }, [isOpen, initialUser, selectedUser]);
+  }, [isOpen, initialUser, selectedUser, userManuallyCleared]);
 
   // Fermer le dropdown quand on clique en dehors
   useEffect(() => {
@@ -271,6 +274,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     setUserSearch("");
     setProductSearch("");
     setShowUserDropdown(false);
+    setUserManuallyCleared(false);
     onClose();
   };
 
@@ -593,6 +597,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       onClick={() => {
                         setSelectedUser(null);
                         setUserSearch('');
+                        setUserManuallyCleared(true);
                       }}
                       className="text-red-500 hover:text-red-700 transition-colors"
                       title="Changer de client"
