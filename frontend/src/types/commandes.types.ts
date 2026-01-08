@@ -98,9 +98,9 @@ export type CreateOrderData = {
 
 export type StandbyData = {
   id: string;
-  user: User;
+  user: User | null;
   cart: OrderItem[];
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod | null;
   notes: string;
   discountValue: number;
   discountComment: string;

@@ -293,7 +293,7 @@ export default function DailyOrdersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: standbyData.user.id,
+          userId: standbyData.user?.id || null,
           cart: standbyData.cart,
           paymentMethod: standbyData.paymentMethod,
           notes: standbyData.notes,
@@ -1071,7 +1071,7 @@ export default function DailyOrdersPage() {
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h4 className="font-semibold text-lg text-black">
-                              {getFullName(order.user)}
+                              {order.user ? getFullName(order.user) : "Client non défini"}
                             </h4>
                             <p className="text-sm text-gray-500">
                               {new Date(order.timestamp).toLocaleString('fr-FR')}

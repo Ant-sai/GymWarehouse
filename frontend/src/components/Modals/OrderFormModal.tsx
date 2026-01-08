@@ -253,13 +253,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   };
 
   const handlePutOnStandby = () => {
-    if (!selectedUser || cart.length === 0) return;
-
-    if (!paymentMethod) {
-      alert("Veuillez sélectionner une méthode de paiement");
+    if (cart.length === 0) {
+      alert("Veuillez ajouter au moins un produit");
       return;
     }
 
+    // Le client et la méthode de paiement peuvent être définis plus tard
     const standbyData = {
       id: `standby_${Date.now()}`,
       user: selectedUser,
@@ -665,7 +664,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           <button
             type="button"
             onClick={handlePutOnStandby}
-            disabled={saving || !selectedUser || !paymentMethod || cart.length === 0}
+            disabled={saving || cart.length === 0}
             className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
             ⏸️ Mettre en stand-by
