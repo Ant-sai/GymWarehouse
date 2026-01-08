@@ -131,16 +131,16 @@ model DailyReport {
 }
 
 model StandbyOrder {
-  id              Int         @id @default(autoincrement())
-  userId          Int         @map("user_id")
-  paymentMethod   PaymentType @map("payment_method")
-  notes           String?     @db.Text
-  discountValue   Float       @default(0) @map("discount_value")
-  discountComment String?     @map("discount_comment") @db.Text
-  cartData        String      @map("cart_data") @db.Text  // JSON string du panier
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              Int          @id @default(autoincrement())
+  userId          Int?         @map("user_id")
+  paymentMethod   PaymentType? @map("payment_method")
+  notes           String?      @db.Text
+  discountValue   Float        @default(0) @map("discount_value")
+  discountComment String?      @map("discount_comment") @db.Text
+  cartData        String       @map("cart_data") @db.Text  // JSON string du panier
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  user            User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "standby_orders_userId_fkey")
   @@map("standby_orders")

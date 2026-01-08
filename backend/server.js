@@ -1340,17 +1340,17 @@ app.post('/api/standby-orders', async (req, res) => {
             discountComment
         } = req.body;
 
-        // Validation
-        if (!userId || !cart || cart.length === 0 || !paymentMethod) {
+        // Validation - seul le panier est obligatoire
+        if (!cart || cart.length === 0) {
             return res.status(400).json({
-                error: 'Missing required fields: userId, cart, and paymentMethod'
+                error: 'Missing required field: cart must contain at least one item'
             });
         }
 
         const standbyOrder = await prisma.standbyOrder.create({
             data: {
-                userId: Number(userId),
-                paymentMethod: paymentMethod,
+                userId: userId ? Number(userId) : null,
+                paymentMethod: paymentMethod || null,
                 notes: notes || null,
                 discountValue: discountValue || 0,
                 discountComment: discountComment || null,
