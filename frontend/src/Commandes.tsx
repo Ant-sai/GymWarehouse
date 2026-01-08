@@ -320,7 +320,7 @@ export default function DailyOrdersPage() {
 
     setInitialUser(order.user);
     setInitialCart(order.cart);
-    setInitialPaymentMethod(order.paymentMethod);
+    setInitialPaymentMethod(order.paymentMethod || "CASH");
     setInitialNotes(order.notes);
     setInitialDiscountValue(order.discountValue);
     setInitialDiscountComment(order.discountComment);
