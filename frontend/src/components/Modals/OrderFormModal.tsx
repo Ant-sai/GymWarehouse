@@ -38,7 +38,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   // États du formulaire
   const [selectedUser, setSelectedUser] = useState<User | null>(initialUser);
   const [cart, setCart] = useState<OrderItem[]>(initialCart);
-  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE">(initialPaymentMethod);
+  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE" | null>(initialPaymentMethod || null);
   const [notes, setNotes] = useState(initialNotes);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue);
   const [discountComment, setDiscountComment] = useState(initialDiscountComment);
@@ -153,6 +153,9 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       console.log('🛒 [addToCart] Nouveau panier:', newCart);
       setCart(newCart);
     }
+
+    // Réinitialiser le champ de recherche de produit
+    setProductSearch('');
   };
 
   const updateCartQuantity = (productId: number, quantity: number) => {
@@ -197,6 +200,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     }
     if (cart.length === 0) {
       alert("Veuillez ajouter au moins un produit");
+      return;
+    }
+    if (!paymentMethod) {
+      alert("Veuillez sélectionner une méthode de paiement");
       return;
     }
 
@@ -248,6 +255,11 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const handlePutOnStandby = () => {
     if (!selectedUser || cart.length === 0) return;
 
+    if (!paymentMethod) {
+      alert("Veuillez sélectionner une méthode de paiement");
+      return;
+    }
+
     const standbyData = {
       id: `standby_${Date.now()}`,
       user: selectedUser,
@@ -266,7 +278,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const handleClose = () => {
     setSelectedUser(null);
     setCart([]);
-    setPaymentMethod("CASH");
+    setPaymentMethod(null);
     setNotes("");
     setDiscountValue(0);
     setDiscountComment("");
@@ -653,14 +665,14 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           <button
             type="button"
             onClick={handlePutOnStandby}
-            disabled={saving || cart.length === 0}
+            disabled={saving || !selectedUser || !paymentMethod || cart.length === 0}
             className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
             ⏸️ Mettre en stand-by
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || !selectedUser || cart.length === 0}
+            disabled={saving || !selectedUser || !paymentMethod || cart.length === 0}
             className={`px-4 py-2 rounded text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
               paymentMethod === "FREE"
                 ? "bg-red-600 hover:bg-red-700"
