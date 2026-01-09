@@ -10,7 +10,14 @@ interface OrderFormModalProps {
   onClose: () => void;
   onCreate: (orderData: CreateOrderData) => Promise<void>;
   onStandby: (standbyData: StandbyData) => void;
-  onAddMember: () => void;
+  onAddMember: (currentState: {
+    user: User | null;
+    cart: OrderItem[];
+    paymentMethod: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE" | null;
+    notes: string;
+    discountValue: number;
+    discountComment: string;
+  }) => void;
   // Pour restaurer une commande en stand-by
   initialUser?: User | null;
   initialCart?: OrderItem[];
@@ -207,22 +214,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       return;
     }
 
-    const total = calculateTotal();
-
-    // Vérification solde négatif
-    if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
-      const newBalance = Number(selectedUser.balance) - total;
-      const confirmNegative = window.confirm(
-        `Cette transaction créera un solde négatif.\n\n` +
-        `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
-        `Montant à débiter: ${total.toFixed(2)}€\n` +
-        `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
-        `Voulez-vous continuer ?`
-      );
-
-      if (!confirmNegative) return;
-    }
-
     setSaving(true);
 
     try {
@@ -256,7 +247,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       return;
     }
 
-    // Le client et la méthode de paiement peuvent être définis plus tard
+    if (!selectedUser) {
+      alert("Veuillez sélectionner un client");
+      return;
+    }
+
+    // La méthode de paiement peut être définie plus tard
     const standbyData = {
       id: `standby_${Date.now()}`,
       user: selectedUser,
@@ -620,7 +616,14 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
             <button
               type="button"
-              onClick={onAddMember}
+              onClick={() => onAddMember({
+                user: selectedUser,
+                cart: cart,
+                paymentMethod: paymentMethod,
+                notes: notes,
+                discountValue: discountValue,
+                discountComment: discountComment
+              })}
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
               title="Ajouter un nouveau membre"
             >

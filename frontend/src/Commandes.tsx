@@ -717,7 +717,17 @@ export default function DailyOrdersPage() {
           }}
           onCreate={handleCreateOrder}
           onStandby={handlePutOnStandby}
-          onAddMember={() => setShowAddMemberForm(true)}
+          onAddMember={(currentState) => {
+            // Sauvegarder l'état actuel de la commande
+            setInitialUser(currentState.user);
+            setInitialCart(currentState.cart);
+            setInitialPaymentMethod(currentState.paymentMethod);
+            setInitialNotes(currentState.notes);
+            setInitialDiscountValue(currentState.discountValue);
+            setInitialDiscountComment(currentState.discountComment);
+            // Ouvrir le modal d'ajout de membre
+            setShowAddMemberForm(true);
+          }}
           initialUser={initialUser}
           initialCart={initialCart}
           initialPaymentMethod={initialPaymentMethod}
