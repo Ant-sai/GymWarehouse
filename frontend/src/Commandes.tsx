@@ -35,7 +35,7 @@ export default function DailyOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [initialUser, setInitialUser] = useState<User | null>(null);
   const [initialCart, setInitialCart] = useState<OrderItem[]>([]);
-  const [initialPaymentMethod, setInitialPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE">("CASH");
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE" | null>(null);
   const [initialNotes, setInitialNotes] = useState("");
   const [initialDiscountValue, setInitialDiscountValue] = useState(0);
   const [initialDiscountComment, setInitialDiscountComment] = useState("");
@@ -710,7 +710,7 @@ export default function DailyOrdersPage() {
             setShowForm(false);
             setInitialUser(null);
             setInitialCart([]);
-            setInitialPaymentMethod("CASH");
+            setInitialPaymentMethod(null);
             setInitialNotes("");
             setInitialDiscountValue(0);
             setInitialDiscountComment("");

@@ -66,7 +66,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       });
       setSelectedUser(initialUser);
       setCart(initialCart);
-      setPaymentMethod(initialPaymentMethod);
+      setPaymentMethod(initialPaymentMethod || null);
       setNotes(initialNotes);
       setDiscountValue(initialDiscountValue);
       setDiscountComment(initialDiscountComment);
@@ -461,7 +461,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                console.log('💳 [Clic] Changement méthode de paiement: CASH');
                 setPaymentMethod("CASH");
               }}
               className={`px-4 py-3 rounded-lg border-2 transition-all ${
@@ -476,7 +475,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                console.log('💳 [Clic] Changement méthode de paiement: QRCODE');
                 setPaymentMethod("QRCODE");
               }}
               className={`px-4 py-3 rounded-lg border-2 transition-all ${
@@ -492,7 +490,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  console.log('💳 [Clic] Changement méthode de paiement: ACCOUNT_DEBIT');
                   setPaymentMethod("ACCOUNT_DEBIT");
                 }}
                 className={`px-4 py-3 rounded-lg border-2 transition-all ${
