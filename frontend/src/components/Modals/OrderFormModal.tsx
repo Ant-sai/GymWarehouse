@@ -14,7 +14,7 @@ interface OrderFormModalProps {
   // Pour restaurer une commande en stand-by
   initialUser?: User | null;
   initialCart?: OrderItem[];
-  initialPaymentMethod?: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE";
+  initialPaymentMethod?: "QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE" | null;
   initialNotes?: string;
   initialDiscountValue?: number;
   initialDiscountComment?: string;
@@ -30,7 +30,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   onAddMember,
   initialUser = null,
   initialCart = [],
-  initialPaymentMethod = "CASH",
+  initialPaymentMethod = null,
   initialNotes = "",
   initialDiscountValue = 0,
   initialDiscountComment = ""
