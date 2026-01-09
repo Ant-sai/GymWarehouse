@@ -39,10 +39,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         lastName: lastName || undefined,
         role,
         balance: Number(balance || 0)
-      });
-
-      alert('Membre ajouté avec succès !');
-      
+      });      
       // Réinitialiser le formulaire
       setFirstName('');
       setLastName('');

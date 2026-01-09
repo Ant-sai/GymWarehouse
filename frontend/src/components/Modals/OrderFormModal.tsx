@@ -240,8 +240,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       };
 
       await onCreate(orderData);
-      
-      alert("Commande créée avec succès !");
       handleClose();
     } catch (err) {
       console.error('Erreur:', err);

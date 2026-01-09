@@ -48,10 +48,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
     setSaving(true);
 
     try {
-      await onRefund(selectedUserId, refundAmount, paymentMethod, notes);
-      
-      alert(`Remboursement de ${refundAmount.toFixed(2)}€ effectué avec succès !`);
-      
+      await onRefund(selectedUserId, refundAmount, paymentMethod, notes);      
       // Réinitialiser
       setSelectedUserId(null);
       setAmount('');
