@@ -12,7 +12,8 @@
       "Bash(npm run dev:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(npx prisma generate)"
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma db pull:*)"
     ]
   }
 }
