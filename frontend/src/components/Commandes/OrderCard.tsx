@@ -42,8 +42,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg p-6 shadow-sm">
-      <div className="flex justify-between items-start mb-4">
+    <div className="bg-white rounded-lg p-4 shadow-sm">
+      <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-3 mb-2">
             <p className="text-gray-900 font-medium">
@@ -81,63 +81,61 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           <div className="flex gap-2 mt-2">
             <button
               onClick={() => onEditOrder(order)}
-              className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
+              className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition-colors"
               title="Modifier cette commande"
             >
-              ✏️ Modifier
+              ✏️
             </button>
             <button
               onClick={handleCancel}
-              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
+              className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-colors"
               title="Annuler cette commande (restaure stocks et solde)"
             >
-              🗑️ Annuler
+              🗑️
             </button>
           </div>
         </div>
       </div>
 
-      <div className="border-t pt-4">
-        <h4 className="font-medium mb-2">Produits:</h4>
-        <div className="space-y-1">
+      <div className="border-t pt-3">
+        <div className="flex flex-wrap gap-2 items-center text-sm">
+          <span className="font-medium">Produits:</span>
           {order.products?.map((item, index) => (
             <div
               key={index}
-              className="flex justify-between items-center text-sm"
+              className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded"
             >
-              <div className="flex items-center gap-2">
-                <span>
-                  {item.product?.name || "Produit inconnu"} × {item.quantity}
-                </span>
-                <button
-                  onClick={() => onEditProduct(item.product)}
-                  className="p-1 hover:bg-blue-50 rounded"
-                  title="Modifier ce produit"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                      stroke="#3B82F6"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                      stroke="#3B82F6"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <span>{Number(item.totalPrice).toFixed(2)}€</span>
+              <span>
+                {item.product?.name || "Produit inconnu"} × {item.quantity}
+              </span>
+              <span className="text-gray-600">({Number(item.totalPrice).toFixed(2)}€)</span>
+              <button
+                onClick={() => onEditProduct(item.product)}
+                className="p-0.5 hover:bg-blue-50 rounded"
+                title="Modifier ce produit"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                    stroke="#3B82F6"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                    stroke="#3B82F6"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
             </div>
           )) || <div className="text-gray-500">Aucun produit</div>}
         </div>
         {order.notes && (
-          <div className="mt-3 text-sm text-gray-600">
+          <div className="mt-2 text-sm text-gray-600">
             <strong>Notes:</strong> {order.notes}
           </div>
         )}
