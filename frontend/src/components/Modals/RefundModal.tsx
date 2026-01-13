@@ -7,7 +7,7 @@ interface RefundModalProps {
   isOpen: boolean;
   users: User[];
   onClose: () => void;
-  onRefund: (userId: number, amount: number, paymentMethod: 'CASH' | 'QRCODE', notes: string) => Promise<void>;
+  onRefund: (userId: number, amount: number, paymentMethod: 'CASH' | 'QRCODE' | null, notes: string) => Promise<void>;
 }
 
 export const RefundModal: React.FC<RefundModalProps> = ({
