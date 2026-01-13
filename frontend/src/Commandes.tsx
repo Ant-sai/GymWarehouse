@@ -421,9 +421,6 @@ export default function DailyOrdersPage() {
       }
 
       await response.json();
-
-      alert(`Remboursement de ${amount.toFixed(2)}€ effectué avec succès !`);
-
       setShowRefundForm(false);
       setRefundUser(null);
       setRefundAmount("");
