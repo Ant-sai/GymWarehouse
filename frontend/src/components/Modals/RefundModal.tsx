@@ -18,7 +18,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
 }) => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QRCODE'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QRCODE' | null>(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -45,16 +45,21 @@ export const RefundModal: React.FC<RefundModalProps> = ({
       return;
     }
 
+    if (!paymentMethod) {
+      alert('Veuillez sélectionner une méthode de paiement');
+      return;
+    }
+
     setSaving(true);
 
     try {
-      await onRefund(selectedUserId, refundAmount, paymentMethod, notes);      
+      await onRefund(selectedUserId, refundAmount, paymentMethod, notes);
       // Réinitialiser
       setSelectedUserId(null);
       setAmount('');
-      setPaymentMethod('CASH');
+      setPaymentMethod(null);
       setNotes('');
-      
+
       onClose();
     } catch (err) {
       console.error('Erreur:', err);
@@ -68,7 +73,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
   const handleClose = () => {
     setSelectedUserId(null);
     setAmount('');
-    setPaymentMethod('CASH');
+    setPaymentMethod(null);
     setNotes('');
     onClose();
   };
