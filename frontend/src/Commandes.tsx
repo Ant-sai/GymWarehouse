@@ -64,7 +64,7 @@ export default function DailyOrdersPage() {
     balance: "",
   });
 
-  const [refundPaymentMethod, setRefundPaymentMethod] = useState<"CASH" | "QRCODE">("CASH");
+  const [refundPaymentMethod, setRefundPaymentMethod] = useState<"CASH" | "QRCODE" | null>(null);
 
   const [showRefundForm, setShowRefundForm] = useState(false);
   const [refundUser, setRefundUser] = useState<User | null>(null);
@@ -402,6 +402,11 @@ export default function DailyOrdersPage() {
       return;
     }
 
+    if (!refundPaymentMethod) {
+      alert("Veuillez sélectionner une méthode de paiement");
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await fetch("/api/refunds", {
@@ -425,7 +430,7 @@ export default function DailyOrdersPage() {
       setRefundUser(null);
       setRefundAmount("");
       setRefundNotes("");
-      setRefundPaymentMethod("CASH");
+      setRefundPaymentMethod(null);
 
       fetchOrders();
       fetchUsers();
@@ -948,7 +953,7 @@ export default function DailyOrdersPage() {
                     setRefundUser(null);
                     setRefundAmount("");
                     setRefundNotes("");
-                    setRefundPaymentMethod("CASH");
+                    setRefundPaymentMethod(null);
                     setRefundUserSearch("");
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -958,7 +963,7 @@ export default function DailyOrdersPage() {
                 </button>
                 <button
                   onClick={handleRefund}
-                  disabled={saving || !refundUser || !refundAmount || Number(refundAmount) <= 0}
+                  disabled={saving || !refundUser || !refundAmount || Number(refundAmount) <= 0 || !refundPaymentMethod}
                   className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Remboursement..." : "Effectuer le remboursement"}
