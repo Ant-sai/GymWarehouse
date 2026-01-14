@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Sidebar, PageHeader, DateNavigation, DailyStatistics, OrdersList } from './components/Commandes';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
+import { RetraitModal } from './components/Modals/RetraitModal';
 import type { User, Product, OrderItem, Order, CreateOrderData, StandbyData } from './types/commandes.types';
 
 export type { User, Product, OrderItem, Order };
@@ -13,6 +14,7 @@ type DailyClosing = {
   qrRevenue: number;
   creditRevenue: number;
   trou: number;
+  retrait: number;
   startingCash: number;
   endingCash: number;
   notes?: string;
@@ -40,6 +42,7 @@ export default function DailyOrdersPage() {
   const [initialDiscountValue, setInitialDiscountValue] = useState(0);
   const [initialDiscountComment, setInitialDiscountComment] = useState("");
   const [trouValue, setTrouValue] = useState<number>(0);
+  const [retraitValue, setRetraitValue] = useState<number>(0);
   const [startingCashFund, setStartingCashFund] = useState<number>(0);
 
   const [standbyOrders, setStandbyOrders] = useState<StandbyData[]>([]);
@@ -76,6 +79,7 @@ export default function DailyOrdersPage() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   const [showTrouModal, setShowTrouModal] = useState(false);
+  const [showRetraitModal, setShowRetraitModal] = useState(false);
 
   // États pour le modal d'édition de commande
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -106,15 +110,18 @@ export default function DailyOrdersPage() {
           startingCash: data.startingCash,
           cashRevenue: data.cashRevenue,
           trou: data.trou,
+          retrait: data.retrait,
           endingCash: data.endingCash
         });
         setDailyClosing(data);
         setTrouValue(Number(data.trou) || 0);
+        setRetraitValue(Number(data.retrait) || 0);
         setStartingCashFund(Number(data.startingCash) || 0);
       } else if (response.status === 404) {
         console.log('⚠️  [FRONTEND] Pas de rapport pour ce jour, récupération du fond de départ...');
         setDailyClosing(null);
         setTrouValue(0);
+        setRetraitValue(0);
 
         const startingFundResponse = await fetch(`/api/daily-reports/starting-cash/${date}`);
 
@@ -466,6 +473,30 @@ export default function DailyOrdersPage() {
     }
   }
 
+  async function handleSaveRetrait(retrait: number) {
+    try {
+      const response = await fetch(`/api/daily-reports/${selectedDate}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ retrait })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
+      // Mettre à jour la valeur locale
+      setRetraitValue(retrait);
+
+      // Rafraîchir les données
+      await fetchDailyClosing(selectedDate);
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde du retrait:', err);
+      throw err;
+    }
+  }
+
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
     if (!editingProduct) return;
@@ -669,7 +700,9 @@ export default function DailyOrdersPage() {
           dailyClosing={dailyClosing}
           loadingClosing={loadingClosing}
           trouValue={trouValue}
+          retraitValue={retraitValue}
           onTrouClick={() => setShowTrouModal(true)}
+          onRetraitClick={() => setShowRetraitModal(true)}
           startingCashFund={startingCashFund}
         />
 
@@ -1395,6 +1428,15 @@ export default function DailyOrdersPage() {
           date={selectedDate}
           onClose={() => setShowTrouModal(false)}
           onSave={handleSaveTrou}
+        />
+
+        {/* Modal Retrait de caisse */}
+        <RetraitModal
+          isOpen={showRetraitModal}
+          currentRetrait={retraitValue}
+          date={selectedDate}
+          onClose={() => setShowRetraitModal(false)}
+          onSave={handleSaveRetrait}
         />
       </main>
     </div>

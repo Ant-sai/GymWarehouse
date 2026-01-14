@@ -73,11 +73,12 @@ async function recalculateFollowingDays(startDate) {
             const newStartingCash = previousReport ? Number(previousReport.endingCash) : 0;
             const cashRevenue = Number(report.cashRevenue);
             const trou = Number(report.trou);
-            const newEndingCash = newStartingCash + cashRevenue + trou;
+            const retrait = Number(report.retrait || 0);
+            const newEndingCash = newStartingCash + cashRevenue + trou + retrait;
 
             console.log(`\n  📆 ${reportDate}:`);
             console.log(`    Ancien: startingCash=${oldStartingCash}€, endingCash=${oldEndingCash}€`);
-            console.log(`    Calcul: ${newStartingCash}€ (début) + ${cashRevenue}€ (espèces) + ${trou}€ (trou) = ${newEndingCash}€`);
+            console.log(`    Calcul: ${newStartingCash}€ (début) + ${cashRevenue}€ (espèces) + ${trou}€ (trou) + ${retrait}€ (retrait) = ${newEndingCash}€`);
             console.log(`    Nouveau: startingCash=${newStartingCash}€, endingCash=${newEndingCash}€`);
 
             await prisma.dailyReport.update({
@@ -486,9 +487,10 @@ app.post('/api/orders', async (req, res) => {
 
             if (existingReport) {
                 // Rapport existe : mettre à jour les revenus et recalculer endingCash
-                // Formule: endingCash = startingCash + cashRevenue + trou (le trou est négatif)
+                // Formule: endingCash = startingCash + cashRevenue + trou + retrait (trou et retrait sont négatifs)
                 const trou = Number(existingReport.trou) || 0;
-                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou;
+                const retrait = Number(existingReport.retrait) || 0;
+                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou + retrait;
 
                 await prismaTransaction.dailyReport.update({
                     where: { date: orderDate },
@@ -520,6 +522,7 @@ app.post('/api/orders', async (req, res) => {
                         qrRevenue,
                         creditRevenue,
                         trou: 0,
+                        retrait: 0,
                         endingCash
                     }
                 });
@@ -1409,14 +1412,15 @@ app.delete('/api/standby-orders/:id', async (req, res) => {
 app.put('/api/daily-reports/:date', async (req, res) => {
     try {
         const { date } = req.params;
-        const { trou } = req.body;
+        const { trou, retrait } = req.body;
 
         const reportDate = new Date(date);
         const dateStr = reportDate.toISOString().split('T')[0];
 
-        console.log('\n💰 ========== MISE À JOUR DU TROU ==========');
+        console.log('\n💰 ========== MISE À JOUR DU RAPPORT ==========');
         console.log(`📅 Date: ${dateStr}`);
-        console.log(`🔢 Nouveau trou: ${trou}€`);
+        if (trou !== undefined) console.log(`🔢 Nouveau trou: ${trou}€`);
+        if (retrait !== undefined) console.log(`🔢 Nouveau retrait: ${retrait}€`);
 
         // Récupérer le rapport existant
         const existingReport = await prisma.dailyReport.findUnique({
@@ -1428,20 +1432,23 @@ app.put('/api/daily-reports/:date', async (req, res) => {
             console.log(`   - startingCash: ${existingReport.startingCash}€`);
             console.log(`   - cashRevenue: ${existingReport.cashRevenue}€`);
             console.log(`   - trou actuel: ${existingReport.trou}€`);
+            console.log(`   - retrait actuel: ${existingReport.retrait}€`);
             console.log(`   - endingCash actuel: ${existingReport.endingCash}€`);
 
-            // Formule: endingCash = startingCash + cashRevenue + trou (le trou est négatif)
+            // Formule: endingCash = startingCash + cashRevenue + trou + retrait (trou et retrait sont négatifs)
             const nouvelleTrou = trou !== undefined ? Number(trou) : Number(existingReport.trou);
-            const endingCash = Number(existingReport.startingCash) + Number(existingReport.cashRevenue) + nouvelleTrou;
+            const nouveauRetrait = retrait !== undefined ? Number(retrait) : Number(existingReport.retrait);
+            const endingCash = Number(existingReport.startingCash) + Number(existingReport.cashRevenue) + nouvelleTrou + nouveauRetrait;
 
-            console.log(`🧮 Calcul: ${existingReport.startingCash}€ + ${existingReport.cashRevenue}€ + ${nouvelleTrou}€ = ${endingCash}€`);
+            console.log(`🧮 Calcul: ${existingReport.startingCash}€ + ${existingReport.cashRevenue}€ + ${nouvelleTrou}€ + ${nouveauRetrait}€ = ${endingCash}€`);
+
+            const updateData = { endingCash };
+            if (trou !== undefined) updateData.trou = nouvelleTrou;
+            if (retrait !== undefined) updateData.retrait = nouveauRetrait;
 
             const updated = await prisma.dailyReport.update({
                 where: { date: reportDate },
-                data: {
-                    trou: nouvelleTrou,
-                    endingCash
-                }
+                data: updateData
             });
 
             console.log(`✅ Rapport mis à jour - nouveau endingCash: ${endingCash}€`);

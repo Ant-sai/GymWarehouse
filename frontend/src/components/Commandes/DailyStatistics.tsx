@@ -8,6 +8,7 @@ type DailyClosing = {
   qrRevenue: number;
   creditRevenue: number;
   trou: number;
+  retrait: number;
   startingCash: number;
   endingCash: number;
   notes?: string;
@@ -22,7 +23,9 @@ interface DailyStatisticsProps {
   dailyClosing: DailyClosing | null;
   loadingClosing: boolean;
   trouValue: number;
+  retraitValue: number;
   onTrouClick: () => void;
+  onRetraitClick: () => void;
   startingCashFund: number;
 }
 
@@ -32,7 +35,9 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   dailyClosing,
   loadingClosing,
   trouValue,
+  retraitValue,
   onTrouClick,
+  onRetraitClick,
   startingCashFund,
 }) => {
   const getDailyStats = () => {
@@ -67,18 +72,19 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   };
 
   const dailyStats = getDailyStats();
-  // Le trou est stocké en négatif (ex: -50 pour 50€ manquants)
-  // Formule: Fond de fin = Fond de début + Espèces du jour + Trou (négatif)
-  // Exemple: 100€ + 200€ + (-50€) = 250€
-  const fondCaisse = startingCashFund + dailyStats.cashRevenue + trouValue;
+  // Le trou et le retrait sont stockés en négatif (ex: -50 pour 50€ manquants/retirés)
+  // Formule: Fond de fin = Fond de début + Espèces du jour + Trou (négatif) + Retrait (négatif)
+  // Exemple: 100€ + 200€ + (-50€) + (-30€) = 220€
+  const fondCaisse = startingCashFund + dailyStats.cashRevenue + trouValue + retraitValue;
 
   // Log pour déboguer le calcul
   console.log(`💰 [DailyStatistics] ${selectedDate}:`, {
     startingCashFund,
     cashRevenue: dailyStats.cashRevenue,
     trouValue,
+    retraitValue,
     fondCaisse,
-    calcul: `${startingCashFund}€ + ${dailyStats.cashRevenue}€ + ${trouValue}€ = ${fondCaisse}€`
+    calcul: `${startingCashFund}€ + ${dailyStats.cashRevenue}€ + ${trouValue}€ + ${retraitValue}€ = ${fondCaisse}€`
   });
 
   return (
@@ -146,6 +152,42 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
             )}
           </div>
           {dailyClosing && trouValue !== 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              Dernière mise à jour:{" "}
+              {new Date(dailyClosing.updatedAt).toLocaleTimeString("fr-FR")}
+            </div>
+          )}
+        </div>
+        <div className="border-b pb-2">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600 flex items-center gap-2">
+              Retrait de caisse
+              {loadingClosing && <span className="text-xs">(chargement...)</span>}
+            </div>
+            <button
+              onClick={onRetraitClick}
+              disabled={loadingClosing}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
+            >
+              {retraitValue !== 0 ? 'Modifier' : 'Ajouter'}
+            </button>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`text-xl font-bold ${retraitValue !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
+              {retraitValue.toFixed(2)}€
+            </span>
+            {retraitValue < 0 && (
+              <span className="text-xs text-gray-500">
+                (retiré)
+              </span>
+            )}
+            {retraitValue > 0 && (
+              <span className="text-xs text-gray-500">
+                (ajouté)
+              </span>
+            )}
+          </div>
+          {dailyClosing && retraitValue !== 0 && (
             <div className="text-xs text-gray-500 mt-1">
               Dernière mise à jour:{" "}
               {new Date(dailyClosing.updatedAt).toLocaleTimeString("fr-FR")}

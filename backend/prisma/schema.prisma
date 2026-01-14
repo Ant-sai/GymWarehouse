@@ -121,7 +121,8 @@ model DailyReport {
   qrRevenue        Decimal  @default(0) @db.Decimal(10, 2) @map("qr_revenue")       // QR Code du jour
   creditRevenue    Decimal  @default(0) @db.Decimal(10, 2) @map("credit_revenue")   // Crédit du jour
   trou             Decimal  @default(0) @db.Decimal(10, 2)                           // Le Trou (valeur manuelle)
-  endingCash       Decimal  @default(0) @db.Decimal(10, 2) @map("ending_cash")      // Fond de caisse de fin = startingCash + cashRevenue - trou
+  retrait          Decimal  @default(0) @db.Decimal(10, 2)                           // Retrait de caisse (valeur manuelle, négatif)
+  endingCash       Decimal  @default(0) @db.Decimal(10, 2) @map("ending_cash")      // Fond de caisse de fin = startingCash + cashRevenue + trou + retrait
   notes            String?
   closedBy         Int?     @map("closed_by")
   createdAt        DateTime @default(now()) @map("created_at")
