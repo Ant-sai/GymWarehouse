@@ -41,8 +41,6 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         price: Number(price),
         trainerPrice: Number(trainerPrice)
       });
-
-      alert('Produit modifié avec succès !');
       onClose();
     } catch (err) {
       console.error('Erreur:', err);

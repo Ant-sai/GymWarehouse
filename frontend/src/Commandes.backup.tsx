@@ -392,8 +392,6 @@ async function saveTrouValue(date: string, trou: number) {
         balance: "",
       });
 
-      alert("Membre ajouté avec succès !");
-
     } catch (err) {
       console.error('Erreur lors de l\'ajout du membre:', err);
       const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
@@ -527,7 +525,6 @@ async function saveTrouValue(date: string, trou: number) {
       setDiscountComment("");
       setUserSearch("");
       setProductSearch("");
-      alert("Commande créée avec succès !");
 
       fetchProducts();
       fetchUsers();
@@ -647,9 +644,6 @@ function handleDeleteStandby(standbyId: string) {
       // Supprimez cette ligne car vous ne l'utilisez pas
       // const refundTransaction = await response.json();
       await response.json(); // Si vous voulez juste consommer la réponse
-
-      alert(`Remboursement de ${amount.toFixed(2)}€ effectué avec succès !`);
-
       // Réinitialiser le formulaire
       setShowRefundForm(false);
       setRefundUser(null);

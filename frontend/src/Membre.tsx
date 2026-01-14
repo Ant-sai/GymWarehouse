@@ -126,8 +126,6 @@ async function handleAddUser(e?: React.FormEvent) {
       role: "USER",
       balance: "",
     });
-    
-    alert("Membre ajouté avec succès !");
    
   } catch (err) {
     console.error('Erreur lors de l\'ajout du membre:', err);
@@ -177,7 +175,6 @@ async function handleAddUser(e?: React.FormEvent) {
       setEditingUser(null);
       setEditBalance("");
       
-      alert("Solde mis à jour avec succès !");
 
     } catch (err) {
       console.error('Erreur lors de la mise à jour du solde:', err);
@@ -205,7 +202,6 @@ async function handleAddUser(e?: React.FormEvent) {
 
       // Mettre à jour le state local
       setUsers((prev) => prev.filter((u) => u.id !== id));
-      alert("Membre supprimé avec succès !");
 
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);

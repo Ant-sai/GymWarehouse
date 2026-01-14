@@ -258,8 +258,6 @@ export default function DailyOrdersPage() {
         balance: "",
       });
 
-      alert("Membre ajouté avec succès !");
-
     } catch (err) {
       console.error('Erreur lors de l\'ajout du membre:', err);
       const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
@@ -542,23 +540,6 @@ export default function DailyOrdersPage() {
       return;
     }
 
-    const total = calculateTotal();
-
-    if (paymentMethod === "ACCOUNT_DEBIT" && Number(selectedUser.balance) < total) {
-      const newBalance = Number(selectedUser.balance) - total;
-      const confirmNegative = window.confirm(
-        `Cette transaction créera un solde négatif.\n\n` +
-        `Solde actuel: ${Number(selectedUser.balance).toFixed(2)}€\n` +
-        `Montant à débiter: ${total.toFixed(2)}€\n` +
-        `Nouveau solde: ${newBalance.toFixed(2)}€\n\n` +
-        `Voulez-vous continuer ?`
-      );
-
-      if (!confirmNegative) {
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       const orderData = {
@@ -592,7 +573,6 @@ export default function DailyOrdersPage() {
       setNotes("");
       setDiscountValue(0);
       setProductSearch("");
-      alert("Commande modifiée avec succès !");
 
       fetchProducts();
       fetchUsers();
