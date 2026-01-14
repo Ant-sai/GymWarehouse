@@ -10,25 +10,14 @@ interface PageHeaderProps {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
-  onRefresh,
   onNewOrder,
   onRefund,
   onStandby,
   standbyCount,
-  loading,
 }) => {
   return (
     <header className="flex items-center justify-between mb-8">
-      <div className="flex items-center gap-4">
-        <h1 className="text-3xl font-semibold text-black">Vue Journalière</h1>
-        <button
-          onClick={onRefresh}
-          className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
-          disabled={loading}
-        >
-          {loading ? "⟳" : "↻"} Actualiser
-        </button>
-      </div>
+
       <div className="flex gap-3">
         <button
           onClick={onRefund}

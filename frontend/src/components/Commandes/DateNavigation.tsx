@@ -10,84 +10,29 @@ interface DateNavigationProps {
 export const DateNavigation: React.FC<DateNavigationProps> = ({
   selectedDate,
   onDateChange,
-  orders,
 }) => {
-  const getAvailableDates = (): string[] => {
-    const dates = new Set<string>();
-    orders.forEach((order) => {
-      const date = new Date(order.date).toISOString().split("T")[0];
-      dates.add(date);
-    });
-    return Array.from(dates).sort().reverse();
-  };
-
-  const navigateDate = (direction: "prev" | "next") => {
-    const currentDate = new Date(selectedDate);
-    if (direction === "prev") {
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else {
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    onDateChange(currentDate.toISOString().split("T")[0]);
-  };
-
-  const goToToday = () => {
-    onDateChange(new Date().toISOString().split("T")[0]);
-  };
-
-  const availableDates = getAvailableDates();
-
   return (
-    <div className="mb-8 bg-white rounded-lg p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigateDate("prev")}
-            className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
-          >
-            ← Jour précédent
-          </button>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-            <select
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Sélectionner une date</option>
-              {availableDates.map((date) => (
-                <option key={date} value={date}>
-                  {new Date(date).toLocaleDateString("fr-FR", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={() => navigateDate("next")}
-            className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center gap-2"
-          >
-            Jour suivant →
-          </button>
-        </div>
-
-        <button
-          onClick={goToToday}
-          className="bg-[#1E2A47] hover:bg-blue-600 text-white px-4 py-2 rounded"
+    <div className="mb-6 flex items-center gap-3">
+      <div className="relative">
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => onDateChange(e.target.value)}
+          className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
+        />
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
         >
-          Aujourd'hui
-        </button>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
       </div>
     </div>
   );
