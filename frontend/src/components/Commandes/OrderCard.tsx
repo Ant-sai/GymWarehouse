@@ -20,18 +20,18 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
   };
 
-  const getPaymentMethodLabel = (method: string) => {
+  const getPriceColor = (method: string) => {
     switch (method) {
-      case "QRCODE":
-        return "QR Code";
       case "CASH":
-        return "Espèces";
+        return "text-green-600";
+      case "QRCODE":
+        return "text-blue-600";
       case "ACCOUNT_DEBIT":
-        return "Débit compte";
+        return "text-purple-600";
       case "FREE":
-        return "Gratuit";
+        return "text-red-600";
       default:
-        return method;
+        return "text-gray-600";
     }
   };
 
@@ -54,28 +54,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 Entraîneur
               </span>
             )}
-            <span
-              className={`px-2 py-1 rounded text-xs font-medium ${
-                order.paymentMethod === "CASH"
-                  ? "bg-green-100 text-green-800"
-                  : order.paymentMethod === "QRCODE"
-                  ? "bg-blue-100 text-blue-800"
-                  : order.paymentMethod === "ACCOUNT_DEBIT"
-                  ? "bg-purple-100 text-purple-800"
-                  : order.paymentMethod === "FREE"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {getPaymentMethodLabel(order.paymentMethod)}
-            </span>
             <p className="text-gray-500 text-sm">
               {new Date(order.date).toLocaleTimeString("fr-FR")}
             </p>
           </div>
         </div>
         <div className="text-right ml-4">
-          <div className="text-2xl font-bold text-green-600">
+          <div className={`text-2xl font-bold ${getPriceColor(order.paymentMethod)}`}>
             {Number(order.totalAmount).toFixed(2)}€
           </div>
           <div className="flex gap-2 mt-2">
