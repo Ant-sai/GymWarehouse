@@ -55,26 +55,26 @@ export const OrdersList: React.FC<OrdersListProps> = ({
         })}
       </h2>
 
-      <div className="space-y-4">
-        {dayOrders.length === 0 && (
-          <div className="text-center py-8">
-            <div className="text-gray-500">Aucune commande pour cette date</div>
-            <div className="text-sm text-gray-400 mt-2">
-              Sélectionnez une autre date ou créez une nouvelle commande
-            </div>
+      {dayOrders.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="text-gray-500">Aucune commande pour cette date</div>
+          <div className="text-sm text-gray-400 mt-2">
+            Sélectionnez une autre date ou créez une nouvelle commande
           </div>
-        )}
-
-        {dayOrders.map((order) => (
-          <OrderCard
-            key={order.id}
-            order={order}
-            onCancel={onCancelOrder}
-            onEditProduct={onEditProduct}
-            onEditOrder={onEditOrder}
-          />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-5 gap-4">
+          {dayOrders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onCancel={onCancelOrder}
+              onEditProduct={onEditProduct}
+              onEditOrder={onEditOrder}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
