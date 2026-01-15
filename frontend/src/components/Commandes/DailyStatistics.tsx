@@ -32,7 +32,6 @@ interface DailyStatisticsProps {
 export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   selectedDate,
   orders,
-  dailyClosing,
   loadingClosing,
   trouValue,
   retraitValue,
@@ -88,121 +87,82 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   });
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex justify-between items-center">
-          <span className="text-blue-700 font-medium">
-            Caisse de début de journée
-          </span>
-          <span className="text-xl font-bold text-blue-700">
+    <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      <div className="grid grid-cols-7 gap-3 items-center">
+        {/* Caisse début */}
+        <div className="text-center p-2 bg-blue-50 rounded border border-blue-200">
+          <div className="text-xs text-blue-600 mb-1">Début</div>
+          <div className="text-lg font-bold text-blue-700">
             {startingCashFund.toFixed(2)}€
-          </span>
+          </div>
         </div>
-        <div className="text-xs text-gray-500 mt-1">
-          (Fond de caisse du jour précédent)
-        </div>
-      </div>
 
-      <div className="space-y-3">
-        <div className="flex justify-between items-center py-2 border-b">
-          <span className="text-gray-600">Crédit</span>
-          <span className="text-xl font-bold text-purple-700">
+        {/* Crédit */}
+        <div className="text-center p-2 border-b-2 border-purple-500">
+          <div className="text-xs text-gray-600 mb-1">Crédit</div>
+          <div className="text-lg font-bold text-purple-700">
             {dailyStats.accountDebitRevenue.toFixed(2)}€
-          </span>
+          </div>
         </div>
-        <div className="flex justify-between items-center py-2 border-b">
-          <span className="text-gray-600">QR Code</span>
-          <span className="text-xl font-bold text-blue-700">
+
+        {/* QR Code */}
+        <div className="text-center p-2 border-b-2 border-blue-500">
+          <div className="text-xs text-gray-600 mb-1">QR Code</div>
+          <div className="text-lg font-bold text-blue-700">
             {dailyStats.qrRevenue.toFixed(2)}€
-          </span>
+          </div>
         </div>
-        <div className="flex justify-between items-center py-2 border-b">
-          <span className="text-gray-600">Espèces</span>
-          <span className="text-xl font-bold text-green-700">
+
+        {/* Espèces */}
+        <div className="text-center p-2 border-b-2 border-green-500">
+          <div className="text-xs text-gray-600 mb-1">Espèces</div>
+          <div className="text-lg font-bold text-green-700">
             {dailyStats.cashRevenue.toFixed(2)}€
-          </span>
+          </div>
         </div>
-        <div className="border-b pb-2">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600 flex items-center gap-2">
-              Trou de caisse
-              {loadingClosing && <span className="text-xs">(chargement...)</span>}
-            </div>
+
+        {/* Trou */}
+        <div className="text-center p-2 border-b-2 border-red-500">
+          <div className="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
+            Trou
             <button
               onClick={onTrouClick}
               disabled={loadingClosing}
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
+              className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
+              title={trouValue !== 0 ? 'Modifier' : 'Ajouter'}
             >
-              {trouValue !== 0 ? 'Modifier' : 'Ajouter'}
+              ✏️
             </button>
           </div>
-          <div className="mt-2 flex items-center gap-2">
-            <span className={`text-xl font-bold ${trouValue !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
-              {trouValue.toFixed(2)}€
-            </span>
-            {trouValue < 0 && (
-              <span className="text-xs text-gray-500">
-                (manquant)
-              </span>
-            )}
-            {trouValue > 0 && (
-              <span className="text-xs text-gray-500">
-                (surplus)
-              </span>
-            )}
+          <div className={`text-lg font-bold ${trouValue !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
+            {trouValue.toFixed(2)}€
           </div>
-          {dailyClosing && trouValue !== 0 && (
-            <div className="text-xs text-gray-500 mt-1">
-              Dernière mise à jour:{" "}
-              {new Date(dailyClosing.updatedAt).toLocaleTimeString("fr-FR")}
-            </div>
-          )}
         </div>
-        <div className="border-b pb-2">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600 flex items-center gap-2">
-              Retrait de caisse
-              {loadingClosing && <span className="text-xs">(chargement...)</span>}
-            </div>
+
+        {/* Retrait */}
+        <div className="text-center p-2 border-b-2 border-orange-500">
+          <div className="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
+            Retrait
             <button
               onClick={onRetraitClick}
               disabled={loadingClosing}
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
+              className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
+              title={retraitValue !== 0 ? 'Modifier' : 'Ajouter'}
             >
-              {retraitValue !== 0 ? 'Modifier' : 'Ajouter'}
+              ✏️
             </button>
           </div>
-          <div className="mt-2 flex items-center gap-2">
-            <span className={`text-xl font-bold ${retraitValue !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
-              {retraitValue.toFixed(2)}€
-            </span>
-            {retraitValue < 0 && (
-              <span className="text-xs text-gray-500">
-                (retiré)
-              </span>
-            )}
-            {retraitValue > 0 && (
-              <span className="text-xs text-gray-500">
-                (ajouté)
-              </span>
-            )}
+          <div className={`text-lg font-bold ${retraitValue !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
+            {retraitValue.toFixed(2)}€
           </div>
-          {dailyClosing && retraitValue !== 0 && (
-            <div className="text-xs text-gray-500 mt-1">
-              Dernière mise à jour:{" "}
-              {new Date(dailyClosing.updatedAt).toLocaleTimeString("fr-FR")}
-            </div>
-          )}
         </div>
-        <div className="flex justify-between items-center py-2 bg-green-50 px-2 rounded">
-          <span className="text-gray-700 font-medium">Fond de caisse</span>
-          <span
-            className={`text-xl font-bold ${
-              fondCaisse >= 0 ? "text-green-700" : "text-red-700"
-            }`}
-          >
+
+        {/* Fond de caisse */}
+        <div className="text-center p-2 bg-green-50 rounded border border-green-200">
+          <div className="text-xs text-green-700 mb-1">Fond caisse</div>
+          <div className={`text-lg font-bold ${fondCaisse >= 0 ? "text-green-700" : "text-red-700"}`}>
             {fondCaisse.toFixed(2)}€
-          </span>
+          </div>
         </div>
       </div>
     </div>
