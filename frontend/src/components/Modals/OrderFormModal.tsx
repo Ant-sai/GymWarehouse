@@ -294,12 +294,105 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         className="absolute inset-0 bg-black/30 z-40"
         onClick={handleClose}
       />
+              <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Client *
+          </label>
 
+          <div className="flex gap-2">
+            <div className="flex-1 relative user-search-container">
+              <input
+                type="text"
+                placeholder="Rechercher un client..."
+                value={userSearch}
+                onChange={(e) => {
+                  setUserSearch(e.target.value);
+                  setShowUserDropdown(true);
+                }}
+                onFocus={() => setShowUserDropdown(true)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              />
+
+              {/* Dropdown de résultats */}
+              {showUserDropdown && userSearch && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
+                  {filteredUsers.length === 0 ? (
+                    <div className="px-3 py-2 text-gray-500 text-sm">
+                      Aucun client trouvé
+                    </div>
+                  ) : (
+                    filteredUsers.map(user => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setUserSearch('');
+                          setShowUserDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span>{getFullName(user)}</span>
+                          <span className={`font-medium ${Number(user.balance) < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                            {Number(user.balance).toFixed(2)}€
+                          </span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Affichage du client sélectionné */}
+              {selectedUser && (
+                <div className="mt-2 text-sm text-gray-600 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{getFullName(selectedUser)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUser(null);
+                        setUserSearch('');
+                        setUserManuallyCleared(true);
+                      }}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      title="Changer de client"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <span className={`font-medium ${Number(selectedUser.balance) < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    Solde: {Number(selectedUser.balance).toFixed(2)}€
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onAddMember({
+                user: selectedUser,
+                cart: cart,
+                paymentMethod: paymentMethod,
+                notes: notes,
+                discountValue: discountValue,
+                discountComment: discountComment
+              })}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
+              title="Ajouter un nouveau membre"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              Nouveau
+            </button>
+          </div>
+        </div>
+        
       {/* Modal */}
       <div className="relative bg-white rounded-lg p-8 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
-        <h3 className="text-xl font-semibold mb-6 text-black">
-          Nouvelle commande
-        </h3>
+
 
         {/* Sélection des produits */}
         <div className="mb-6">
@@ -546,102 +639,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           </label>
         </div>
 
-        {/* Sélection du client */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Client *
-          </label>
-
-          <div className="flex gap-2">
-            <div className="flex-1 relative user-search-container">
-              <input
-                type="text"
-                placeholder="Rechercher un client..."
-                value={userSearch}
-                onChange={(e) => {
-                  setUserSearch(e.target.value);
-                  setShowUserDropdown(true);
-                }}
-                onFocus={() => setShowUserDropdown(true)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-              />
-
-              {/* Dropdown de résultats */}
-              {showUserDropdown && userSearch && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
-                  {filteredUsers.length === 0 ? (
-                    <div className="px-3 py-2 text-gray-500 text-sm">
-                      Aucun client trouvé
-                    </div>
-                  ) : (
-                    filteredUsers.map(user => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setUserSearch('');
-                          setShowUserDropdown(false);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span>{getFullName(user)}</span>
-                          <span className={`font-medium ${Number(user.balance) < 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                            {Number(user.balance).toFixed(2)}€
-                          </span>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* Affichage du client sélectionné */}
-              {selectedUser && (
-                <div className="mt-2 text-sm text-gray-600 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{getFullName(selectedUser)}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedUser(null);
-                        setUserSearch('');
-                        setUserManuallyCleared(true);
-                      }}
-                      className="text-red-500 hover:text-red-700 transition-colors"
-                      title="Changer de client"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <span className={`font-medium ${Number(selectedUser.balance) < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                    Solde: {Number(selectedUser.balance).toFixed(2)}€
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onAddMember({
-                user: selectedUser,
-                cart: cart,
-                paymentMethod: paymentMethod,
-                notes: notes,
-                discountValue: discountValue,
-                discountComment: discountComment
-              })}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
-              title="Ajouter un nouveau membre"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              Nouveau
-            </button>
-          </div>
-        </div>
 
         {/* Notes */}
         <div className="mb-6">
