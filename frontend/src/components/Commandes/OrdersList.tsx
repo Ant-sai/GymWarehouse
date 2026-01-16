@@ -45,16 +45,6 @@ export const OrdersList: React.FC<OrdersListProps> = ({
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4 text-black">
-        Commandes du{" "}
-        {new Date(selectedDate).toLocaleDateString("fr-FR", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
-      </h2>
-
       {dayOrders.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-gray-500">Aucune commande pour cette date</div>
