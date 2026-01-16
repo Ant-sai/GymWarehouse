@@ -294,7 +294,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         className="absolute inset-0 bg-black/30 z-40"
         onClick={handleClose}
       />
-              <div className="mb-6">
+
+      {/* Modal */}
+      <div className="relative bg-white rounded-lg p-8 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
+
+              {/* Sélection du client */}
+        <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Client *
           </label>
@@ -389,10 +394,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             </button>
           </div>
         </div>
-        
-      {/* Modal */}
-      <div className="relative bg-white rounded-lg p-8 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
-
 
         {/* Sélection des produits */}
         <div className="mb-6">
@@ -638,6 +639,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             </span>
           </label>
         </div>
+
 
 
         {/* Notes */}
