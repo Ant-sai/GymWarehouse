@@ -7,6 +7,8 @@ interface PageHeaderProps {
   onStandby: () => void;
   standbyCount: number;
   loading: boolean;
+  selectedDate: string;
+  onDateChange: (date: string) => void;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
@@ -14,10 +16,35 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   onRefund,
   onStandby,
   standbyCount,
+  selectedDate,
+  onDateChange,
 }) => {
   return (
-    <header className="flex items-center justify-between mb-8">
+    <header className="flex items-center justify-between mb-6">
+      {/* Date picker à gauche */}
+      <div className="relative">
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => onDateChange(e.target.value)}
+          className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
+        />
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
 
+      {/* Boutons à droite */}
       <div className="flex gap-3">
         <button
           onClick={onRefund}

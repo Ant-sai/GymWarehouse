@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sidebar, PageHeader, DateNavigation, DailyStatistics, OrdersList } from './components/Commandes';
+import { Sidebar, PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
 import { RetraitModal } from './components/Modals/RetraitModal';
@@ -686,12 +686,8 @@ export default function DailyOrdersPage() {
           onStandby={() => setShowStandbyList(true)}
           standbyCount={standbyOrders.length}
           loading={loading}
-        />
-
-        <DateNavigation
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
-          orders={orders}
         />
 
         <DailyStatistics
