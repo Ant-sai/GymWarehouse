@@ -55,6 +55,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [userManuallyCleared, setUserManuallyCleared] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -97,20 +98,23 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     }
   }, [isOpen, initialUser, selectedUser, userManuallyCleared]);
 
-  // Fermer le dropdown quand on clique en dehors
+  // Fermer les dropdowns quand on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.user-search-container')) {
         setShowUserDropdown(false);
       }
+      if (!target.closest('.product-search-container')) {
+        setShowProductDropdown(false);
+      }
     };
 
-    if (showUserDropdown) {
+    if (showUserDropdown || showProductDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showUserDropdown]);
+  }, [showUserDropdown, showProductDropdown]);
 
   if (!isOpen) return null;
 
@@ -300,50 +304,54 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         {/* Sélection des produits */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Produits disponibles
+            Ajouter un produit *
           </label>
 
-          <input
-            type="text"
-            placeholder="Rechercher un produit..."
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            className="w-full mb-4 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-          />
+          <div className="relative product-search-container">
+            <input
+              type="text"
+              placeholder="Rechercher un produit..."
+              value={productSearch}
+              onChange={(e) => {
+                setProductSearch(e.target.value);
+                setShowProductDropdown(true);
+              }}
+              onFocus={() => setShowProductDropdown(true)}
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+            />
 
-          <div className="grid grid-cols-3 gap-4 max-h-60 overflow-y-auto border rounded p-4">
-            {filteredProducts.length === 0 ? (
-              <div className="col-span-3 text-center text-gray-500 py-4">
-                {productSearch ? "Aucun produit trouvé" : "Aucun produit disponible"}
-              </div>
-            ) : (
-              filteredProducts.map(product => (
-                <div key={product.id} className="border rounded p-2">
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <h4 className="font-medium text-sm">{product.name}</h4>
-                      <p className="text-xs text-gray-600">Stock: {product.quantity}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-sm">
-                        M : {product.trainerPrice}€ / C : {product.price}€
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          console.log('➕ [Clic] Bouton Ajouter cliqué pour:', product.name);
-                          console.log('➕ [Clic] Event:', e);
-                          console.log('➕ [Clic] Stock disponible:', product.quantity);
-                          addToCart(product);
-                        }}
-                        className="mt-0.5 bg-[#1E2A47] text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors"
-                        disabled={product.quantity <= 0}
-                      >
-                        Ajouter
-                      </button>
-                    </div>
+            {/* Dropdown de résultats */}
+            {showProductDropdown && productSearch && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
+                {filteredProducts.length === 0 ? (
+                  <div className="px-3 py-2 text-gray-500 text-sm">
+                    Aucun produit trouvé
                   </div>
-                </div>
-              ))
+                ) : (
+                  filteredProducts.map(product => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => {
+                        addToCart(product);
+                        setShowProductDropdown(false);
+                      }}
+                      disabled={product.quantity <= 0}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">{product.name}</span>
+                          <span className="text-xs text-gray-500 ml-2">Stock: {product.quantity}</span>
+                        </div>
+                        <span className="text-gray-600">
+                          {useTrainerPrice ? product.trainerPrice : product.price}€
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
             )}
           </div>
         </div>
