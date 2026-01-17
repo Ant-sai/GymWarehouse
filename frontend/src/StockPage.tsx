@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
 import PrimeroseVector from './assets/PrimeroseVector.svg';
 
 
@@ -240,43 +239,24 @@ export default function StockPage() {
   );
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-60 bg-[#1E2A47] text-white p-8">
-<img
-          src={PrimeroseVector}
-          alt="Gym Warehouse"
-          className="w-full h-auto mb-8"
-        />        <nav className="space-y-4 text-sm">
-          <div className="font-medium text-white">Stock</div>
-          <Link to="/membres" className="block text-[#AAB4C3] hover:text-white transition-colors">
-            Membres
-          </Link>
-          <Link to="/commandes" className="block text-[#AAB4C3] hover:text-white transition-colors">
-            Commandes
-          </Link>
-        </nav>
-      </aside>
-
+    <div className="min-h-screen bg-gray-50">
       {/* Main */}
-      <main className="flex-1 p-12">
-        <header className="flex items-center justify-between mb-8">
+      <main className="p-8">
+        <header className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold text-[#1E2A47]">Stock</h1>
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-semibold text-black">Stock</h1>
             <button
-              onClick={handleRefresh}
-              className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
-              disabled={loading}
+              onClick={() => setShowForm(true)}
+              className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
             >
-              {loading ? "⟳" : "↻"} Actualiser
+              Ajouter un produit
             </button>
+            <img
+              src={PrimeroseVector}
+              alt="Gym Warehouse"
+              className="h-10 w-auto"
+            />
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
-          >
-            Ajouter un produit
-          </button>
         </header>
 
         {/* Barre de recherche */}

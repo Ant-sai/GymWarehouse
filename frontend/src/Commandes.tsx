@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sidebar, PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
+import { PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
 import { RetraitModal } from './components/Modals/RetraitModal';
@@ -675,10 +675,8 @@ export default function DailyOrdersPage() {
   );
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-
-      <main className="flex-1 p-12">
+    <div className="min-h-screen bg-gray-50">
+      <main className="p-8">
         <PageHeader
           onRefresh={fetchOrders}
           onNewOrder={() => setShowForm(true)}
