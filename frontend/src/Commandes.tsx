@@ -88,6 +88,8 @@ export default function DailyOrdersPage() {
   const [notes, setNotes] = useState("");
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [productSearch, setProductSearch] = useState("");
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [useTrainerPrice, setUseTrainerPrice] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders()]);
@@ -558,6 +560,9 @@ export default function DailyOrdersPage() {
     setPaymentMethod(order.paymentMethod);
     setNotes(order.notes || "");
     setDiscountValue(order.discount || 0);
+    setUseTrainerPrice(order.client?.role === "TRAINER");
+    setProductSearch("");
+    setShowProductDropdown(false);
     setShowEditOrderForm(true);
   }
 
@@ -625,7 +630,7 @@ export default function DailyOrdersPage() {
 
   // Fonctions pour le modal d'édition de commande
   function addToCart(product: Product) {
-    const price = selectedUser?.role === "TRAINER" ? product.trainerPrice : product.price;
+    const price = useTrainerPrice ? product.trainerPrice : product.price;
     const existingItem = cart.find(item => item.productId === product.id);
 
     if (existingItem) {
@@ -637,6 +642,8 @@ export default function DailyOrdersPage() {
     } else {
       setCart([...cart, { productId: product.id, quantity: 1, unitPrice: price }]);
     }
+    setProductSearch("");
+    setShowProductDropdown(false);
   }
 
   function updateCartQuantity(productId: number, quantity: number) {
@@ -1169,6 +1176,8 @@ export default function DailyOrdersPage() {
                 setNotes("");
                 setDiscountValue(0);
                 setProductSearch("");
+                setShowProductDropdown(false);
+                setUseTrainerPrice(false);
               }
             }} />
             <div className="relative bg-white rounded-lg p-12 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
@@ -1176,51 +1185,54 @@ export default function DailyOrdersPage() {
                 Modifier la commande #{editingOrder.id}
               </h3>
 
+              {/* Sélection des produits avec dropdown */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Produits disponibles
+                  Ajouter un produit *
                 </label>
 
-                <div className="mb-4">
+                <div className="relative product-search-container">
                   <input
                     type="text"
                     placeholder="Rechercher un produit..."
                     value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    onChange={(e) => {
+                      setProductSearch(e.target.value);
+                      setShowProductDropdown(true);
+                    }}
+                    onFocus={() => setShowProductDropdown(true)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                   />
-                </div>
 
-                <div className="grid grid-cols-3 gap-4 max-h-60 overflow-y-auto border rounded p-4">
-                  {filteredProducts.length === 0 ? (
-                    <div className="col-span-3 text-center text-gray-500 py-4">
-                      {productSearch ? "Aucun produit trouvé" : "Aucun produit disponible"}
-                    </div>
-                  ) : (
-                    filteredProducts.map(product => (
-                      <div key={product.id} className="border rounded p-2">
-                        <div className="flex justify-between items-start mb-1">
-                          <div>
-                            <h4 className="font-medium text-sm">{product.name}</h4>
-                            <p className="text-xs text-gray-600">Stock: {product.quantity}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-sm">
-                              {selectedUser?.role === "TRAINER"
-                                ? product.trainerPrice
-                                : product.price}€
-                            </div>
-                            <button
-                              onClick={() => addToCart(product)}
-                              className="mt-0.5 bg-[#1E2A47] text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600"
-                              disabled={product.quantity <= 0}
-                            >
-                              Ajouter
-                            </button>
-                          </div>
+                  {/* Dropdown de résultats */}
+                  {showProductDropdown && productSearch && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
+                      {filteredProducts.length === 0 ? (
+                        <div className="px-3 py-2 text-gray-500 text-sm">
+                          Aucun produit trouvé
                         </div>
-                      </div>
-                    ))
+                      ) : (
+                        filteredProducts.map(product => (
+                          <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => addToCart(product)}
+                            disabled={product.quantity <= 0}
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <span className="font-medium">{product.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">Stock: {product.quantity}</span>
+                              </div>
+                              <span className="text-gray-600">
+                                {useTrainerPrice ? product.trainerPrice : product.price}€
+                              </span>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1307,6 +1319,31 @@ export default function DailyOrdersPage() {
                   </div>
                 </div>
               )}
+
+              {/* Checkbox Prix Entraîneur */}
+              <div className="mb-6">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useTrainerPrice}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setUseTrainerPrice(checked);
+                      // Recalculer les prix du panier
+                      setCart(cart.map(item => {
+                        const product = products.find(p => p.id === item.productId);
+                        if (!product) return item;
+                        const newPrice = checked ? product.trainerPrice : product.price;
+                        return { ...item, unitPrice: newPrice };
+                      }));
+                    }}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Appliquer le prix entraîneur sur toute la commande
+                  </span>
+                </label>
+              </div>
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
@@ -1396,6 +1433,8 @@ export default function DailyOrdersPage() {
                       setNotes("");
                       setDiscountValue(0);
                       setProductSearch("");
+                      setShowProductDropdown(false);
+                      setUseTrainerPrice(false);
                     }
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
