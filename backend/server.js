@@ -562,7 +562,8 @@ app.get('/api/orders', async (req, res) => {
                         id: true,
                         firstName: true,
                         lastName: true,
-                        role: true
+                        role: true,
+                        balance: true
                     }
                 },
                 products: {
@@ -599,7 +600,8 @@ app.get('/api/orders/:id', async (req, res) => {
                         id: true,
                         firstName: true,
                         lastName: true,
-                        role: true
+                        role: true,
+                        balance: true
                     }
                 },
                 products: {

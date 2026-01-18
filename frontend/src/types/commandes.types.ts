@@ -40,6 +40,7 @@ export type Order = {
   date: string;
   paymentMethod: PaymentMethod;
   notes?: string;
+  discount?: number;
   products: OrderProduct[];
 }
 

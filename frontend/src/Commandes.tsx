@@ -557,7 +557,7 @@ export default function DailyOrdersPage() {
     })));
     setPaymentMethod(order.paymentMethod);
     setNotes(order.notes || "");
-    setDiscountValue(0); // On ne peut pas récupérer la réduction depuis la commande existante
+    setDiscountValue(order.discount || 0);
     setShowEditOrderForm(true);
   }
 
