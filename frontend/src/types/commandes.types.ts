@@ -41,6 +41,7 @@ export type Order = {
   paymentMethod: PaymentMethod;
   notes?: string;
   discount?: number;
+  useTrainerPrice?: boolean;
   products: OrderProduct[];
 }
 

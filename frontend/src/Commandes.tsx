@@ -560,7 +560,7 @@ export default function DailyOrdersPage() {
     setPaymentMethod(order.paymentMethod);
     setNotes(order.notes || "");
     setDiscountValue(order.discount || 0);
-    setUseTrainerPrice(order.client?.role === "TRAINER");
+    setUseTrainerPrice(order.useTrainerPrice || false);
     setProductSearch("");
     setShowProductDropdown(false);
     setShowEditOrderForm(true);
