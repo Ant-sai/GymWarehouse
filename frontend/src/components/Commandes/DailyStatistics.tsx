@@ -98,7 +98,7 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
         </div>
 
         {/* Crédit */}
-        <div className="text-center p-2 border-b-2 border-purple-500">
+        <div className="text-center p-2 border-b-2 border-purple-500 h-[72px] flex flex-col justify-center">
           <div className="text-xs text-gray-600 mb-1">Crédit</div>
           <div className="text-lg font-bold text-purple-700">
             {dailyStats.accountDebitRevenue.toFixed(2)}€
@@ -106,7 +106,7 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
         </div>
 
         {/* QR Code */}
-        <div className="text-center p-2 border-b-2 border-blue-500">
+        <div className="text-center p-2 border-b-2 border-blue-500 h-[72px] flex flex-col justify-center">
           <div className="text-xs text-gray-600 mb-1">QR Code</div>
           <div className="text-lg font-bold text-blue-700">
             {dailyStats.qrRevenue.toFixed(2)}€
@@ -114,7 +114,7 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
         </div>
 
         {/* Espèces */}
-        <div className="text-center p-2 border-b-2 border-green-500">
+        <div className="text-center p-2 border-b-2 border-green-500 h-[72px] flex flex-col justify-center">
           <div className="text-xs text-gray-600 mb-1">Espèces</div>
           <div className="text-lg font-bold text-green-700">
             {dailyStats.cashRevenue.toFixed(2)}€
@@ -122,7 +122,7 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
         </div>
 
         {/* Trou */}
-        <div className="text-center p-2 border-b-2 border-red-500">
+        <div className="text-center p-2 border-b-2 border-red-500 h-[72px] flex flex-col justify-center">
           <div className="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
             Trou
             <button
@@ -140,7 +140,7 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
         </div>
 
         {/* Retrait */}
-        <div className="text-center p-2 border-b-2 border-orange-500">
+        <div className="text-center p-2 border-b-2 border-orange-500 h-[72px] flex flex-col justify-center">
           <div className="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
             Retrait
             <button
