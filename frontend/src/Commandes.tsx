@@ -1271,9 +1271,6 @@ export default function DailyOrdersPage() {
                         <div className="flex items-center gap-4 mb-2">
                           <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
                             value={discountValue || ''}
                             onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
                             onBlur={(e) => {
