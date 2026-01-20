@@ -300,10 +300,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
               {/* Sélection du client */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Client *
-          </label>
-
           <div className="flex gap-2">
             <div className="flex-1 relative user-search-container">
               <input
@@ -397,10 +393,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
         {/* Sélection des produits */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Ajouter un produit *
-          </label>
-
           <div className="relative product-search-container">
             <input
               type="text"
@@ -653,7 +645,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-            rows={3}
+            rows={1}
             placeholder="Commentaires sur la commande..."
           />
         </div>
