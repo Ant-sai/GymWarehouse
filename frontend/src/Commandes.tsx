@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
+import { ExportModal } from './components/Modals/ExportModal';
 import { RetraitModal } from './components/Modals/RetraitModal';
 import type { User, Product, OrderItem, Order, CreateOrderData, StandbyData } from './types/commandes.types';
 
@@ -80,6 +81,7 @@ export default function DailyOrdersPage() {
 
   const [showTrouModal, setShowTrouModal] = useState(false);
   const [showRetraitModal, setShowRetraitModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // États pour le modal d'édition de commande
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -689,6 +691,7 @@ export default function DailyOrdersPage() {
           loading={loading}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
+          onExport={() => setShowExportModal(true)} 
         />
 
         <DailyStatistics
@@ -1463,6 +1466,10 @@ export default function DailyOrdersPage() {
           date={selectedDate}
           onClose={() => setShowRetraitModal(false)}
           onSave={handleSaveRetrait}
+        />
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
         />
       </main>
     </div>

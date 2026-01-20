@@ -3,6 +3,7 @@ import PrimeroseVector from '../../assets/PrimeroseVector.svg';
 
 interface PageHeaderProps {
   onRefresh: () => Promise<void>;
+  onExport: () => void;
   onNewOrder: () => void;
   onRefund: () => void;
   onStandby: () => void;
@@ -73,6 +74,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               {standbyCount}
             </span>
           )}
+        </button>
+        <button
+          onClick={onExport}
+          className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
+        >
+          📥 Exporter Excel
         </button>
         <img
           src={PrimeroseVector}
