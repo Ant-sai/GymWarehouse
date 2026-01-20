@@ -641,12 +641,11 @@ function handleDeleteStandby(standbyId: string) {
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      // Supprimez cette ligne car vous ne l'utilisez pas
-      // const refundTransaction = await response.json();
       await response.json(); // Si vous voulez juste consommer la réponse
       // Réinitialiser le formulaire
       setShowRefundForm(false);
       setRefundUser(null);
+      setSelectedUser(null);
       setRefundAmount("");
       setRefundNotes("");
       setRefundPaymentMethod("CASH");
