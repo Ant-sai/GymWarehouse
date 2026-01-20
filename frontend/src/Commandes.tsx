@@ -1271,6 +1271,7 @@ export default function DailyOrdersPage() {
                         <div className="flex items-center gap-4 mb-2">
                           <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                           <input
+                            type="number"
                             value={discountValue || ''}
                             onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
                             onBlur={(e) => {
@@ -1279,7 +1280,7 @@ export default function DailyOrdersPage() {
                               if (value > calculateSubtotal()) setDiscountValue(calculateSubtotal());
                             }}
                             className="border rounded px-2 py-1 text-sm w-24"
-                            placeholder="0.00"
+                            placeholder="0"
                           />
                           <span className="text-sm text-gray-600">€</span>
                           {discountValue > 0 && (
