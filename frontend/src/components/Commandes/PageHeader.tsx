@@ -52,16 +52,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       {/* Boutons et image à droite */}
       <div className="flex items-center gap-3">
         <button
-          onClick={onRefund}
-          className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
-        >
-          💰 Remboursement crédit
-        </button>
-        <button
           onClick={onNewOrder}
           className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
         >
           Nouvelle commande
+        </button>
+        <button
+          onClick={onRefund}
+          className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
+        >
+          💰 Remboursement crédit
         </button>
         <button
           onClick={onStandby}

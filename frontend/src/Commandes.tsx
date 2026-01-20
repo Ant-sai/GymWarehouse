@@ -1378,7 +1378,7 @@ export default function DailyOrdersPage() {
                           : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
                         }`}
                     >
-                      💳 Débit compte
+                      💳 Crédit
                     </button>
                   )}
                 </div>
