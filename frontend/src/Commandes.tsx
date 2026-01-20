@@ -582,6 +582,7 @@ export default function DailyOrdersPage() {
         clientId: selectedUser.id,
         paymentMethod: paymentMethod,
         notes: notes,
+        useTrainerPrice: useTrainerPrice,
         discount: discountValue,
         products: cart.map(item => ({
           productId: item.productId,

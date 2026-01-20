@@ -637,7 +637,7 @@ app.put('/api/orders/:id', async (req, res) => {
             paymentMethod,
             discount,
             notes,
-            useTrainerPrice = false,
+            useTrainerPrice,
         } = req.body;
 
         // Validation
