@@ -1272,12 +1272,21 @@ export default function DailyOrdersPage() {
                           <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                           <input
                             type="number"
+                            step="0.01"
+                            min="0"
                             value={discountValue || ''}
-                            onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '') {
+                                setDiscountValue(0);
+                              } else {
+                                setDiscountValue(parseFloat(val) || 0);
+                              }
+                            }}
                             onBlur={(e) => {
-                              const value = Number(e.target.value) || 0;
+                              const value = parseFloat(e.target.value) || 0;
                               if (value < 0) setDiscountValue(0);
-                              if (value > calculateSubtotal()) setDiscountValue(calculateSubtotal());
+                              else if (value > calculateSubtotal()) setDiscountValue(calculateSubtotal());
                             }}
                             className="border rounded px-2 py-1 text-sm w-24"
                             placeholder="0"
