@@ -14,6 +14,7 @@ interface PageHeaderProps {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
+  onExport,
   onNewOrder,
   onRefund,
   onStandby,

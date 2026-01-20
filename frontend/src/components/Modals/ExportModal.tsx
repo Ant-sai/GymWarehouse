@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { exportAllOrdersToExcel, exportOrdersFromDateToExcel, exportOrdersRangeToExcel } from '../../utils/exportToExcel';
 
 type ExportModalProps = {
