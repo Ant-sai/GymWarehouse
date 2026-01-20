@@ -189,13 +189,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const calculateSubtotal = () => {
     return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
   };
-
-  const calculateDiscount = () => {
-    if (discountValue <= 0 || paymentMethod === "FREE") return 0;
-    const subtotal = calculateSubtotal();
-    return Math.min(discountValue, subtotal);
-  };
-
   const calculateTotal = () => {
     if (paymentMethod === "FREE") return 0;
     const subtotal = calculateSubtotal();
@@ -512,14 +505,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
               {/* Totaux */}
               <div className="mt-4 text-right space-y-1">
-                <div className="text-sm text-gray-600">
-                  Sous-total: {calculateSubtotal().toFixed(2)}€
-                </div>
-                {discountValue > 0 && paymentMethod !== "FREE" && (
-                  <div className="text-sm text-red-600">
-                    Réduction: -{calculateDiscount().toFixed(2)}€
-                  </div>
-                )}
                 <div className={`text-xl font-bold ${paymentMethod === "FREE" ? "text-red-600" : ""}`}>
                   Total: {calculateTotal().toFixed(2)}€
                   {paymentMethod === "FREE" && <span className="text-sm ml-2">(GRATUIT)</span>}

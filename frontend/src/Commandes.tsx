@@ -669,12 +669,6 @@ export default function DailyOrdersPage() {
     return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
   }
 
-  function calculateDiscount() {
-    if (discountValue <= 0 || paymentMethod === "FREE") return 0;
-    const subtotal = calculateSubtotal();
-    return Math.min(discountValue, subtotal);
-  }
-
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
@@ -1304,14 +1298,6 @@ export default function DailyOrdersPage() {
                     )}
 
                     <div className="mt-4 text-right space-y-1">
-                      <div className="text-sm text-gray-600">
-                        Sous-total: {calculateSubtotal().toFixed(2)}€
-                      </div>
-                      {discountValue > 0 && paymentMethod !== "FREE" && (
-                        <div className="text-sm text-red-600">
-                          Réduction: -{calculateDiscount().toFixed(2)}€
-                        </div>
-                      )}
                       <div className={`text-xl font-bold ${paymentMethod === "FREE" ? "text-red-600" : ""}`}>
                         Total: {calculateTotal().toFixed(2)}€
                         {paymentMethod === "FREE" && <span className="text-sm ml-2">(GRATUIT)</span>}
@@ -1341,7 +1327,7 @@ export default function DailyOrdersPage() {
                     className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Appliquer le prix entraîneur sur toute la commande
+                    Prix mono
                   </span>
                 </label>
               </div>
