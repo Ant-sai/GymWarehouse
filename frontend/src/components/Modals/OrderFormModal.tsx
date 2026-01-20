@@ -445,7 +445,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         {/* Panier */}
         {cart.length > 0 && (
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Panier</label>
             <div className="border rounded p-4">
               {cart.map(item => {
                 const product = products.find(p => p.id === item.productId);
@@ -508,18 +507,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       </button>
                     )}
                   </div>
-
-                  {discountValue > 0 && (
-                    <div className="mt-2">
-                      <input
-                        type="text"
-                        value={discountComment}
-                        onChange={(e) => setDiscountComment(e.target.value)}
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                        placeholder="Raison de la réduction (optionnel)..."
-                      />
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -562,7 +549,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
             />
             <span className="text-sm font-medium text-gray-700">
-              Appliquer le prix entraîneur sur toute la commande
+              Prix mono
             </span>
           </label>
         </div>
@@ -573,19 +560,20 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             Méthode de paiement *
           </label>
           <div className="grid grid-cols-3 gap-3">
+
             <button
-              type="button"
-              onClick={() => {
-                setPaymentMethod("CASH");
-              }}
-              className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                paymentMethod === "CASH"
-                  ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-                  : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-              }`}
-            >
-              💵 Espèces
-            </button>
+                type="button"
+                onClick={() => {
+                  setPaymentMethod("ACCOUNT_DEBIT");
+                }}
+                className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                  paymentMethod === "ACCOUNT_DEBIT"
+                    ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                }`}
+              >
+                💳 Crédit
+              </button>
 
             <button
               type="button"
@@ -601,20 +589,24 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               📱 QR Code
             </button>
 
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod("CASH");
+              }}
+              className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                paymentMethod === "CASH"
+                  ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+                  : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+              }`}
+            >
+              💵 Espèces
+            </button>
+
+
+
             
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethod("ACCOUNT_DEBIT");
-                }}
-                className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                  paymentMethod === "ACCOUNT_DEBIT"
-                    ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                }`}
-              >
-                💳 Crédit
-              </button>
+
           </div>
 
           {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
@@ -638,9 +630,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
         {/* Notes */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes (optionnel)
-          </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
