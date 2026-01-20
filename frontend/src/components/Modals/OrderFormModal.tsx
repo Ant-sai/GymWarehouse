@@ -444,7 +444,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 return (
                   <div 
                     key={item.productId} 
-                    className="flex justify-between items-center py-2 border-b last:border-b-0"
+                    className="flex justify-between items-center py-2"
                   >
                     <div>
                       <span className="font-medium">{product?.name}</span>
@@ -474,7 +474,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
               {/* Réduction */}
               {paymentMethod !== "FREE" && (
-                <div className="mt-4 pt-4 border-t">
+                <div className="mt-4">
                   <div className="flex items-center gap-4 mb-2">
                     <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                     <input
