@@ -1213,7 +1213,7 @@ export default function DailyOrdersPage() {
                             type="button"
                             onClick={() => addToCart(product)}
                             disabled={product.quantity <= 0}
-                            className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <div className="flex justify-between items-center">
                               <div>
@@ -1239,7 +1239,7 @@ export default function DailyOrdersPage() {
                     {cart.map(item => {
                       const product = products.find(p => p.id === item.productId);
                       return (
-                        <div key={item.productId} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                        <div key={item.productId} className="flex justify-between items-center py-2">
                           <div>
                             <span className="font-medium">{product?.name}</span>
                             <span className="text-gray-600 ml-2">({item.unitPrice}€/unité)</span>
