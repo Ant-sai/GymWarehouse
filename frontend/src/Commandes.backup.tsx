@@ -645,7 +645,6 @@ function handleDeleteStandby(standbyId: string) {
       // Réinitialiser le formulaire
       setShowRefundForm(false);
       setRefundUser(null);
-      setSelectedUser(null);
       setRefundAmount("");
       setRefundNotes("");
       setRefundPaymentMethod("CASH");

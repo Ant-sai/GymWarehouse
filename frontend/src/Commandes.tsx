@@ -436,6 +436,7 @@ export default function DailyOrdersPage() {
       setShowRefundForm(false);
       setRefundUser(null);
       setRefundAmount("");
+      setRefundUserSearch("");
       setRefundNotes("");
       setRefundPaymentMethod(null);
 
