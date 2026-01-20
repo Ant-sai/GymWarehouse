@@ -1267,7 +1267,7 @@ export default function DailyOrdersPage() {
                     })}
 
                     {paymentMethod !== "FREE" && (
-                      <div className="mt-4 pt-4 border-t">
+                      <div className="mt-4 pt-4">
                         <div className="flex items-center gap-4 mb-2">
                           <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
                           <input
