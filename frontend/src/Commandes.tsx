@@ -1333,7 +1333,6 @@ export default function DailyOrdersPage() {
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement *</label>
                 <div className="grid grid-cols-3 gap-3">
                   <button
                     type="button"

@@ -159,7 +159,7 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
 
         {/* Fond de caisse */}
         <div className="text-center p-2 bg-green-50 rounded border border-green-200">
-          <div className="text-xs text-green-700 mb-1">Fond de caisse</div>
+          <div className="text-xs text-green-700 mb-1">Fin</div>
           <div className={`text-lg font-bold ${fondCaisse >= 0 ? "text-green-700" : "text-red-700"}`}>
             {fondCaisse.toFixed(2)}€
           </div>
