@@ -588,6 +588,212 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
+// Get all orders for Excel export (must be before /api/orders/:id)
+app.get('/api/orders/export', async (req, res) => {
+    try {
+        const orders = await prisma.order.findMany({
+            orderBy: { date: 'desc' },
+            include: {
+                client: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    }
+                },
+                products: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const exportData = orders.map(order => ({
+            orderId: order.id,
+            clientName: `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim(),
+            date: order.date,
+            products: order.products.map(p => ({
+                name: p.product.name,
+                quantity: p.quantity,
+                unitPrice: Number(p.unitPrice),
+                totalPrice: Number(p.totalPrice)
+            })),
+            totalAmount: Number(order.totalAmount),
+            paymentMethod: order.paymentMethod,
+            discount: order.discount || 0,
+            notes: order.notes
+        }));
+
+        res.json(exportData);
+    } catch (err) {
+        console.error('Error fetching orders for export:', err);
+        res.status(500).json({
+            error: 'Failed to fetch orders for export',
+            message: err.message
+        });
+    }
+});
+
+// Get orders from a specific date for Excel export
+app.get('/api/orders/export/from/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+
+        const startDate = new Date(date);
+        if (isNaN(startDate.getTime())) {
+            return res.status(400).json({
+                error: 'Invalid date format. Use YYYY-MM-DD'
+            });
+        }
+
+        startDate.setHours(0, 0, 0, 0);
+
+        const orders = await prisma.order.findMany({
+            where: {
+                date: {
+                    gte: startDate
+                }
+            },
+            orderBy: { date: 'desc' },
+            include: {
+                client: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    }
+                },
+                products: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const exportData = orders.map(order => ({
+            orderId: order.id,
+            clientName: `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim(),
+            date: order.date,
+            products: order.products.map(p => ({
+                name: p.product.name,
+                quantity: p.quantity,
+                unitPrice: Number(p.unitPrice),
+                totalPrice: Number(p.totalPrice)
+            })),
+            totalAmount: Number(order.totalAmount),
+            paymentMethod: order.paymentMethod,
+            discount: order.discount || 0,
+            notes: order.notes
+        }));
+
+        res.json({
+            startDate: startDate,
+            count: orders.length,
+            data: exportData
+        });
+
+    } catch (err) {
+        console.error('Error fetching orders for export:', err);
+        res.status(500).json({
+            error: 'Failed to fetch orders for export',
+            message: err.message
+        });
+    }
+});
+
+// Get orders between two dates for Excel export
+app.get('/api/orders/export/range', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                error: 'startDate and endDate query parameters are required'
+            });
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return res.status(400).json({
+                error: 'Invalid date format. Use YYYY-MM-DD'
+            });
+        }
+
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        const orders = await prisma.order.findMany({
+            where: {
+                date: {
+                    gte: start,
+                    lte: end
+                }
+            },
+            orderBy: { date: 'desc' },
+            include: {
+                client: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    }
+                },
+                products: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const exportData = orders.map(order => ({
+            orderId: order.id,
+            clientName: `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim(),
+            date: order.date,
+            products: order.products.map(p => ({
+                name: p.product.name,
+                quantity: p.quantity,
+                unitPrice: Number(p.unitPrice),
+                totalPrice: Number(p.totalPrice)
+            })),
+            totalAmount: Number(order.totalAmount),
+            paymentMethod: order.paymentMethod,
+            discount: order.discount || 0,
+            notes: order.notes
+        }));
+
+        res.json({
+            startDate: start,
+            endDate: end,
+            count: orders.length,
+            data: exportData
+        });
+
+    } catch (err) {
+        console.error('Error fetching orders for export:', err);
+        res.status(500).json({
+            error: 'Failed to fetch orders for export',
+            message: err.message
+        });
+    }
+});
+
 //Fetch a single order
 app.get('/api/orders/:id', async (req, res) => {
     try {
@@ -1816,224 +2022,3 @@ app.get('/api/daily-reports/starting-cash/:date', async (req, res) => {
     }
 });
 
-// -----------------------------------------------
-// ------------ Export Orders routes -------------
-// -----------------------------------------------
-
-// Get all orders for Excel export
-app.get('/api/orders/export', async (req, res) => {
-    try {
-        const orders = await prisma.order.findMany({
-            orderBy: { date: 'desc' },
-            include: {
-                client: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                    }
-                },
-                products: {
-                    include: {
-                        product: {
-                            select: {
-                                name: true,
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // Formater les données pour l'export Excel
-        const exportData = orders.map(order => ({
-            orderId: order.id,
-            clientName: `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim(),
-            date: order.date,
-            products: order.products.map(p => ({
-                name: p.product.name,
-                quantity: p.quantity,
-                unitPrice: Number(p.unitPrice),
-                totalPrice: Number(p.totalPrice)
-            })),
-            totalAmount: Number(order.totalAmount),
-            paymentMethod: order.paymentMethod,
-            discount: order.discount || 0,
-            notes: order.notes
-        }));
-
-        res.json(exportData);
-    } catch (err) {
-        console.error('Error fetching orders for export:', err);
-        res.status(500).json({ 
-            error: 'Failed to fetch orders for export',
-            message: err.message 
-        });
-    }
-});
-
-// Get orders from a specific date for Excel export
-app.get('/api/orders/export/from/:date', async (req, res) => {
-    try {
-        const { date } = req.params;
-        
-        // Valider la date
-        const startDate = new Date(date);
-        if (isNaN(startDate.getTime())) {
-            return res.status(400).json({ 
-                error: 'Invalid date format. Use YYYY-MM-DD' 
-            });
-        }
-
-        // Définir le début de la journée
-        startDate.setHours(0, 0, 0, 0);
-
-        console.log(`\n📊 Export des commandes depuis le ${startDate.toISOString().split('T')[0]}`);
-
-        const orders = await prisma.order.findMany({
-            where: {
-                date: {
-                    gte: startDate
-                }
-            },
-            orderBy: { date: 'desc' },
-            include: {
-                client: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                    }
-                },
-                products: {
-                    include: {
-                        product: {
-                            select: {
-                                name: true,
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        console.log(`   ✅ ${orders.length} commandes trouvées`);
-
-        // Formater les données pour l'export Excel
-        const exportData = orders.map(order => ({
-            orderId: order.id,
-            clientName: `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim(),
-            date: order.date,
-            products: order.products.map(p => ({
-                name: p.product.name,
-                quantity: p.quantity,
-                unitPrice: Number(p.unitPrice),
-                totalPrice: Number(p.totalPrice)
-            })),
-            totalAmount: Number(order.totalAmount),
-            paymentMethod: order.paymentMethod,
-            discount: order.discount || 0,
-            notes: order.notes
-        }));
-
-        res.json({
-            startDate: startDate,
-            count: orders.length,
-            data: exportData
-        });
-
-    } catch (err) {
-        console.error('Error fetching orders for export:', err);
-        res.status(500).json({ 
-            error: 'Failed to fetch orders for export',
-            message: err.message 
-        });
-    }
-});
-
-// Get orders between two dates for Excel export (bonus!)
-app.get('/api/orders/export/range', async (req, res) => {
-    try {
-        const { startDate, endDate } = req.query;
-
-        if (!startDate || !endDate) {
-            return res.status(400).json({ 
-                error: 'startDate and endDate query parameters are required. Example: ?startDate=2024-01-01&endDate=2024-12-31' 
-            });
-        }
-
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            return res.status(400).json({ 
-                error: 'Invalid date format. Use YYYY-MM-DD' 
-            });
-        }
-
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-
-        console.log(`\n📊 Export des commandes du ${start.toISOString().split('T')[0]} au ${end.toISOString().split('T')[0]}`);
-
-        const orders = await prisma.order.findMany({
-            where: {
-                date: {
-                    gte: start,
-                    lte: end
-                }
-            },
-            orderBy: { date: 'desc' },
-            include: {
-                client: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                    }
-                },
-                products: {
-                    include: {
-                        product: {
-                            select: {
-                                name: true,
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        console.log(`   ✅ ${orders.length} commandes trouvées`);
-
-        const exportData = orders.map(order => ({
-            orderId: order.id,
-            clientName: `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim(),
-            date: order.date,
-            products: order.products.map(p => ({
-                name: p.product.name,
-                quantity: p.quantity,
-                unitPrice: Number(p.unitPrice),
-                totalPrice: Number(p.totalPrice)
-            })),
-            totalAmount: Number(order.totalAmount),
-            paymentMethod: order.paymentMethod,
-            discount: order.discount || 0,
-            notes: order.notes
-        }));
-
-        res.json({
-            startDate: start,
-            endDate: end,
-            count: orders.length,
-            data: exportData
-        });
-
-    } catch (err) {
-        console.error('Error fetching orders for export:', err);
-        res.status(500).json({ 
-            error: 'Failed to fetch orders for export',
-            message: err.message 
-        });
-    }
-});
