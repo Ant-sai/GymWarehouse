@@ -52,17 +52,6 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   PAYPAL: 'PayPal'
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  TRAINER: 'Entraîneur',
-  USER: 'Utilisateur'
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  DETTE: '❌ Dette',
-  CRÉDIT: '✅ Crédit',
-  ÉQUILIBRÉ: '➖ Équilibré'
-};
-
 // Fonction helper pour formater les nombres avec des virgules (pour affichage Excel)
 function formatPrice(price: number): number {
   return parseFloat(price.toFixed(2));
@@ -226,163 +215,36 @@ export async function exportUserBalancesToExcel() {
 }
 
 function generateBalancesExcelFile(result: BalanceExportResponse) {
-  const { data, statistics } = result;
+  const { data } = result;
   
-  // Feuille 1: Balances des utilisateurs
+  // Créer les lignes pour l'export
   const balanceRows = data.map(user => ({
-    'ID': user.userId,
-    'Prénom': user.firstName,
-    'Nom': user.lastName,
-    'Nom complet': user.fullName,
-    'Rôle': ROLE_LABELS[user.role] || user.role,
+    'Nom Prénom': user.fullName,
     'Balance': formatPrice(user.balance),
-    'Statut': STATUS_LABELS[user.status] || user.status,
     'Nombre de commandes': user.totalOrders,
-    'Membre depuis': new Date(user.memberSince).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
   }));
 
   const balanceSheet = XLSX.utils.json_to_sheet(balanceRows);
 
   // Largeur des colonnes
   balanceSheet['!cols'] = [
-    { wch: 8 },   // ID
-    { wch: 15 },  // Prénom
-    { wch: 15 },  // Nom
-    { wch: 25 },  // Nom complet
-    { wch: 15 },  // Rôle
+    { wch: 30 },  // Nom Prénom
     { wch: 15 },  // Balance
-    { wch: 15 },  // Statut
     { wch: 20 },  // Nombre de commandes
-    { wch: 18 },  // Membre depuis
   ];
 
-  // Appliquer le format monétaire à la colonne Balance (colonne F - index 5)
+  // Appliquer le format monétaire à la colonne Balance (colonne B - index 1)
   const balanceRange = XLSX.utils.decode_range(balanceSheet['!ref'] || 'A1');
   for (let R = balanceRange.s.r + 1; R <= balanceRange.e.r; ++R) {
-    const cellF = XLSX.utils.encode_cell({ r: R, c: 5 });
-    if (balanceSheet[cellF] && typeof balanceSheet[cellF].v === 'number') {
-      balanceSheet[cellF].z = '#,##0.00 "€"';
-    }
-  }
-
-  // Feuille 2: Statistiques globales
-  const statsRows = [
-    { 'Statistique': 'Nombre total d\'utilisateurs', 'Valeur': statistics.totalUsers },
-    { 'Statistique': 'Nombre d\'entraîneurs', 'Valeur': statistics.totalTrainers },
-    { 'Statistique': 'Nombre d\'utilisateurs réguliers', 'Valeur': statistics.totalRegularUsers },
-    { 'Statistique': '', 'Valeur': '' },
-    { 'Statistique': 'Balance totale', 'Valeur': formatPrice(statistics.totalBalance) },
-    { 'Statistique': 'Total des dettes', 'Valeur': formatPrice(statistics.totalDebt) },
-    { 'Statistique': 'Total des crédits', 'Valeur': formatPrice(statistics.totalCredit) },
-    { 'Statistique': '', 'Valeur': '' },
-    { 'Statistique': 'Utilisateurs en dette', 'Valeur': statistics.usersInDebt },
-    { 'Statistique': 'Utilisateurs avec crédit', 'Valeur': statistics.usersWithCredit },
-  ];
-
-  const statsSheet = XLSX.utils.json_to_sheet(statsRows);
-
-  // Largeur des colonnes pour les stats
-  statsSheet['!cols'] = [
-    { wch: 35 },  // Statistique
-    { wch: 20 },  // Valeur
-  ];
-
-  // Appliquer le format monétaire aux lignes de balance
-  const statsRange = XLSX.utils.decode_range(statsSheet['!ref'] || 'A1');
-  for (let R = statsRange.s.r + 1; R <= statsRange.e.r; ++R) {
     const cellB = XLSX.utils.encode_cell({ r: R, c: 1 });
-    if (statsSheet[cellB] && typeof statsSheet[cellB].v === 'number') {
-      // Vérifier si c'est une ligne avec un montant en euros
-      const cellA = XLSX.utils.encode_cell({ r: R, c: 0 });
-      const label = statsSheet[cellA]?.v;
-      if (typeof label === 'string' && (label.includes('Balance') || label.includes('dette') || label.includes('crédit'))) {
-        statsSheet[cellB].z = '#,##0.00 "€"';
-      }
+    if (balanceSheet[cellB] && typeof balanceSheet[cellB].v === 'number') {
+      balanceSheet[cellB].z = '#,##0.00 "€"';
     }
   }
 
-  // Feuille 3: Top 10 des dettes
-  const debtsData = data
-    .filter(u => u.balance < 0)
-    .sort((a, b) => a.balance - b.balance)
-    .slice(0, 10)
-    .map((user, index) => ({
-      'Rang': index + 1,
-      'Nom complet': user.fullName,
-      'Rôle': ROLE_LABELS[user.role] || user.role,
-      'Dette': formatPrice(Math.abs(user.balance)),
-    }));
-
-  const debtsSheet = XLSX.utils.json_to_sheet(
-    debtsData.length > 0 
-      ? debtsData 
-      : [{ 'Rang': '', 'Nom complet': 'Aucune dette', 'Rôle': '', 'Dette': '' }]
-  );
-
-  debtsSheet['!cols'] = [
-    { wch: 8 },   // Rang
-    { wch: 25 },  // Nom complet
-    { wch: 15 },  // Rôle
-    { wch: 15 },  // Dette
-  ];
-
-  // Format monétaire pour la colonne Dette
-  if (debtsData.length > 0) {
-    const debtsRange = XLSX.utils.decode_range(debtsSheet['!ref'] || 'A1');
-    for (let R = debtsRange.s.r + 1; R <= debtsRange.e.r; ++R) {
-      const cellD = XLSX.utils.encode_cell({ r: R, c: 3 });
-      if (debtsSheet[cellD] && typeof debtsSheet[cellD].v === 'number') {
-        debtsSheet[cellD].z = '#,##0.00 "€"';
-      }
-    }
-  }
-
-  // Feuille 4: Top 10 des crédits
-  const creditsData = data
-    .filter(u => u.balance > 0)
-    .sort((a, b) => b.balance - a.balance)
-    .slice(0, 10)
-    .map((user, index) => ({
-      'Rang': index + 1,
-      'Nom complet': user.fullName,
-      'Rôle': ROLE_LABELS[user.role] || user.role,
-      'Crédit': formatPrice(user.balance),
-    }));
-
-  const creditsSheet = XLSX.utils.json_to_sheet(
-    creditsData.length > 0 
-      ? creditsData 
-      : [{ 'Rang': '', 'Nom complet': 'Aucun crédit', 'Rôle': '', 'Crédit': '' }]
-  );
-
-  creditsSheet['!cols'] = [
-    { wch: 8 },   // Rang
-    { wch: 25 },  // Nom complet
-    { wch: 15 },  // Rôle
-    { wch: 15 },  // Crédit
-  ];
-
-  // Format monétaire pour la colonne Crédit
-  if (creditsData.length > 0) {
-    const creditsRange = XLSX.utils.decode_range(creditsSheet['!ref'] || 'A1');
-    for (let R = creditsRange.s.r + 1; R <= creditsRange.e.r; ++R) {
-      const cellD = XLSX.utils.encode_cell({ r: R, c: 3 });
-      if (creditsSheet[cellD] && typeof creditsSheet[cellD].v === 'number') {
-        creditsSheet[cellD].z = '#,##0.00 "€"';
-      }
-    }
-  }
-
-  // Créer le classeur avec toutes les feuilles
+  // Créer le classeur
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, balanceSheet, 'Balances');
-  XLSX.utils.book_append_sheet(workbook, statsSheet, 'Statistiques');
-  XLSX.utils.book_append_sheet(workbook, debtsSheet, 'Top 10 Dettes');
-  XLSX.utils.book_append_sheet(workbook, creditsSheet, 'Top 10 Crédits');
 
   // Télécharger le fichier
   const exportDate = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
