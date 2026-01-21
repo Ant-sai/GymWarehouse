@@ -89,7 +89,7 @@ function generateExcelFile(data: ExportOrderData[], filename: string) {
         'Réduction': order.discount > 0 ? `-${order.discount.toFixed(2)}€` : '',
         'Montant total': `${order.totalAmount.toFixed(2)}€`,
         'Moyen de paiement': PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod,
-        'Notes': order.notes || ''
+//        'Notes': order.notes || ''
       }];
     }
 
