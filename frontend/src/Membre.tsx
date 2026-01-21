@@ -29,6 +29,8 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editBalance, setEditBalance] = useState("");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
 
   // Fonction pour formater le nom complet
   const getFullName = (user: User) => {
@@ -135,9 +137,9 @@ async function handleAddUser(e?: React.FormEvent) {
   }
 }
 
-  async function handleUpdateBalance(id: number) {
-    if (!editBalance.trim()) {
-      alert("Le nouveau solde est obligatoire");
+  async function handleUpdateUser(id: number) {
+    if (!editFirstName.trim() && !editLastName.trim()) {
+      alert("Au moins le prénom ou le nom est obligatoire");
       return;
     }
 
@@ -154,7 +156,9 @@ async function handleAddUser(e?: React.FormEvent) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...editingUser,
+          firstName: editFirstName || null,
+          lastName: editLastName || null,
+          role: editingUser?.role,
           balance: newBalance,
         }),
       });
@@ -164,26 +168,29 @@ async function handleAddUser(e?: React.FormEvent) {
       }
 
       const updatedUser = await response.json();
-      
+
       // Mettre à jour le state local
-      setUsers((prev) => prev.map(user => 
+      setUsers((prev) => prev.map(user =>
         user.id === id ? updatedUser : user
       ));
 
       // Fermer le modal d'édition
       setEditingUser(null);
+      setEditFirstName("");
+      setEditLastName("");
       setEditBalance("");
-      
 
     } catch (err) {
-      console.error('Erreur lors de la mise à jour du solde:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible de mettre à jour le solde";
+      console.error('Erreur lors de la mise à jour du membre:', err);
+      const errorMessage = err instanceof Error ? err.message : "Impossible de mettre à jour le membre";
       alert(errorMessage);
     }
   }
 
-  function startEditBalance(user: User) {
+  function startEditUser(user: User) {
     setEditingUser(user);
+    setEditFirstName(user.firstName || "");
+    setEditLastName(user.lastName || "");
     setEditBalance(user.balance.toString());
   }
 
@@ -352,9 +359,9 @@ async function handleAddUser(e?: React.FormEvent) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => startEditBalance(user)}
+                      onClick={() => startEditUser(user)}
                       className="p-1 hover:bg-blue-50 rounded"
-                      title="Modifier le solde"
+                      title="Modifier le membre"
                     >
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -387,36 +394,52 @@ async function handleAddUser(e?: React.FormEvent) {
           </>
         )}
 
-        {/* Modal d'édition du solde */}
+        {/* Modal d'édition du membre */}
         {editingUser && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
             <div className="absolute inset-0 bg-black/30" onClick={() => setEditingUser(null)} />
-            <div className="relative bg-white rounded-lg p-6 w-[400px] shadow-lg z-50">
-              <h3 className="text-xl font-semibold mb-4 text-black">Modifier le solde</h3>
-              
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Membre : <span className="font-medium">{getFullName(editingUser)}</span>
-                </p>
-                <p className="text-sm text-gray-600 mb-4">
-                  Solde actuel : <span className="font-medium">{Number(editingUser.balance).toFixed(2)} €</span>
-                </p>
+            <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
+              <h3 className="text-xl font-semibold mb-4 text-black">Modifier le membre</h3>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                    <input
+                      type="text"
+                      value={editFirstName}
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="Prénom"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                    <input
+                      type="text"
+                      value={editLastName}
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="Nom"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Solde</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editBalance}
+                    onChange={(e) => setEditBalance(e.target.value)}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nouveau solde</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editBalance}
-                  onChange={(e) => setEditBalance(e.target.value)}
-                  className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  placeholder="0.00"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
+              <div className="mt-6 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
@@ -425,7 +448,7 @@ async function handleAddUser(e?: React.FormEvent) {
                   Annuler
                 </button>
                 <button
-                  onClick={() => handleUpdateBalance(editingUser.id)}
+                  onClick={() => handleUpdateUser(editingUser.id)}
                   className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Mettre à jour
