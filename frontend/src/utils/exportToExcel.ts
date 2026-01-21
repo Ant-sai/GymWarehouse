@@ -110,7 +110,7 @@ function generateExcelFile(data: ExportOrderData[], filename: string) {
       'Réduction': index === 0 && order.discount > 0 ? `-${order.discount.toFixed(2)}€` : '',
       'Montant total': index === 0 ? `${order.totalAmount.toFixed(2)}€` : '',
       'Moyen de paiement': index === 0 ? (PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod) : '',
-      'Notes': index === 0 ? (order.notes || '') : ''
+      //'Notes': index === 0 ? (order.notes || '') : ''
     }));
   });
 
