@@ -25,6 +25,10 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   PAYPAL: 'PayPal'
 };
 
+// Fonction helper pour formater les nombres avec des virgules
+function formatPrice(price: number): string {
+  return `${price.toFixed(2).replace('.', ',')}€`;
+}
 
 export async function exportAllOrdersToExcel() {
   try {
@@ -70,47 +74,41 @@ export async function exportOrdersRangeToExcel(startDate: string, endDate: strin
 function generateExcelFile(data: ExportOrderData[], filename: string) {
   // Transformer les données pour l'export
   const rows = data.flatMap(order => {
+    const formattedDate = new Date(order.date).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
     // Si la commande a plusieurs produits, créer une ligne par produit
     if (order.products.length === 0) {
       return [{
-        'N° Commande': order.orderId as string | number,
         'Client': order.clientName,
-        'Date': new Date(order.date).toLocaleDateString('fr-FR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
+        'Date': formattedDate,
         'Produit': '',
         'Quantité': '' as string | number,
         'Prix unitaire': '',
         'Prix total produit': '',
-        'Réduction': order.discount > 0 ? `-${order.discount.toFixed(2)}€` : '',
-        'Montant total': `${order.totalAmount.toFixed(2)}€`,
+        'Réduction': order.discount > 0 ? `-${formatPrice(order.discount)}` : '',
+        'Montant total': formatPrice(order.totalAmount),
         'Moyen de paiement': PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod,
-//        'Notes': order.notes || ''
+        'Notes': order.notes || ''
       }];
     }
 
-    return order.products.map((product, index) => ({
-      'N° Commande': (index === 0 ? order.orderId : '') as string | number,
-      'Client': index === 0 ? order.clientName : '',
-      'Date': index === 0 ? new Date(order.date).toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) : '',
+    return order.products.map((product) => ({
+      'Client': order.clientName,
+      'Date': formattedDate,
       'Produit': product.name,
       'Quantité': product.quantity as string | number,
-      'Prix unitaire': `${product.unitPrice.toFixed(2)}€`,
-      'Prix total produit': `${product.totalPrice.toFixed(2)}€`,
-      'Réduction': index === 0 && order.discount > 0 ? `-${order.discount.toFixed(2)}€` : '',
-      'Montant total': index === 0 ? `${order.totalAmount.toFixed(2)}€` : '',
-      'Moyen de paiement': index === 0 ? (PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod) : '',
-      //'Notes': index === 0 ? (order.notes || '') : ''
+      'Prix unitaire': formatPrice(product.unitPrice),
+      'Prix total produit': formatPrice(product.totalPrice),
+      'Réduction': order.discount > 0 ? `-${formatPrice(order.discount)}` : '',
+      'Montant total': formatPrice(order.totalAmount),
+      'Moyen de paiement': PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod,
+      'Notes': order.notes || ''
     }));
   });
 
@@ -119,7 +117,6 @@ function generateExcelFile(data: ExportOrderData[], filename: string) {
 
   // Définir la largeur des colonnes
   const columnWidths = [
-    { wch: 12 },  // N° Commande
     { wch: 25 },  // Client
     { wch: 18 },  // Date
     { wch: 30 },  // Produit
