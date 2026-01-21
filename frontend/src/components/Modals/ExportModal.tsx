@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { exportAllOrdersToExcel, exportOrdersFromDateToExcel, exportOrdersRangeToExcel } from '../../utils/exportToExcel';
+import { exportAllOrdersToExcel, exportOrdersFromDateToExcel, exportOrdersRangeToExcel, exportUserBalancesToExcel } from '../../utils/exportToExcel';
 
 type ExportModalProps = {
   isOpen: boolean;
@@ -7,7 +7,7 @@ type ExportModalProps = {
 };
 
 export function ExportModal({ isOpen, onClose }: ExportModalProps) {
-  const [exportType, setExportType] = useState<'all' | 'from' | 'range'>('all');
+  const [exportType, setExportType] = useState<'all' | 'from' | 'range' | 'balances'>('all');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -23,6 +23,8 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
         await exportOrdersFromDateToExcel(startDate);
       } else if (exportType === 'range') {
         await exportOrdersRangeToExcel(startDate, endDate);
+      } else if (exportType === 'balances') {
+        await exportUserBalancesToExcel();
       }
       onClose();
     } catch {
@@ -35,9 +37,9 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
+      <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-semibold mb-6 text-black">
-          📊 Exporter les commandes
+          📊 Exporter les données
         </h3>
 
         <div className="space-y-4">
@@ -116,6 +118,26 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   </div>
                 </div>
               )}
+            </div>
+          </label>
+
+          {/* Option 4: Balances des utilisateurs */}
+          <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-orange-200 bg-orange-50/30">
+            <input
+              type="radio"
+              name="exportType"
+              value="balances"
+              checked={exportType === 'balances'}
+              onChange={(e) => setExportType(e.target.value as 'balances')}
+              className="mt-1 w-4 h-4 text-orange-600"
+            />
+            <div className="flex-1">
+              <div className="font-medium text-gray-900 flex items-center gap-2">
+                💳 Crédits & Dettes
+              </div>
+              <div className="text-sm text-gray-500">
+                Exporter les balances de tous les utilisateurs
+              </div>
             </div>
           </label>
         </div>

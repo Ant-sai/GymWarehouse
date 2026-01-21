@@ -215,6 +215,71 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 });
 
+
+// Get all users with their balance for Excel export
+app.get('/api/users/export/balances', async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            orderBy: [
+                { role: 'asc' },
+                { lastName: 'asc' },
+                { firstName: 'asc' }
+            ],
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                balance: true,
+                createdAt: true,
+                _count: {
+                    select: {
+                        orders: true
+                    }
+                }
+            }
+        });
+
+        const exportData = users.map(user => ({
+            userId: user.id,
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+            role: user.role,
+            balance: Number(user.balance),
+            totalOrders: user._count.orders,
+            memberSince: user.createdAt,
+            status: Number(user.balance) < 0 ? 'DETTE' : Number(user.balance) > 0 ? 'CRÉDIT' : 'ÉQUILIBRÉ'
+        }));
+
+        // Calculer des statistiques globales
+        const statistics = {
+            totalUsers: users.length,
+            totalTrainers: users.filter(u => u.role === 'TRAINER').length,
+            totalRegularUsers: users.filter(u => u.role === 'USER').length,
+            totalBalance: users.reduce((sum, u) => sum + Number(u.balance), 0),
+            totalDebt: users.reduce((sum, u) => Number(u.balance) < 0 ? sum + Number(u.balance) : sum, 0),
+            totalCredit: users.reduce((sum, u) => Number(u.balance) > 0 ? sum + Number(u.balance) : sum, 0),
+            usersInDebt: users.filter(u => Number(u.balance) < 0).length,
+            usersWithCredit: users.filter(u => Number(u.balance) > 0).length
+        };
+
+        res.json({
+            exportDate: new Date(),
+            statistics,
+            data: exportData
+        });
+
+    } catch (err) {
+        console.error('Error fetching user balances for export:', err);
+        res.status(500).json({
+            error: 'Failed to fetch user balances for export',
+            message: err.message
+        });
+    }
+});
+
+
 // ------------------------------------------------
 // ---------------- Product routes ----------------
 // ------------------------------------------------
