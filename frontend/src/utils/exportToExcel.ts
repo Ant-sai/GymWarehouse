@@ -27,7 +27,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 
 // Fonction helper pour formater les nombres avec des virgules
 function formatPrice(price: number): string {
-  return `${price.toFixed(2).replace('.', ',')}€`;
+  return `${price.toFixed(2).replace('.', ',')}`;
 }
 
 export async function exportAllOrdersToExcel() {
