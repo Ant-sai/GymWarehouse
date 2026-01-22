@@ -609,16 +609,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
 
 
-        {/* Notes */}
-        <div className="mb-6">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-            rows={1}
-            placeholder="Commentaires sur la commande..."
-          />
-        </div>
 
         {/* Buttons */}
         <div className="flex justify-end gap-3">
@@ -649,6 +639,18 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           >
             {saving ? "Création..." : paymentMethod === "FREE" ? "Créer commande gratuite" : "Créer la commande"}
           </button>
+        </div>
+
+        
+        {/* Notes */}
+        <div className="mb-6">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+            rows={1}
+            placeholder="Commentaires sur la commande..."
+          />
         </div>
       </div>
     </div>

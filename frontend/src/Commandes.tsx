@@ -1408,16 +1408,7 @@ export default function DailyOrdersPage() {
                 </div>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Commentaires sur la commande..."
-                />
-              </div>
+    
 
               <div className="flex justify-end gap-3">
                 <button
@@ -1448,6 +1439,16 @@ export default function DailyOrdersPage() {
                 >
                   {saving ? "Modification..." : "Modifier la commande"}
                 </button>
+              </div>
+                            <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Commentaires sur la commande..."
+                />
               </div>
             </div>
           </div>
