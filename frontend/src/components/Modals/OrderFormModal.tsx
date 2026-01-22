@@ -500,6 +500,32 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       </button>
                     )}
                   </div>
+
+                                {/* Checkbox Prix Entraîneur */}
+                  <div className="mb-6">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useTrainerPrice}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setUseTrainerPrice(checked);
+                          // Recalculer les prix du panier
+                          setCart(cart.map(item => {
+                            const product = products.find(p => p.id === item.productId);
+                            if (!product) return item;
+                            const newPrice = checked ? product.trainerPrice : product.price;
+                            return { ...item, unitPrice: newPrice };
+                          }));
+                        }}
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Prix mono
+                      </span>
+                    </label>
+                  </div>
+
                 </div>
               )}
 
@@ -514,36 +540,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
           </div>
         )}
 
-                {/* Checkbox Prix Entraîneur */}
-        <div className="mb-6">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useTrainerPrice}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                setUseTrainerPrice(checked);
-                // Recalculer les prix du panier
-                setCart(cart.map(item => {
-                  const product = products.find(p => p.id === item.productId);
-                  if (!product) return item;
-                  const newPrice = checked ? product.trainerPrice : product.price;
-                  return { ...item, unitPrice: newPrice };
-                }));
-              }}
-              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-            />
-            <span className="text-sm font-medium text-gray-700">
-              Prix mono
-            </span>
-          </label>
-        </div>
+
 
         {/* Méthode de paiement */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            Méthode de paiement *
-          </label>
           <div className="grid grid-cols-3 gap-3">
 
             <button
