@@ -213,18 +213,11 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleInitialize(false)}
-                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                  title="Initialiser avec le stock principal"
-                >
-                  Depuis stock principal
-                </button>
-                <button
                   onClick={() => handleInitialize(true)}
                   className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                   title="Copier depuis le jour précédent"
                 >
-                  Depuis jour précédent
+                  Récupérer stock jour précédent
                 </button>
               </div>
               <button
