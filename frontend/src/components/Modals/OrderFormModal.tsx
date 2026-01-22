@@ -499,9 +499,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                         ✕ Supprimer
                       </button>
                     )}
-                  </div>
-
-                                {/* Checkbox Prix Entraîneur */}
+                                                    {/* Checkbox Prix Entraîneur */}
                   <div className="mb-6">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
@@ -525,7 +523,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       </span>
                     </label>
                   </div>
-
+                  </div>
                 </div>
               )}
 
