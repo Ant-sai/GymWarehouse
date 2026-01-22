@@ -25,17 +25,19 @@ model User {
 }
 
 model Product {
-  id           Int           @id @default(autoincrement())
-  name         String
-  description  String?
-  quantity     Int           @default(0)
-  price        Decimal       @db.Decimal(10, 2)
-  trainerPrice Decimal       @map("trainer_price") @db.Decimal(10, 2)
-  cost         Decimal?      @default(0.00) @db.Decimal(10, 2)
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  orderDetails OrderDetail[]
+  id            Int           @id @default(autoincrement())
+  name          String
+  description   String?
+  quantity      Int           @default(0)
+  price         Decimal       @db.Decimal(10, 2)
+  trainerPrice  Decimal       @map("trainer_price") @db.Decimal(10, 2)
+  cost          Decimal?      @default(0.00) @db.Decimal(10, 2)
+  isActive      Boolean       @default(true)
+  hasDailyStock Boolean       @default(false) @map("has_daily_stock")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  orderDetails  OrderDetail[]
+  dailyStocks   DailyStock[]
 
   @@map("products")
 }
@@ -145,6 +147,21 @@ model StandbyOrder {
 
   @@index([userId], map: "standby_orders_userId_fkey")
   @@map("standby_orders")
+}
+
+model DailyStock {
+  id         Int      @id @default(autoincrement())
+  productId  Int      @map("product_id")
+  quantity   Int      @default(0)
+  date       DateTime @db.Date
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, date])
+  @@index([productId], map: "daily_stock_productId_fkey")
+  @@index([date], map: "daily_stock_date_idx")
+  @@map("daily_stock")
 }
 
 enum Role {

@@ -210,13 +210,16 @@ export default function StockPage() {
   }
 
   async function handleDelete(id: number) {
+    if (!confirm("Supprimer ce produit ?")) return;
+
     try {
       const response = await fetch(`/api/products/${id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
       // Mettre à jour le state local
@@ -224,6 +227,8 @@ export default function StockPage() {
 
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
+      const errorMessage = err instanceof Error ? err.message : "Impossible de supprimer le produit";
+      alert(errorMessage);
     }
   }
 

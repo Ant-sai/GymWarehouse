@@ -376,8 +376,22 @@ app.put('/api/products/:id', async (req, res) => {
 app.delete('/api/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const productId = Number(id);
+
+        // Vérifier si le produit est utilisé dans des commandes
+        const orderDetailsCount = await prisma.orderDetail.count({
+            where: { productId: productId }
+        });
+
+        if (orderDetailsCount > 0) {
+            return res.status(400).json({
+                error: 'Impossible de supprimer ce produit car il est utilisé dans des commandes existantes',
+                orderCount: orderDetailsCount
+            });
+        }
+
         await prisma.product.delete({
-            where: { id: Number(id) },
+            where: { id: productId },
         });
         res.status(204).send();
     } catch (err) {
@@ -440,7 +454,7 @@ app.post('/api/orders', async (req, res) => {
                     totalPrice: totalPrice
                 });
 
-                // Décrémenter le stock
+                // Décrémenter le stock principal
                 await prismaTransaction.product.update({
                     where: { id: item.productId },
                     data: {
@@ -449,6 +463,37 @@ app.post('/api/orders', async (req, res) => {
                         }
                     }
                 });
+
+                // Décrémenter le stock journalier si le produit a un suivi journalier
+                if (product.hasDailyStock) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const dailyStock = await prismaTransaction.dailyStock.findUnique({
+                        where: {
+                            productId_date: {
+                                productId: item.productId,
+                                date: today
+                            }
+                        }
+                    });
+
+                    if (dailyStock) {
+                        await prismaTransaction.dailyStock.update({
+                            where: {
+                                productId_date: {
+                                    productId: item.productId,
+                                    date: today
+                                }
+                            },
+                            data: {
+                                quantity: {
+                                    decrement: item.quantity
+                                }
+                            }
+                        });
+                    }
+                }
             }
 
             // Appliquer la réduction (en euros)
@@ -937,6 +982,9 @@ app.put('/api/orders/:id', async (req, res) => {
             }
 
             // Restaurer le stock des anciens produits
+            const existingOrderDate = new Date(existingOrder.date);
+            existingOrderDate.setHours(0, 0, 0, 0);
+
             for (const orderDetail of existingOrder.products) {
                 await prismaTransaction.product.update({
                     where: { id: orderDetail.productId },
@@ -946,6 +994,34 @@ app.put('/api/orders/:id', async (req, res) => {
                         }
                     }
                 });
+
+                // Restaurer le stock journalier si le produit a un suivi journalier
+                if (orderDetail.product.hasDailyStock) {
+                    const dailyStock = await prismaTransaction.dailyStock.findUnique({
+                        where: {
+                            productId_date: {
+                                productId: orderDetail.productId,
+                                date: existingOrderDate
+                            }
+                        }
+                    });
+
+                    if (dailyStock) {
+                        await prismaTransaction.dailyStock.update({
+                            where: {
+                                productId_date: {
+                                    productId: orderDetail.productId,
+                                    date: existingOrderDate
+                                }
+                            },
+                            data: {
+                                quantity: {
+                                    increment: orderDetail.quantity
+                                }
+                            }
+                        });
+                    }
+                }
             }
 
             // Restaurer le solde du client si c'était un débit de compte
@@ -994,7 +1070,7 @@ app.put('/api/orders/:id', async (req, res) => {
                     totalPrice: totalPrice
                 });
 
-                // Décrémenter le stock
+                // Décrémenter le stock principal
                 await prismaTransaction.product.update({
                     where: { id: item.productId },
                     data: {
@@ -1003,6 +1079,34 @@ app.put('/api/orders/:id', async (req, res) => {
                         }
                     }
                 });
+
+                // Décrémenter le stock journalier si le produit a un suivi journalier
+                if (product.hasDailyStock) {
+                    const dailyStock = await prismaTransaction.dailyStock.findUnique({
+                        where: {
+                            productId_date: {
+                                productId: item.productId,
+                                date: existingOrderDate
+                            }
+                        }
+                    });
+
+                    if (dailyStock) {
+                        await prismaTransaction.dailyStock.update({
+                            where: {
+                                productId_date: {
+                                    productId: item.productId,
+                                    date: existingOrderDate
+                                }
+                            },
+                            data: {
+                                quantity: {
+                                    decrement: item.quantity
+                                }
+                            }
+                        });
+                    }
+                }
             }
 
             // Appliquer la réduction (en euros)
@@ -1176,7 +1280,8 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                         product: {
                             select: {
                                 id: true,
-                                name: true
+                                name: true,
+                                hasDailyStock: true
                             }
                         }
                     }
@@ -1187,6 +1292,9 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
             return res.status(404).json({ error: 'Order not found' });
         }
         const result = await prisma.$transaction(async (prisma) => {
+            const deletedOrderDate = new Date(existingOrder.date);
+            deletedOrderDate.setHours(0, 0, 0, 0);
+
             // Restore the stock
             if (restoreStock) {
                 for (const orderDetail of existingOrder.products) {
@@ -1198,6 +1306,34 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                             }
                         }
                     });
+
+                    // Restaurer le stock journalier si le produit a un suivi journalier
+                    if (orderDetail.product.hasDailyStock) {
+                        const dailyStock = await prisma.dailyStock.findUnique({
+                            where: {
+                                productId_date: {
+                                    productId: orderDetail.productId,
+                                    date: deletedOrderDate
+                                }
+                            }
+                        });
+
+                        if (dailyStock) {
+                            await prisma.dailyStock.update({
+                                where: {
+                                    productId_date: {
+                                        productId: orderDetail.productId,
+                                        date: deletedOrderDate
+                                    }
+                                },
+                                data: {
+                                    quantity: {
+                                        increment: orderDetail.quantity
+                                    }
+                                }
+                            });
+                        }
+                    }
                 }
             }
             // Restore balance if payment was by account debit
@@ -2084,6 +2220,282 @@ app.get('/api/daily-reports/starting-cash/:date', async (req, res) => {
     } catch (err) {
         console.error('Error fetching starting cash:', err);
         res.status(500).json({ error: 'Failed to fetch starting cash' });
+    }
+});
+
+// -----------------------------------------------
+// ------------ Daily Stock routes ---------------
+// -----------------------------------------------
+
+// Get all products with daily stock tracking enabled
+app.get('/api/products/daily-stock-enabled', async (req, res) => {
+    try {
+        const products = await prisma.product.findMany({
+            where: { hasDailyStock: true },
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                quantity: true,
+                price: true,
+                trainerPrice: true,
+                hasDailyStock: true
+            }
+        });
+        res.json(products);
+    } catch (err) {
+        console.error('Error fetching daily stock products:', err);
+        res.status(500).json({ error: 'Failed to fetch daily stock products' });
+    }
+});
+
+// Toggle daily stock tracking for a product
+app.put('/api/products/:id/daily-stock-toggle', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { hasDailyStock } = req.body;
+
+        const product = await prisma.product.update({
+            where: { id: Number(id) },
+            data: { hasDailyStock: hasDailyStock }
+        });
+
+        res.json(product);
+    } catch (err) {
+        console.error('Error toggling daily stock:', err);
+        res.status(500).json({ error: 'Failed to toggle daily stock' });
+    }
+});
+
+// Get daily stock for a specific date
+app.get('/api/daily-stock/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const stockDate = new Date(date);
+
+        // Get all products with daily stock enabled
+        const productsWithDailyStock = await prisma.product.findMany({
+            where: { hasDailyStock: true },
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                quantity: true,
+                price: true,
+                trainerPrice: true
+            }
+        });
+
+        // Get daily stock entries for this date
+        const dailyStocks = await prisma.dailyStock.findMany({
+            where: { date: stockDate },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        quantity: true,
+                        price: true,
+                        trainerPrice: true
+                    }
+                }
+            }
+        });
+
+        // Create a map of productId -> dailyStock
+        const stockMap = new Map(dailyStocks.map(ds => [ds.productId, ds]));
+
+        // Combine products with their daily stock (or 0 if not set)
+        const result = productsWithDailyStock.map(product => ({
+            productId: product.id,
+            productName: product.name,
+            mainStock: product.quantity,
+            dailyStock: stockMap.has(product.id) ? stockMap.get(product.id).quantity : 0,
+            price: product.price,
+            trainerPrice: product.trainerPrice,
+            dailyStockId: stockMap.has(product.id) ? stockMap.get(product.id).id : null
+        }));
+
+        res.json({
+            date: stockDate,
+            stocks: result
+        });
+    } catch (err) {
+        console.error('Error fetching daily stock:', err);
+        res.status(500).json({ error: 'Failed to fetch daily stock' });
+    }
+});
+
+// Set/Update daily stock for a product on a specific date
+app.put('/api/daily-stock/:date/:productId', async (req, res) => {
+    try {
+        const { date, productId } = req.params;
+        const { quantity } = req.body;
+        const stockDate = new Date(date);
+
+        // Upsert the daily stock entry
+        const dailyStock = await prisma.dailyStock.upsert({
+            where: {
+                productId_date: {
+                    productId: Number(productId),
+                    date: stockDate
+                }
+            },
+            update: {
+                quantity: Number(quantity)
+            },
+            create: {
+                productId: Number(productId),
+                date: stockDate,
+                quantity: Number(quantity)
+            },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        quantity: true
+                    }
+                }
+            }
+        });
+
+        res.json(dailyStock);
+    } catch (err) {
+        console.error('Error setting daily stock:', err);
+        res.status(500).json({ error: 'Failed to set daily stock' });
+    }
+});
+
+// Adjust daily stock (add or remove quantity)
+app.post('/api/daily-stock/:date/:productId/adjust', async (req, res) => {
+    try {
+        const { date, productId } = req.params;
+        const { adjustment } = req.body; // positive to add, negative to remove
+        const stockDate = new Date(date);
+
+        // Get current daily stock or create with 0
+        const existing = await prisma.dailyStock.findUnique({
+            where: {
+                productId_date: {
+                    productId: Number(productId),
+                    date: stockDate
+                }
+            }
+        });
+
+        const currentQuantity = existing ? existing.quantity : 0;
+        const newQuantity = Math.max(0, currentQuantity + Number(adjustment));
+
+        const dailyStock = await prisma.dailyStock.upsert({
+            where: {
+                productId_date: {
+                    productId: Number(productId),
+                    date: stockDate
+                }
+            },
+            update: {
+                quantity: newQuantity
+            },
+            create: {
+                productId: Number(productId),
+                date: stockDate,
+                quantity: newQuantity
+            },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        quantity: true
+                    }
+                }
+            }
+        });
+
+        res.json({
+            ...dailyStock,
+            previousQuantity: currentQuantity,
+            adjustment: Number(adjustment)
+        });
+    } catch (err) {
+        console.error('Error adjusting daily stock:', err);
+        res.status(500).json({ error: 'Failed to adjust daily stock' });
+    }
+});
+
+// Initialize daily stock from previous day or from main stock
+app.post('/api/daily-stock/:date/initialize', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const { fromPreviousDay = false } = req.body;
+        const stockDate = new Date(date);
+
+        // Get products with daily stock enabled
+        const products = await prisma.product.findMany({
+            where: { hasDailyStock: true }
+        });
+
+        if (products.length === 0) {
+            return res.json({ message: 'No products with daily stock enabled', created: 0 });
+        }
+
+        let sourceStocks = [];
+
+        if (fromPreviousDay) {
+            // Get previous day's stock
+            const previousDate = new Date(stockDate);
+            previousDate.setDate(previousDate.getDate() - 1);
+
+            const previousStocks = await prisma.dailyStock.findMany({
+                where: { date: previousDate }
+            });
+
+            sourceStocks = products.map(product => {
+                const prev = previousStocks.find(ps => ps.productId === product.id);
+                return {
+                    productId: product.id,
+                    quantity: prev ? prev.quantity : 0
+                };
+            });
+        } else {
+            // Use main stock as starting point
+            sourceStocks = products.map(product => ({
+                productId: product.id,
+                quantity: product.quantity
+            }));
+        }
+
+        // Create or update daily stocks
+        const results = await Promise.all(
+            sourceStocks.map(stock =>
+                prisma.dailyStock.upsert({
+                    where: {
+                        productId_date: {
+                            productId: stock.productId,
+                            date: stockDate
+                        }
+                    },
+                    update: {
+                        quantity: stock.quantity
+                    },
+                    create: {
+                        productId: stock.productId,
+                        date: stockDate,
+                        quantity: stock.quantity
+                    }
+                })
+            )
+        );
+
+        res.json({
+            message: `Daily stock initialized for ${stockDate.toISOString().split('T')[0]}`,
+            created: results.length,
+            source: fromPreviousDay ? 'previous_day' : 'main_stock'
+        });
+    } catch (err) {
+        console.error('Error initializing daily stock:', err);
+        res.status(500).json({ error: 'Failed to initialize daily stock' });
     }
 });
 

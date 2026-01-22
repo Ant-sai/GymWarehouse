@@ -4,6 +4,7 @@ import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
 import { ExportModal } from './components/Modals/ExportModal';
 import { RetraitModal } from './components/Modals/RetraitModal';
+import { DailyStockModal } from './components/Modals/DailyStockModal';
 import type { User, Product, OrderItem, Order, CreateOrderData, StandbyData } from './types/commandes.types';
 
 export type { User, Product, OrderItem, Order };
@@ -82,6 +83,7 @@ export default function DailyOrdersPage() {
   const [showTrouModal, setShowTrouModal] = useState(false);
   const [showRetraitModal, setShowRetraitModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showDailyStockModal, setShowDailyStockModal] = useState(false);
 
   // États pour le modal d'édition de commande
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -687,11 +689,12 @@ export default function DailyOrdersPage() {
           onNewOrder={() => setShowForm(true)}
           onRefund={() => setShowRefundForm(true)}
           onStandby={() => setShowStandbyList(true)}
+          onDailyStock={() => setShowDailyStockModal(true)}
           standbyCount={standbyOrders.length}
           loading={loading}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
-          onExport={() => setShowExportModal(true)} 
+          onExport={() => setShowExportModal(true)}
         />
 
         <DailyStatistics
@@ -1470,6 +1473,14 @@ export default function DailyOrdersPage() {
         <ExportModal
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
+        />
+
+        {/* Modal Stock Journalier */}
+        <DailyStockModal
+          isOpen={showDailyStockModal}
+          date={selectedDate}
+          onClose={() => setShowDailyStockModal(false)}
+          onStockUpdated={fetchProducts}
         />
       </main>
     </div>

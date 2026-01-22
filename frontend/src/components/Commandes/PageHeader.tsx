@@ -7,6 +7,7 @@ interface PageHeaderProps {
   onNewOrder: () => void;
   onRefund: () => void;
   onStandby: () => void;
+  onDailyStock: () => void;
   standbyCount: number;
   loading: boolean;
   selectedDate: string;
@@ -18,6 +19,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   onNewOrder,
   onRefund,
   onStandby,
+  onDailyStock,
   standbyCount,
   selectedDate,
   onDateChange,
@@ -64,6 +66,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           className="bg-green-100 text-green-700 px-4 py-2 rounded-lg shadow-sm hover:bg-green-200"
         >
           💰 Remboursement crédit
+        </button>
+        <button
+          onClick={onDailyStock}
+          className="px-4 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 shadow-sm"
+        >
+          📦 Stock
         </button>
         <button
           onClick={onStandby}
