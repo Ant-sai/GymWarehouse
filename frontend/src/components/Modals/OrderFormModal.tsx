@@ -500,7 +500,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       </button>
                     )}
                                                     {/* Checkbox Prix Entraîneur */}
-                  <div className="mb-6">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -522,7 +521,6 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                         Prix mono
                       </span>
                     </label>
-                  </div>
                   </div>
                 </div>
               )}
