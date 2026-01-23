@@ -97,6 +97,24 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
           </div>
         </div>
 
+
+        
+        {/* Espèces */}
+        <div className="text-center p-2 border-b-2 border-green-500 h-[72px] flex flex-col justify-center">
+          <div className="text-xs text-gray-600 mb-1">Espèces</div>
+          <div className="text-lg font-bold text-green-700">
+            {dailyStats.cashRevenue.toFixed(2)}€
+          </div>
+        </div>
+
+                {/* QR Code */}
+        <div className="text-center p-2 border-b-2 border-blue-500 h-[72px] flex flex-col justify-center">
+          <div className="text-xs text-gray-600 mb-1">QR Code</div>
+          <div className="text-lg font-bold text-blue-700">
+            {dailyStats.qrRevenue.toFixed(2)}€
+          </div>
+        </div>
+        
         {/* Crédit */}
         <div className="text-center p-2 border-b-2 border-purple-500 h-[72px] flex flex-col justify-center">
           <div className="text-xs text-gray-600 mb-1">Crédit</div>
@@ -105,21 +123,8 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
           </div>
         </div>
 
-        {/* QR Code */}
-        <div className="text-center p-2 border-b-2 border-blue-500 h-[72px] flex flex-col justify-center">
-          <div className="text-xs text-gray-600 mb-1">QR Code</div>
-          <div className="text-lg font-bold text-blue-700">
-            {dailyStats.qrRevenue.toFixed(2)}€
-          </div>
-        </div>
 
-        {/* Espèces */}
-        <div className="text-center p-2 border-b-2 border-green-500 h-[72px] flex flex-col justify-center">
-          <div className="text-xs text-gray-600 mb-1">Espèces</div>
-          <div className="text-lg font-bold text-green-700">
-            {dailyStats.cashRevenue.toFixed(2)}€
-          </div>
-        </div>
+
 
         {/* Trou */}
         <div className="text-center p-2 border-b-2 border-red-500 h-[72px] flex flex-col justify-center">
