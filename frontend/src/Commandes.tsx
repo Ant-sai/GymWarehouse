@@ -1350,10 +1350,11 @@ export default function DailyOrdersPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("CASH")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "CASH"
-                        ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                      }`}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
+        paymentMethod === "CASH"
+          ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+      }`}
                   >
                     💵 Espèces
                   </button>
@@ -1361,10 +1362,11 @@ export default function DailyOrdersPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("QRCODE")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "QRCODE"
-                        ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                      }`}
+                          className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
+        paymentMethod === "QRCODE"
+          ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
+          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+      }`}
                   >
                     📱 QR Code
                   </button>
@@ -1373,10 +1375,11 @@ export default function DailyOrdersPage() {
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
-                      className={`px-4 py-3 rounded-lg border-2 transition-all ${paymentMethod === "ACCOUNT_DEBIT"
-                          ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                        }`}
+                            className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
+                      paymentMethod === "ACCOUNT_DEBIT"
+                        ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                    }`}
                     >
                       💳 Crédit
                     </button>
