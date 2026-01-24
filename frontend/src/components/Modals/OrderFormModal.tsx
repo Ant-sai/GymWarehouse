@@ -542,19 +542,19 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         <div className="mb-6">
           <div className="grid grid-cols-3 gap-3">
 
-                        <button
-              type="button"
-              onClick={() => {
-                setPaymentMethod("CASH");
-              }}
-              className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                paymentMethod === "CASH"
-                  ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-                  : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-              }`}
-            >
-              💵 Espèces
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentMethod("CASH");
+                }}
+                className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
+                  paymentMethod === "CASH"
+                    ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                }`}
+              >
+                💵 Espèces
+              </button>
 
                         <button
               type="button"
