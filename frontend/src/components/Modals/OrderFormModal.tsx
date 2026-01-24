@@ -576,10 +576,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 onClick={() => {
                   setPaymentMethod("ACCOUNT_DEBIT");
                 }}
-                className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                  className={`px-6 py-3 rounded-lg border-2 transition-all font-medium shadow-sm hover:shadow-md ${
                   paymentMethod === "ACCOUNT_DEBIT"
-                    ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                    ? "border-green-500 bg-green-500 text-white shadow-green-200"
+                    : "border-gray-400 bg-white text-gray-700 hover:border-green-400 hover:bg-gray-50"
                 }`}
               >
                 💳 Crédit
