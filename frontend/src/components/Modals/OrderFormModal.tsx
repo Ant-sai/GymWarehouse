@@ -539,8 +539,8 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
 
         {/* Méthode de paiement */}
-        <div className="mb-6">
-            <div className="grid grid-cols-3 gap-3">
+<div className="mb-6">
+  <div className="grid grid-cols-3 gap-3">
     <button
       type="button"
       onClick={() => {
@@ -583,21 +583,25 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       💳 Crédit
     </button>
   </div>
-
-          {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
-            <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg">
-              <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
-                {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
-              </span>
-              {cart.length > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+  
+  {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
+    <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg grid grid-cols-3 gap-3">
+      <div></div>
+      <div></div>
+      <div>
+        <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+          Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
+          {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
+        </span>
+        {cart.length > 0 && (
+          <div className="text-xs text-gray-500 mt-1">
+            Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</div>
 
 
 
