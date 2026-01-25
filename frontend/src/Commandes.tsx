@@ -1346,15 +1346,15 @@ export default function DailyOrdersPage() {
               </div>
 
               <div className="mb-6">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("CASH")}
                     className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
-        paymentMethod === "CASH"
-          ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-      }`}
+                      paymentMethod === "CASH"
+                        ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                    }`}
                   >
                     💵 Espèces
                   </button>
@@ -1362,11 +1362,11 @@ export default function DailyOrdersPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("QRCODE")}
-                          className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
-        paymentMethod === "QRCODE"
-          ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-      }`}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
+                      paymentMethod === "QRCODE"
+                        ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                    }`}
                   >
                     📱 QR Code
                   </button>
@@ -1375,30 +1375,30 @@ export default function DailyOrdersPage() {
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
-                            className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
-                      paymentMethod === "ACCOUNT_DEBIT"
-                        ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                    }`}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
+                        paymentMethod === "ACCOUNT_DEBIT"
+                          ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                      }`}
                     >
                       💳 Crédit
                     </button>
                   )}
-                </div>
 
-                {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
-                  <div className="text-sm mt-3 p-3 bg-gray-50 rounded-lg">
-                    <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                      Solde disponible: {Number(selectedUser.balance).toFixed(2)}€
-                      {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
-                    </span>
-                    {cart.length > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Nouveau solde après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
-                      </div>
-                    )}
-                  </div>
-                )}
+                  {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
+                    <div className="text-sm p-3 bg-gray-50 rounded-lg flex-1">
+                      <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                        Solde: {Number(selectedUser.balance).toFixed(2)}€
+                        {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
+                      </span>
+                      {cart.length > 0 && (
+                        <span className="text-xs text-gray-500 ml-3">
+                          → Après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mb-6">
