@@ -438,10 +438,6 @@ app.post('/api/orders', async (req, res) => {
                     throw new Error(`Product with id ${item.productId} not found`);
                 }
 
-                if (product.quantity < item.quantity) {
-                    throw new Error(`Insufficient stock for product ${product.name}`);
-                }
-
                 // Appliquer le prix entraîneur si useTrainerPrice est true
                 const unitPrice = useTrainerPrice ? product.trainerPrice : product.price;
                 const totalPrice = unitPrice * item.quantity;
@@ -454,7 +450,7 @@ app.post('/api/orders', async (req, res) => {
                     totalPrice: totalPrice
                 });
 
-                // Décrémenter le stock principal
+                // Décrémenter le stock principal (peut devenir négatif)
                 await prismaTransaction.product.update({
                     where: { id: item.productId },
                     data: {
@@ -1054,10 +1050,6 @@ app.put('/api/orders/:id', async (req, res) => {
                     throw new Error(`Product with id ${item.productId} not found`);
                 }
 
-                if (product.quantity < item.quantity) {
-                    throw new Error(`Insufficient stock for product ${product.name}`);
-                }
-
                 // Appliquer le prix entraîneur si useTrainerPrice est true
                 const unitPrice = useTrainerPrice ? product.trainerPrice : product.price;
                 const totalPrice = unitPrice * item.quantity;
@@ -1070,7 +1062,7 @@ app.put('/api/orders/:id', async (req, res) => {
                     totalPrice: totalPrice
                 });
 
-                // Décrémenter le stock principal
+                // Décrémenter le stock principal (peut devenir négatif)
                 await prismaTransaction.product.update({
                     where: { id: item.productId },
                     data: {
