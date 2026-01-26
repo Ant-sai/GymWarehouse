@@ -472,61 +472,59 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 );
               })}
 
-              {/* Réduction */}
-              {paymentMethod !== "FREE" && (
-                <div className="mt-4">
-                  <div className="flex items-center gap-4 mb-2">
-                    <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max={calculateSubtotal()}
-                      step="0.01"
-                      value={discountValue}
-                      onChange={(e) => setDiscountValue(Number(e.target.value))}
-                      className="border rounded px-2 py-1 text-sm w-24 outline-none focus:ring-2 focus:ring-blue-300"
-                      placeholder="0.00"
-                    />
-                    <span className="text-sm text-gray-600">€</span>
-                    {discountValue > 0 && (
-                      <button
-                        onClick={() => {
-                          setDiscountValue(0);
-                          setDiscountComment("");
-                        }}
-                        className="text-red-500 text-sm hover:text-red-700 transition-colors"
-                      >
-                        ✕ Supprimer
-                      </button>
-                    )}
-                                                    {/* Checkbox Prix Entraîneur */}
-                    <label className="flex items-center gap-3 cursor-pointer">
+              {/* Réduction, Prix mono et Total sur la même ligne */}
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {paymentMethod !== "FREE" && (
+                    <>
+                      <label className="text-sm font-medium text-gray-700">Réduction:</label>
                       <input
-                        type="checkbox"
-                        checked={useTrainerPrice}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setUseTrainerPrice(checked);
-                          // Recalculer les prix du panier
-                          setCart(cart.map(item => {
-                            const product = products.find(p => p.id === item.productId);
-                            if (!product) return item;
-                            const newPrice = checked ? product.trainerPrice : product.price;
-                            return { ...item, unitPrice: newPrice };
-                          }));
-                        }}
-                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                        type="number"
+                        min="0"
+                        max={calculateSubtotal()}
+                        step="0.01"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(Number(e.target.value))}
+                        className="border rounded px-2 py-1 text-sm w-20 outline-none focus:ring-2 focus:ring-blue-300"
+                        placeholder="0.00"
                       />
-                      <span className="text-sm font-medium text-gray-700">
-                        Prix mono
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              )}
+                      <span className="text-sm text-gray-600">€</span>
+                      {discountValue > 0 && (
+                        <button
+                          onClick={() => {
+                            setDiscountValue(0);
+                            setDiscountComment("");
+                          }}
+                          className="text-red-500 text-sm hover:text-red-700 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </>
+                  )}
 
-              {/* Totaux */}
-              <div className="mt-4 text-right space-y-1">
+                  {/* Checkbox Prix Entraîneur */}
+                  <label className="flex items-center gap-2 cursor-pointer ml-4">
+                    <input
+                      type="checkbox"
+                      checked={useTrainerPrice}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUseTrainerPrice(checked);
+                        setCart(cart.map(item => {
+                          const product = products.find(p => p.id === item.productId);
+                          if (!product) return item;
+                          const newPrice = checked ? product.trainerPrice : product.price;
+                          return { ...item, unitPrice: newPrice };
+                        }));
+                      }}
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Prix mono</span>
+                  </label>
+                </div>
+
+                {/* Total */}
                 <div className={`text-xl font-bold ${paymentMethod === "FREE" ? "text-red-600" : ""}`}>
                   Total: {calculateTotal().toFixed(2)}€
                   {paymentMethod === "FREE" && <span className="text-sm ml-2">(GRATUIT)</span>}
