@@ -1,6 +1,6 @@
 // src/components/Commandes/Modals/OrderFormModal.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { User, Product, OrderItem,CreateOrderData,StandbyData } from '../../types/commandes.types';
 
 interface OrderFormModalProps {
@@ -57,6 +57,9 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [userManuallyCleared, setUserManuallyCleared] = useState(false);
+
+  // Ref pour le champ de recherche produit
+  const productSearchRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -165,8 +168,9 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setCart(newCart);
     }
 
-    // Réinitialiser le champ de recherche de produit
+    // Réinitialiser le champ de recherche de produit et refocus
     setProductSearch('');
+    productSearchRef.current?.focus();
   };
 
   const updateCartQuantity = (productId: number, quantity: number) => {
@@ -388,6 +392,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         <div className="mb-6">
           <div className="relative product-search-container">
             <input
+              ref={productSearchRef}
               type="text"
               placeholder="Rechercher un produit..."
               value={productSearch}
