@@ -129,14 +129,14 @@ function generateExcelFile(data: ExportOrderData[], filename: string) {
       }];
     }
 
-    return order.products.map((product) => ({
+    return order.products.map((product,index) => ({
       'Client': order.clientName,
       'Date': formattedDate,
       'Produit': product.name,
       'Quantité': product.quantity as string | number,
       'Prix unitaire': formatPrice(product.unitPrice) as string | number,
       'Prix total produit': formatPrice(product.totalPrice) as string | number,
-      'Réduction': (order.discount > 0 ? -formatPrice(order.discount) : '') as string | number,
+      'Réduction': (index === 0 && order.discount > 0 ? -formatPrice(order.discount) : '') as string | number,
       'Montant total': formatPrice(order.totalAmount),
       'Moyen de paiement': PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod,
       'Notes': order.notes || ''
