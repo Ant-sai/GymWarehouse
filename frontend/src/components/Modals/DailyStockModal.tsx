@@ -159,15 +159,7 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative bg-white rounded-lg p-6 w-[700px] max-h-[85vh] shadow-lg z-50 overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-          >
-            &times;
-          </button>
-        </div>
+      <div className="relative bg-white rounded-lg p-6 w-[700px] shadow-lg z-50 overflow-hidden flex flex-col">
 
 
         {error && (
