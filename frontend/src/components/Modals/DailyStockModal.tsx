@@ -150,15 +150,6 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
 
   if (!isOpen) return null;
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   // Products that can be added (have hasDailyStock = false)
   const availableProducts = allProducts.filter(
     p => !p.hasDailyStock && !stocks.find(s => s.productId === p.id)
@@ -170,9 +161,6 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
 
       <div className="relative bg-white rounded-lg p-6 w-[700px] max-h-[85vh] shadow-lg z-50 overflow-hidden flex flex-col">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-black">
-            Stock Journalier
-          </h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -181,9 +169,6 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
           </button>
         </div>
 
-        <div className="text-sm text-gray-600 mb-4">
-          {formatDate(date)}
-        </div>
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
@@ -240,65 +225,65 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
                     <th className="text-center px-3 py-2 text-sm font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {stocks.map((item) => (
-                    <tr key={item.productId} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-3">
-                        <div className="font-medium text-gray-900">{item.productName}</div>
-                      </td>
-                      <td className="px-3 py-3 text-center text-gray-600">
-                        {item.mainStock}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <input
-                            type="number"
-                            value={editingStock[item.productId] !== undefined ? editingStock[item.productId] : item.dailyStock}
-                            onChange={(e) => setEditingStock(prev => ({ ...prev, [item.productId]: e.target.value }))}
-                            onBlur={(e) => {
-                              const newValue = parseInt(e.target.value) || 0;
-                              if (newValue !== item.dailyStock) {
-                                handleSetStock(item.productId, newValue);
-                              }
-                              setEditingStock(prev => {
-                                const copy = { ...prev };
-                                delete copy[item.productId];
-                                return copy;
-                              });
-                            }}
-                            className="w-20 text-center border border-gray-300 rounded px-2 py-1"
-                            disabled={saving === item.productId}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleAdjust(item.productId, -1)}
-                            disabled={saving === item.productId || item.dailyStock <= 0}
-                            className="w-8 h-8 rounded bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold"
-                          >
-                            -
-                          </button>
-                          <button
-                            onClick={() => handleAdjust(item.productId, 1)}
-                            disabled={saving === item.productId}
-                            className="w-8 h-8 rounded bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold"
-                          >
-                            +
-                          </button>
-                          <button
-                            onClick={() => handleToggleDailyStock(item.productId, false)}
-                            className="ml-2 w-8 h-8 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 text-sm"
-                            title="Retirer du suivi journalier"
-                          >
-                            &times;
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+<tbody>
+  {stocks.map((item) => (
+    <tr key={item.productId} className="border-b border-gray-100 hover:bg-gray-50">
+      <td className="px-3 py-2">
+        <div className="font-medium text-gray-900 text-sm">{item.productName}</div>
+      </td>
+      <td className="px-3 py-2 text-center text-gray-600 text-sm">
+        {item.mainStock}
+      </td>
+      <td className="px-3 py-2">
+        <div className="flex items-center justify-center gap-2">
+          <input
+            type="number"
+            value={editingStock[item.productId] !== undefined ? editingStock[item.productId] : item.dailyStock}
+            onChange={(e) => setEditingStock(prev => ({ ...prev, [item.productId]: e.target.value }))}
+            onBlur={(e) => {
+              const newValue = parseInt(e.target.value) || 0;
+              if (newValue !== item.dailyStock) {
+                handleSetStock(item.productId, newValue);
+              }
+              setEditingStock(prev => {
+                const copy = { ...prev };
+                delete copy[item.productId];
+                return copy;
+              });
+            }}
+            className="w-16 text-center border border-gray-300 rounded px-2 py-1 text-sm"
+            disabled={saving === item.productId}
+          />
+        </div>
+      </td>
+      <td className="px-3 py-2">
+        <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => handleAdjust(item.productId, -1)}
+            disabled={saving === item.productId || item.dailyStock <= 0}
+            className="w-7 h-7 rounded bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
+          >
+            -
+          </button>
+          <button
+            onClick={() => handleAdjust(item.productId, 1)}
+            disabled={saving === item.productId}
+            className="w-7 h-7 rounded bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
+          >
+            +
+          </button>
+          <button
+            onClick={() => handleToggleDailyStock(item.productId, false)}
+            className="ml-1 w-7 h-7 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 text-sm"
+            title="Retirer du suivi journalier"
+          >
+            &times;
+          </button>
+        </div>
+      </td>
+    </tr>
+  ))}
+</tbody>
               </table>
             </div>
           </>
