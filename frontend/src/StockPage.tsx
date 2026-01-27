@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import PrimeroseVector from './assets/PrimeroseVector.svg';
+import { exportStockToExcel } from './utils/exportToExcel';
 
 
 export type Product = {
@@ -312,6 +313,12 @@ export default function StockPage() {
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-[#1E2A47]">Stock</h1>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => exportStockToExcel()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700"
+            >
+              📥 Exporter
+            </button>
             <button
               onClick={() => setShowAddStockModal(true)}
               className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700"

@@ -250,3 +250,83 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
   const exportDate = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
   XLSX.writeFile(workbook, `balances-utilisateurs-${exportDate}.xlsx`);
 }
+
+// ============================================
+// EXPORT DU STOCK
+// ============================================
+
+export type ExportStockData = {
+  id: number;
+  name: string;
+  quantity: number;
+  price: number;
+  trainerPrice: number;
+  description?: string;
+};
+
+export async function exportStockToExcel() {
+  try {
+    const response = await fetch('/api/products');
+    if (!response.ok) throw new Error('Erreur lors de la récupération des données');
+
+    const data: ExportStockData[] = await response.json();
+    generateStockExcelFile(data);
+  } catch (error) {
+    console.error('Erreur export stock:', error);
+    throw error;
+  }
+}
+
+function generateStockExcelFile(data: ExportStockData[]) {
+  const exportDate = new Date().toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+
+  // Créer les lignes pour l'export
+  const stockRows = data.map(product => ({
+    'Date': exportDate,
+    'Produit': product.name,
+    'Quantité': product.quantity,
+    'Prix': formatPrice(product.price),
+    'Prix Entraîneur': formatPrice(product.trainerPrice),
+    'Description': product.description || ''
+  }));
+
+  const stockSheet = XLSX.utils.json_to_sheet(stockRows);
+
+  // Largeur des colonnes
+  stockSheet['!cols'] = [
+    { wch: 12 },  // Date
+    { wch: 30 },  // Produit
+    { wch: 12 },  // Quantité
+    { wch: 12 },  // Prix
+    { wch: 15 },  // Prix Entraîneur
+    { wch: 40 },  // Description
+  ];
+
+  // Appliquer le format monétaire aux colonnes de prix
+  const range = XLSX.utils.decode_range(stockSheet['!ref'] || 'A1');
+  for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+    // Prix (colonne D - index 3)
+    const cellD = XLSX.utils.encode_cell({ r: R, c: 3 });
+    if (stockSheet[cellD] && typeof stockSheet[cellD].v === 'number') {
+      stockSheet[cellD].z = '#,##0.00 "€"';
+    }
+
+    // Prix Entraîneur (colonne E - index 4)
+    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
+    if (stockSheet[cellE] && typeof stockSheet[cellE].v === 'number') {
+      stockSheet[cellE].z = '#,##0.00 "€"';
+    }
+  }
+
+  // Créer le classeur
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, stockSheet, 'Stock');
+
+  // Télécharger le fichier
+  const filenameDate = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+  XLSX.writeFile(workbook, `stock-${filenameDate}.xlsx`);
+}
