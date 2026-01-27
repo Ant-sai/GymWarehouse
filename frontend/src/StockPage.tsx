@@ -40,9 +40,14 @@ export default function StockPage() {
   });
 
   const [saving, setSaving] = useState(false);
-  
+
   // État pour le filtre de recherche
   const [searchFilter, setSearchFilter] = useState("");
+
+  // État pour le modal d'ajout de stock
+  const [showAddStockModal, setShowAddStockModal] = useState(false);
+  const [stockAdditions, setStockAdditions] = useState<{ [productId: number]: string }>({});
+  const [stockSearch, setStockSearch] = useState("");
 
   // Fonction pour récupérer tous les produits
   async function fetchProducts() {
@@ -238,10 +243,67 @@ export default function StockPage() {
   };
 
   // Fonction pour filtrer les produits
-  const filteredProducts = products.filter(product => 
+  const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
     (product.description && product.description.toLowerCase().includes(searchFilter.toLowerCase()))
   );
+
+  // Produits filtrés pour le modal d'ajout de stock
+  const filteredStockProducts = products.filter(product =>
+    product.name.toLowerCase().includes(stockSearch.toLowerCase())
+  );
+
+  // Fonction pour ajouter du stock à plusieurs produits
+  async function handleAddStock() {
+    const additions = Object.entries(stockAdditions)
+      .filter(([, qty]) => qty && parseInt(qty) !== 0)
+      .map(([productId, qty]) => ({
+        productId: parseInt(productId),
+        quantity: parseInt(qty)
+      }));
+
+    if (additions.length === 0) {
+      alert("Veuillez entrer au moins une quantité à ajouter");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Mettre à jour chaque produit
+      for (const addition of additions) {
+        const product = products.find(p => p.id === addition.productId);
+        if (!product) continue;
+
+        const newQuantity = product.quantity + addition.quantity;
+
+        const response = await fetch(`/api/products/${addition.productId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quantity: newQuantity
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur lors de la mise à jour du produit ${product.name}`);
+        }
+      }
+
+      // Rafraîchir la liste des produits
+      await fetchProducts();
+
+      // Fermer le modal et réinitialiser
+      setShowAddStockModal(false);
+      setStockAdditions({});
+      setStockSearch("");
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout de stock:', err);
+      const errorMessage = err instanceof Error ? err.message : "Erreur lors de l'ajout de stock";
+      alert(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -250,6 +312,12 @@ export default function StockPage() {
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-[#1E2A47]">Stock</h1>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowAddStockModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700"
+            >
+              + Ajouter du stock
+            </button>
             <button
               onClick={() => setShowForm(true)}
               className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
@@ -570,6 +638,121 @@ export default function StockPage() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Modal ajout de stock */}
+        {showAddStockModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-40">
+            <div className="absolute inset-0 bg-black/30" onClick={() => {
+              setShowAddStockModal(false);
+              setStockAdditions({});
+              setStockSearch("");
+            }} />
+            <div className="relative bg-white rounded-lg p-6 w-[600px] max-h-[80vh] shadow-lg z-50 flex flex-col">
+              <h3 className="text-xl font-semibold mb-4 text-black">Ajouter du stock</h3>
+
+              {/* Barre de recherche */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Rechercher un produit..."
+                  value={stockSearch}
+                  onChange={(e) => setStockSearch(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Liste des produits */}
+              <div className="flex-1 overflow-y-auto border rounded mb-4">
+                {filteredStockProducts.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    Aucun produit trouvé
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-700">Produit</th>
+                        <th className="text-center px-4 py-2 text-sm font-medium text-gray-700">Stock actuel</th>
+                        <th className="text-center px-4 py-2 text-sm font-medium text-gray-700">Quantité à ajouter</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStockProducts.map((product) => (
+                        <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{product.name}</div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={product.quantity <= 0 ? "text-red-600 font-medium" : "text-gray-600"}>
+                              {product.quantity}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center">
+                              <input
+                                type="number"
+                                value={stockAdditions[product.id] || ""}
+                                onChange={(e) => setStockAdditions(prev => ({
+                                  ...prev,
+                                  [product.id]: e.target.value
+                                }))}
+                                placeholder="0"
+                                className="w-20 text-center border border-gray-300 rounded px-2 py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Résumé des ajouts */}
+              {Object.entries(stockAdditions).filter(([, qty]) => qty && parseInt(qty) !== 0).length > 0 && (
+                <div className="mb-4 p-3 bg-green-50 rounded border border-green-200">
+                  <div className="text-sm font-medium text-green-800 mb-2">Résumé des ajouts:</div>
+                  <div className="text-sm text-green-700 space-y-1">
+                    {Object.entries(stockAdditions)
+                      .filter(([, qty]) => qty && parseInt(qty) !== 0)
+                      .map(([productId, qty]) => {
+                        const product = products.find(p => p.id === parseInt(productId));
+                        const qtyNum = parseInt(qty);
+                        return product ? (
+                          <div key={productId}>
+                            {product.name}: {qtyNum > 0 ? '+' : ''}{qtyNum} → Nouveau stock: {product.quantity + qtyNum}
+                          </div>
+                        ) : null;
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Boutons */}
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddStockModal(false);
+                    setStockAdditions({});
+                    setStockSearch("");
+                  }}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={saving}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAddStock}
+                  disabled={saving || Object.entries(stockAdditions).filter(([, qty]) => qty && parseInt(qty) !== 0).length === 0}
+                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Enregistrement..." : "Ajouter le stock"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>
