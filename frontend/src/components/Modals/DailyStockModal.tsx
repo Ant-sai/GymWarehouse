@@ -33,6 +33,7 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
   const [saving, setSaving] = useState<number | null>(null);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [error, setError] = useState<string>("");
+  const [editingStock, setEditingStock] = useState<{ [productId: number]: string }>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -252,10 +253,20 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
                         <div className="flex items-center justify-center gap-2">
                           <input
                             type="number"
-                            value={item.dailyStock}
-                            onChange={(e) => handleSetStock(item.productId, parseInt(e.target.value) || 0)}
+                            value={editingStock[item.productId] !== undefined ? editingStock[item.productId] : item.dailyStock}
+                            onChange={(e) => setEditingStock(prev => ({ ...prev, [item.productId]: e.target.value }))}
+                            onBlur={(e) => {
+                              const newValue = parseInt(e.target.value) || 0;
+                              if (newValue !== item.dailyStock) {
+                                handleSetStock(item.productId, newValue);
+                              }
+                              setEditingStock(prev => {
+                                const copy = { ...prev };
+                                delete copy[item.productId];
+                                return copy;
+                              });
+                            }}
                             className="w-20 text-center border border-gray-300 rounded px-2 py-1"
-                            min="0"
                             disabled={saving === item.productId}
                           />
                         </div>
