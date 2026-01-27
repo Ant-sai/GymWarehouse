@@ -85,15 +85,6 @@ export default function DailyOrdersPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDailyStockModal, setShowDailyStockModal] = useState(false);
 
-  // États pour le modal d'édition de commande
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [cart, setCart] = useState<OrderItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE">("CASH");
-  const [notes, setNotes] = useState("");
-  const [discountValue, setDiscountValue] = useState<number>(0);
-  const [productSearch, setProductSearch] = useState("");
-  const [showProductDropdown, setShowProductDropdown] = useState(false);
-  const [useTrainerPrice, setUseTrainerPrice] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders()]);
@@ -175,12 +166,6 @@ export default function DailyOrdersPage() {
       });
 
       setUsers(sortedUsers);
-
-      const venteInstantUser = sortedUsers.find(u =>
-        getFullName(u).toLowerCase().includes("vente instant")
-      );
-      setSelectedUser(venteInstantUser || sortedUsers[0] || null);
-
     } catch (err) {
       console.error('Erreur lors de la récupération des utilisateurs:', err);
     }
@@ -556,46 +541,13 @@ export default function DailyOrdersPage() {
 
   function openEditOrderForm(order: Order) {
     setEditingOrder(order);
-    setSelectedUser(order.client);
-    setCart(order.products.map(item => ({
-      productId: item.product.id,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice
-    })));
-    setPaymentMethod(order.paymentMethod);
-    setNotes(order.notes || "");
-    setDiscountValue(order.discount || 0);
-    setUseTrainerPrice(order.useTrainerPrice || false);
-    setProductSearch("");
-    setShowProductDropdown(false);
     setShowEditOrderForm(true);
   }
 
-  async function handleUpdateOrder() {
-    if (!editingOrder || !selectedUser) {
-      alert("Erreur lors de la modification");
-      return;
-    }
-    if (cart.length === 0) {
-      alert("Veuillez ajouter au moins un produit");
-      return;
-    }
-
+  async function handleUpdateOrderModal(orderId: number, orderData: CreateOrderData) {
     setSaving(true);
     try {
-      const orderData = {
-        clientId: selectedUser.id,
-        paymentMethod: paymentMethod,
-        notes: notes,
-        useTrainerPrice: useTrainerPrice,
-        discount: discountValue,
-        products: cart.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity
-        }))
-      };
-
-      const response = await fetch(`/api/orders/${editingOrder.id}`, {
+      const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
@@ -606,23 +558,7 @@ export default function DailyOrdersPage() {
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate)]);
-      setShowEditOrderForm(false);
-      setEditingOrder(null);
-      setSelectedUser(null);
-      setCart([]);
-      setPaymentMethod("CASH");
-      setNotes("");
-      setDiscountValue(0);
-      setProductSearch("");
-
-      fetchProducts();
-      fetchUsers();
-
-    } catch (err) {
-      console.error('Erreur lors de la modification de la commande:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible de modifier la commande";
-      alert(errorMessage);
+      await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate), fetchProducts(), fetchUsers()]);
     } finally {
       setSaving(false);
     }
@@ -633,49 +569,6 @@ export default function DailyOrdersPage() {
     const parts = [user.firstName, user.lastName].filter(Boolean);
     return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
   };
-
-  // Fonctions pour le modal d'édition de commande
-  function addToCart(product: Product) {
-    const price = useTrainerPrice ? product.trainerPrice : product.price;
-    const existingItem = cart.find(item => item.productId === product.id);
-
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.productId === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { productId: product.id, quantity: 1, unitPrice: price }]);
-    }
-    setProductSearch("");
-    setShowProductDropdown(false);
-  }
-
-  function updateCartQuantity(productId: number, quantity: number) {
-    if (quantity <= 0) {
-      setCart(cart.filter(item => item.productId !== productId));
-    } else {
-      setCart(cart.map(item =>
-        item.productId === productId ? { ...item, quantity } : item
-      ));
-    }
-  }
-
-  function calculateTotal() {
-    if (paymentMethod === "FREE") return 0;
-    const subtotal = calculateSubtotal();
-    if (discountValue <= 0) return subtotal;
-    return Math.max(0, subtotal - discountValue);
-  }
-
-  function calculateSubtotal() {
-    return cart.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
-  }
-
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(productSearch.toLowerCase())
-  );
 
   const filteredRefundUsers = users.filter(user =>
     getFullName(user).toLowerCase().includes(refundUserSearch.toLowerCase())
@@ -1164,297 +1057,33 @@ export default function DailyOrdersPage() {
           </div>
         )}
 
-        {/* Modal modification de commande */}
-        {showEditOrderForm && editingOrder && (
-          <div className="fixed inset-0 flex items-center justify-center z-40">
-            <div className="absolute inset-0 bg-black/30" onClick={() => {
-              if (confirm("Voulez-vous annuler la modification ? Les changements seront perdus.")) {
-                setShowEditOrderForm(false);
-                setEditingOrder(null);
-                setSelectedUser(null);
-                setCart([]);
-                setPaymentMethod("CASH");
-                setNotes("");
-                setDiscountValue(0);
-                setProductSearch("");
-                setShowProductDropdown(false);
-                setUseTrainerPrice(false);
-              }
-            }} />
-            <div className="relative bg-white rounded-lg p-12 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
-              <h3 className="text-xl font-semibold mb-6 text-black">
-                Modifier la commande #{editingOrder.id}
-              </h3>
-
-              {/* Sélection des produits avec dropdown */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ajouter un produit *
-                </label>
-
-                <div className="relative product-search-container">
-                  <input
-                    type="text"
-                    placeholder="Rechercher un produit..."
-                    value={productSearch}
-                    onChange={(e) => {
-                      setProductSearch(e.target.value);
-                      setShowProductDropdown(true);
-                    }}
-                    onFocus={() => setShowProductDropdown(true)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                  />
-
-                  {/* Dropdown de résultats */}
-                  {showProductDropdown && productSearch && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
-                      {filteredProducts.length === 0 ? (
-                        <div className="px-3 py-2 text-gray-500 text-sm">
-                          Aucun produit trouvé
-                        </div>
-                      ) : (
-                        filteredProducts.map(product => (
-                          <button
-                            key={product.id}
-                            type="button"
-                            onClick={() => addToCart(product)}
-                            disabled={product.quantity <= 0}
-                            className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <span className="font-medium">{product.name}</span>
-                                <span className="text-xs text-gray-500 ml-2">Stock: {product.quantity}</span>
-                              </div>
-                              <span className="text-gray-600">
-                                {useTrainerPrice ? product.trainerPrice : product.price}€
-                              </span>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {cart.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Panier</label>
-                  <div className="border rounded p-4">
-                    {cart.map(item => {
-                      const product = products.find(p => p.id === item.productId);
-                      return (
-                        <div key={item.productId} className="flex justify-between items-center py-2">
-                          <div>
-                            <span className="font-medium">{product?.name}</span>
-                            <span className="text-gray-600 ml-2">({item.unitPrice}€/unité)</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                              className="bg-gray-200 px-2 py-1 rounded text-sm"
-                            >
-                              -
-                            </button>
-                            <span className="px-2">{item.quantity}</span>
-                            <button
-                              onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
-                              className="bg-gray-200 px-2 py-1 rounded text-sm"
-                            >
-                              +
-                            </button>
-                            <span className="ml-4 font-medium">
-                              {(item.quantity * item.unitPrice).toFixed(2)}€
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {paymentMethod !== "FREE" && (
-                      <div className="mt-4 pt-4">
-                        <div className="flex items-center gap-4 mb-2">
-                          <label className="text-sm font-medium text-gray-700">Réduction (€):</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={discountValue || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === '') {
-                                setDiscountValue(0);
-                              } else {
-                                setDiscountValue(parseFloat(val) || 0);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              const value = parseFloat(e.target.value) || 0;
-                              if (value < 0) setDiscountValue(0);
-                              else if (value > calculateSubtotal()) setDiscountValue(calculateSubtotal());
-                            }}
-                            className="border rounded px-2 py-1 text-sm w-24"
-                            placeholder="0"
-                          />
-                          <span className="text-sm text-gray-600">€</span>
-                          {discountValue > 0 && (
-                            <button
-                              onClick={() => setDiscountValue(0)}
-                              className="text-red-500 text-sm hover:text-red-700"
-                            >
-                              ✕ Supprimer
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-4 text-right space-y-1">
-                      <div className={`text-xl font-bold ${paymentMethod === "FREE" ? "text-red-600" : ""}`}>
-                        Total: {calculateTotal().toFixed(2)}€
-                        {paymentMethod === "FREE" && <span className="text-sm ml-2">(GRATUIT)</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Checkbox Prix Entraîneur */}
-              <div className="mb-6">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useTrainerPrice}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setUseTrainerPrice(checked);
-                      // Recalculer les prix du panier
-                      setCart(cart.map(item => {
-                        const product = products.find(p => p.id === item.productId);
-                        if (!product) return item;
-                        const newPrice = checked ? product.trainerPrice : product.price;
-                        return { ...item, unitPrice: newPrice };
-                      }));
-                    }}
-                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Prix mono
-                  </span>
-                </label>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("CASH")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
-                      paymentMethod === "CASH"
-                        ? "border-green-500 bg-green-50 text-green-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                    }`}
-                  >
-                    💵 Espèces
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("QRCODE")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
-                      paymentMethod === "QRCODE"
-                        ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                    }`}
-                  >
-                    📱 QR Code
-                  </button>
-
-                  {selectedUser && !getFullName(selectedUser).includes("Vente instentané") && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("ACCOUNT_DEBIT")}
-                      className={`px-4 py-3 rounded-lg border-2 transition-all shadow-md hover:shadow-lg ${
-                        paymentMethod === "ACCOUNT_DEBIT"
-                          ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                      }`}
-                    >
-                      💳 Crédit
-                    </button>
-                  )}
-
-                  {paymentMethod === "ACCOUNT_DEBIT" && selectedUser && (
-                    <div className="text-sm p-3 bg-gray-50 rounded-lg flex-1">
-                      <span className={`${Number(selectedUser.balance) < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                        Solde: {Number(selectedUser.balance).toFixed(2)}€
-                        {Number(selectedUser.balance) < 0 && ' (DÉCOUVERT)'}
-                      </span>
-                      {cart.length > 0 && (
-                        <span className="text-xs text-gray-500 ml-3">
-                          → Après achat: {(Number(selectedUser.balance) - calculateTotal()).toFixed(2)}€
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-                <div className="p-3 bg-gray-50 rounded border">
-                  <div className="font-medium">{getFullName(selectedUser || undefined)}</div>
-                  {selectedUser?.role === "TRAINER" && (
-                    <span className="text-xs text-blue-600">Entraîneur</span>
-                  )}
-                </div>
-              </div>
-
-    
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm("Voulez-vous annuler la modification ? Les changements seront perdus.")) {
-                      setShowEditOrderForm(false);
-                      setEditingOrder(null);
-                      setSelectedUser(null);
-                      setCart([]);
-                      setPaymentMethod("CASH");
-                      setNotes("");
-                      setDiscountValue(0);
-                      setProductSearch("");
-                      setShowProductDropdown(false);
-                      setUseTrainerPrice(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  disabled={saving}
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleUpdateOrder}
-                  disabled={saving || !selectedUser || cart.length === 0}
-                  className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Modification..." : "Modifier la commande"}
-                </button>
-              </div>
-                            <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Commentaires sur la commande..."
-                />
-              </div>
-            </div>
-          </div>
+        {/* Modal modification de commande - utilise OrderFormModal en mode edit */}
+        {editingOrder && (
+          <OrderFormModal
+            isOpen={showEditOrderForm}
+            users={users}
+            products={products}
+            onClose={() => {
+              setShowEditOrderForm(false);
+              setEditingOrder(null);
+            }}
+            onCreate={handleCreateOrder}
+            onStandby={handlePutOnStandby}
+            onAddMember={() => {}}
+            mode="edit"
+            editingOrderId={editingOrder.id}
+            onUpdate={handleUpdateOrderModal}
+            initialUser={editingOrder.client}
+            initialCart={editingOrder.products.map(item => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice
+            }))}
+            initialPaymentMethod={editingOrder.paymentMethod}
+            initialNotes={editingOrder.notes || ""}
+            initialDiscountValue={editingOrder.discount || 0}
+            initialUseTrainerPrice={editingOrder.useTrainerPrice || false}
+          />
         )}
 
         {/* Modal Trou de caisse */}

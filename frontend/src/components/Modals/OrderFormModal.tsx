@@ -25,6 +25,11 @@ interface OrderFormModalProps {
   initialNotes?: string;
   initialDiscountValue?: number;
   initialDiscountComment?: string;
+  initialUseTrainerPrice?: boolean;
+  // Mode édition
+  mode?: 'create' | 'edit';
+  editingOrderId?: number | null;
+  onUpdate?: (orderId: number, orderData: CreateOrderData) => Promise<void>;
 }
 
 export const OrderFormModal: React.FC<OrderFormModalProps> = ({
@@ -40,7 +45,11 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   initialPaymentMethod = null,
   initialNotes = "",
   initialDiscountValue = 0,
-  initialDiscountComment = ""
+  initialDiscountComment = "",
+  initialUseTrainerPrice = false,
+  mode = 'create',
+  editingOrderId = null,
+  onUpdate
 }) => {
   // États du formulaire
   const [selectedUser, setSelectedUser] = useState<User | null>(initialUser);
@@ -49,7 +58,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [notes, setNotes] = useState(initialNotes);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue);
   const [discountComment, setDiscountComment] = useState(initialDiscountComment);
-  const [useTrainerPrice, setUseTrainerPrice] = useState(false);
+  const [useTrainerPrice, setUseTrainerPrice] = useState(initialUseTrainerPrice);
 
   // États de recherche
   const [userSearch, setUserSearch] = useState('');
@@ -73,7 +82,8 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         initialPaymentMethod,
         initialNotes,
         initialDiscountValue,
-        initialDiscountComment
+        initialDiscountComment,
+        initialUseTrainerPrice
       });
       setSelectedUser(initialUser);
       setCart(initialCart);
@@ -81,9 +91,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setNotes(initialNotes);
       setDiscountValue(initialDiscountValue);
       setDiscountComment(initialDiscountComment);
+      setUseTrainerPrice(initialUseTrainerPrice);
       setUserManuallyCleared(false);
     }
-  }, [isOpen, initialUser, initialCart, initialPaymentMethod, initialNotes, initialDiscountValue, initialDiscountComment]);
+  }, [isOpen, initialUser, initialCart, initialPaymentMethod, initialNotes, initialDiscountValue, initialDiscountComment, initialUseTrainerPrice]);
 
   // Sélectionner automatiquement "Vente instantané" au premier chargement
   useEffect(() => {
@@ -231,11 +242,15 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
         }))
       };
 
-      await onCreate(orderData);
+      if (mode === 'edit' && editingOrderId && onUpdate) {
+        await onUpdate(editingOrderId, orderData);
+      } else {
+        await onCreate(orderData);
+      }
       handleClose();
     } catch (err) {
       console.error('Erreur:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible de créer la commande";
+      const errorMessage = err instanceof Error ? err.message : mode === 'edit' ? "Impossible de modifier la commande" : "Impossible de créer la commande";
       alert(errorMessage);
     } finally {
       setSaving(false);
@@ -295,98 +310,117 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       {/* Modal */}
       <div className="relative bg-white rounded-lg p-8 w-[900px] max-h-[90vh] overflow-y-auto shadow-lg z-50">
 
-              {/* Sélection du client */}
-        <div className="mb-6">
-          <div className="flex gap-2">
-            <div className="flex-1 relative user-search-container">
-              <input
-                type="text"
-                placeholder="Rechercher un client..."
-                value={userSearch}
-                onChange={(e) => {
-                  setUserSearch(e.target.value);
-                  setShowUserDropdown(true);
-                }}
-                onFocus={() => setShowUserDropdown(true)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-              />
+              {/* Sélection du client - caché en mode édition */}
+        {mode === 'create' ? (
+          <div className="mb-6">
+            <div className="flex gap-2">
+              <div className="flex-1 relative user-search-container">
+                <input
+                  type="text"
+                  placeholder="Rechercher un client..."
+                  value={userSearch}
+                  onChange={(e) => {
+                    setUserSearch(e.target.value);
+                    setShowUserDropdown(true);
+                  }}
+                  onFocus={() => setShowUserDropdown(true)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                />
 
-              {/* Dropdown de résultats */}
-              {showUserDropdown && userSearch && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
-                  {filteredUsers.length === 0 ? (
-                    <div className="px-3 py-2 text-gray-500 text-sm">
-                      Aucun client trouvé
-                    </div>
-                  ) : (
-                    filteredUsers.map(user => (
+                {/* Dropdown de résultats */}
+                {showUserDropdown && userSearch && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-y-auto">
+                    {filteredUsers.length === 0 ? (
+                      <div className="px-3 py-2 text-gray-500 text-sm">
+                        Aucun client trouvé
+                      </div>
+                    ) : (
+                      filteredUsers.map(user => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setUserSearch('');
+                            setShowUserDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>{getFullName(user)}</span>
+                            <span className={`font-medium ${Number(user.balance) < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                              {Number(user.balance).toFixed(2)}€
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Affichage du client sélectionné */}
+                {selectedUser && (
+                  <div className="mt-2 text-sm text-gray-600 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{getFullName(selectedUser)}</span>
                       <button
-                        key={user.id}
                         type="button"
                         onClick={() => {
-                          setSelectedUser(user);
+                          setSelectedUser(null);
                           setUserSearch('');
-                          setShowUserDropdown(false);
+                          setUserManuallyCleared(true);
                         }}
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
+                        className="text-red-500 hover:text-red-700 transition-colors"
+                        title="Changer de client"
                       >
-                        <div className="flex justify-between items-center">
-                          <span>{getFullName(user)}</span>
-                          <span className={`font-medium ${Number(user.balance) < 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                            {Number(user.balance).toFixed(2)}€
-                          </span>
-                        </div>
+                        ✕
                       </button>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* Affichage du client sélectionné */}
-              {selectedUser && (
-                <div className="mt-2 text-sm text-gray-600 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{getFullName(selectedUser)}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedUser(null);
-                        setUserSearch('');
-                        setUserManuallyCleared(true);
-                      }}
-                      className="text-red-500 hover:text-red-700 transition-colors"
-                      title="Changer de client"
-                    >
-                      ✕
-                    </button>
+                    </div>
+                    <span className={`font-medium ${Number(selectedUser.balance) < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                      Solde: {Number(selectedUser.balance).toFixed(2)}€
+                    </span>
                   </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onAddMember({
+                  user: selectedUser,
+                  cart: cart,
+                  paymentMethod: paymentMethod,
+                  notes: notes,
+                  discountValue: discountValue,
+                  discountComment: discountComment
+                })}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
+                title="Ajouter un nouveau membre"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                Nouveau
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Mode édition - afficher seulement le client */
+          <div className="mb-6">
+            <div className="p-3 bg-gray-50 rounded border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-gray-500">Client:</span>
+                  <span className="font-medium ml-2">{selectedUser ? getFullName(selectedUser) : 'N/A'}</span>
+                </div>
+                {selectedUser && (
                   <span className={`font-medium ${Number(selectedUser.balance) < 0 ? 'text-red-600' : 'text-gray-700'}`}>
                     Solde: {Number(selectedUser.balance).toFixed(2)}€
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => onAddMember({
-                user: selectedUser,
-                cart: cart,
-                paymentMethod: paymentMethod,
-                notes: notes,
-                discountValue: discountValue,
-                discountComment: discountComment
-              })}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 transition-colors"
-              title="Ajouter un nouveau membre"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              Nouveau
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Sélection des produits */}
         <div className="mb-6">
@@ -615,16 +649,18 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             disabled={saving}
           >
-            Fermer
+            {mode === 'edit' ? 'Annuler' : 'Fermer'}
           </button>
-          <button
-            type="button"
-            onClick={handlePutOnStandby}
-            disabled={saving || cart.length === 0 || !selectedUser}
-            className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
-          >
-            ⏸️ Mettre en stand-by
-          </button>
+          {mode === 'create' && (
+            <button
+              type="button"
+              onClick={handlePutOnStandby}
+              disabled={saving || cart.length === 0 || !selectedUser}
+              className="px-5 py-2 rounded border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+            >
+              ⏸️ Mettre en stand-by
+            </button>
+          )}
           <button
             onClick={handleSubmit}
             disabled={saving || !selectedUser || !paymentMethod || cart.length === 0}
@@ -634,7 +670,13 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 : "bg-[#1E2A47] hover:bg-[#2A3B5A]"
             }`}
           >
-            {saving ? "Création..." : paymentMethod === "FREE" ? "Créer commande gratuite" : "Créer la commande"}
+            {saving
+              ? (mode === 'edit' ? "Modification..." : "Création...")
+              : mode === 'edit'
+                ? "Modifier la commande"
+                : paymentMethod === "FREE"
+                  ? "Créer commande gratuite"
+                  : "Créer la commande"}
           </button>
         </div>
 
