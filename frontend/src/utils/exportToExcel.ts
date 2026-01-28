@@ -252,24 +252,22 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
 }
 
 // ============================================
-// EXPORT DU STOCK
+// EXPORT DU STOCK (Ajouts de stock)
 // ============================================
 
-export type ExportStockData = {
-  id: number;
-  name: string;
+export type ExportStockAdditionData = {
+  date: string;
+  productName: string;
   quantity: number;
-  price: number;
   trainerPrice: number;
-  description?: string;
 };
 
 export async function exportStockToExcel() {
   try {
-    const response = await fetch('/api/products');
+    const response = await fetch('/api/stock-additions/export');
     if (!response.ok) throw new Error('Erreur lors de la récupération des données');
 
-    const data: ExportStockData[] = await response.json();
+    const data: ExportStockAdditionData[] = await response.json();
     generateStockExcelFile(data);
   } catch (error) {
     console.error('Erreur export stock:', error);
@@ -277,21 +275,17 @@ export async function exportStockToExcel() {
   }
 }
 
-function generateStockExcelFile(data: ExportStockData[]) {
-  const exportDate = new Date().toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-
+function generateStockExcelFile(data: ExportStockAdditionData[]) {
   // Créer les lignes pour l'export
-  const stockRows = data.map(product => ({
-    'Date': exportDate,
-    'Produit': product.name,
-    'Quantité': product.quantity,
-    'Prix': formatPrice(product.price),
-    'Prix Entraîneur': formatPrice(product.trainerPrice),
-    'Description': product.description || ''
+  const stockRows = data.map(addition => ({
+    'Date': new Date(addition.date).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }),
+    'Produit': addition.productName,
+    'Quantité': addition.quantity,
+    'Prix Entraîneur': formatPrice(addition.trainerPrice)
   }));
 
   const stockSheet = XLSX.utils.json_to_sheet(stockRows);
@@ -301,32 +295,24 @@ function generateStockExcelFile(data: ExportStockData[]) {
     { wch: 12 },  // Date
     { wch: 30 },  // Produit
     { wch: 12 },  // Quantité
-    { wch: 12 },  // Prix
     { wch: 15 },  // Prix Entraîneur
-    { wch: 40 },  // Description
   ];
 
-  // Appliquer le format monétaire aux colonnes de prix
+  // Appliquer le format monétaire à la colonne Prix Entraîneur
   const range = XLSX.utils.decode_range(stockSheet['!ref'] || 'A1');
   for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-    // Prix (colonne D - index 3)
+    // Prix Entraîneur (colonne D - index 3)
     const cellD = XLSX.utils.encode_cell({ r: R, c: 3 });
     if (stockSheet[cellD] && typeof stockSheet[cellD].v === 'number') {
       stockSheet[cellD].z = '#,##0.00 "€"';
-    }
-
-    // Prix Entraîneur (colonne E - index 4)
-    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
-    if (stockSheet[cellE] && typeof stockSheet[cellE].v === 'number') {
-      stockSheet[cellE].z = '#,##0.00 "€"';
     }
   }
 
   // Créer le classeur
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, stockSheet, 'Stock');
+  XLSX.utils.book_append_sheet(workbook, stockSheet, 'Ajouts de Stock');
 
   // Télécharger le fichier
   const filenameDate = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
-  XLSX.writeFile(workbook, `stock-${filenameDate}.xlsx`);
+  XLSX.writeFile(workbook, `ajouts-stock-${filenameDate}.xlsx`);
 }

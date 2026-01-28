@@ -270,24 +270,19 @@ export default function StockPage() {
 
     setSaving(true);
     try {
-      // Mettre à jour chaque produit
-      for (const addition of additions) {
-        const product = products.find(p => p.id === addition.productId);
-        if (!product) continue;
+      // Enregistrer les ajouts de stock via l'API
+      const response = await fetch('/api/stock-additions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          additions,
+          date: new Date().toISOString()
+        })
+      });
 
-        const newQuantity = product.quantity + addition.quantity;
-
-        const response = await fetch(`/api/products/${addition.productId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            quantity: newQuantity
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur lors de la mise à jour du produit ${product.name}`);
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erreur lors de l\'enregistrement');
       }
 
       // Rafraîchir la liste des produits

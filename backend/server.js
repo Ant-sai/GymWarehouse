@@ -401,6 +401,162 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // -----------------------------------------------
+// ------------ Stock Addition routes ------------
+// -----------------------------------------------
+
+// Créer des ajouts de stock (batch)
+app.post('/api/stock-additions', async (req, res) => {
+    try {
+        const { additions, date } = req.body;
+        // additions: [{ productId: number, quantity: number }]
+
+        if (!additions || additions.length === 0) {
+            return res.status(400).json({ error: 'Aucun ajout de stock fourni' });
+        }
+
+        const additionDate = date ? new Date(date) : new Date();
+        additionDate.setHours(0, 0, 0, 0);
+
+        const results = [];
+
+        for (const addition of additions) {
+            const { productId, quantity } = addition;
+
+            // Créer l'enregistrement d'ajout de stock
+            const stockAddition = await prisma.stockAddition.create({
+                data: {
+                    productId,
+                    quantity,
+                    date: additionDate
+                },
+                include: {
+                    product: {
+                        select: {
+                            name: true,
+                            trainerPrice: true
+                        }
+                    }
+                }
+            });
+
+            // Mettre à jour la quantité du produit
+            await prisma.product.update({
+                where: { id: productId },
+                data: {
+                    quantity: {
+                        increment: quantity
+                    }
+                }
+            });
+
+            results.push(stockAddition);
+        }
+
+        res.status(201).json({
+            message: `${results.length} ajout(s) de stock enregistré(s)`,
+            additions: results
+        });
+    } catch (err) {
+        console.error('Error creating stock additions:', err);
+        res.status(500).json({ error: 'Erreur lors de l\'enregistrement des ajouts de stock' });
+    }
+});
+
+// Récupérer tous les ajouts de stock
+app.get('/api/stock-additions', async (req, res) => {
+    try {
+        const additions = await prisma.stockAddition.findMany({
+            include: {
+                product: {
+                    select: {
+                        name: true,
+                        trainerPrice: true
+                    }
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+
+        res.json(additions);
+    } catch (err) {
+        console.error('Error fetching stock additions:', err);
+        res.status(500).json({ error: 'Erreur lors de la récupération des ajouts de stock' });
+    }
+});
+
+// Récupérer les ajouts de stock par plage de dates
+app.get('/api/stock-additions/range', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        const where = {};
+        if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            where.date = { gte: start };
+        }
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            where.date = { ...where.date, lte: end };
+        }
+
+        const additions = await prisma.stockAddition.findMany({
+            where,
+            include: {
+                product: {
+                    select: {
+                        name: true,
+                        trainerPrice: true
+                    }
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+
+        res.json(additions);
+    } catch (err) {
+        console.error('Error fetching stock additions by range:', err);
+        res.status(500).json({ error: 'Erreur lors de la récupération des ajouts de stock' });
+    }
+});
+
+// Export des ajouts de stock
+app.get('/api/stock-additions/export', async (req, res) => {
+    try {
+        const additions = await prisma.stockAddition.findMany({
+            include: {
+                product: {
+                    select: {
+                        name: true,
+                        trainerPrice: true
+                    }
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+
+        const exportData = additions.map(addition => ({
+            date: addition.date,
+            productName: addition.product.name,
+            quantity: addition.quantity,
+            trainerPrice: Number(addition.product.trainerPrice)
+        }));
+
+        res.json(exportData);
+    } catch (err) {
+        console.error('Error exporting stock additions:', err);
+        res.status(500).json({ error: 'Erreur lors de l\'export des ajouts de stock' });
+    }
+});
+
+// -----------------------------------------------
 // ----------------- Order routes ----------------
 // -----------------------------------------------
 //Create an order
