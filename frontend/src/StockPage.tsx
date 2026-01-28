@@ -12,6 +12,7 @@ export type Product = {
   trainerPrice?: number;
   cost: number;
   isActive: boolean;
+  displayOrder: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,6 +50,10 @@ export default function StockPage() {
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [stockAdditions, setStockAdditions] = useState<{ [productId: number]: string }>({});
   const [stockSearch, setStockSearch] = useState("");
+
+  // État pour le mode réorganisation
+  const [reorderMode, setReorderMode] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   // Fonction pour récupérer tous les produits
   async function fetchProducts() {
@@ -301,6 +306,51 @@ export default function StockPage() {
     }
   }
 
+  // Fonctions pour réorganiser les produits
+  function moveProduct(productId: number, direction: 'up' | 'down') {
+    const currentIndex = products.findIndex(p => p.id === productId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= products.length) return;
+
+    const newProducts = [...products];
+    [newProducts[currentIndex], newProducts[newIndex]] = [newProducts[newIndex], newProducts[currentIndex]];
+    setProducts(newProducts);
+  }
+
+  async function saveProductOrder() {
+    setSavingOrder(true);
+    try {
+      const orders = products.map((product, index) => ({
+        id: product.id,
+        displayOrder: index
+      }));
+
+      const response = await fetch('/api/products/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde');
+      }
+
+      setReorderMode(false);
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde de l\'ordre:', err);
+      alert('Erreur lors de la sauvegarde de l\'ordre');
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function cancelReorder() {
+    setReorderMode(false);
+    fetchProducts(); // Recharger l'ordre original
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main */}
@@ -308,24 +358,51 @@ export default function StockPage() {
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-[#1E2A47]">Stock</h1>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => exportStockToExcel()}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700"
-            >
-              📥 Exporter
-            </button>
-            <button
-              onClick={() => setShowAddStockModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700"
-            >
-              + Ajouter du stock
-            </button>
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
-            >
-              Ajouter un produit
-            </button>
+            {reorderMode ? (
+              <>
+                <button
+                  onClick={cancelReorder}
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-gray-600"
+                  disabled={savingOrder}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={saveProductOrder}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700 disabled:opacity-50"
+                  disabled={savingOrder}
+                >
+                  {savingOrder ? "Sauvegarde..." : "Sauvegarder l'ordre"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setReorderMode(true)}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-purple-700"
+                >
+                  Réorganiser
+                </button>
+                <button
+                  onClick={() => exportStockToExcel()}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700"
+                >
+                  📥 Exporter
+                </button>
+                <button
+                  onClick={() => setShowAddStockModal(true)}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700"
+                >
+                  + Ajouter du stock
+                </button>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
+                >
+                  Ajouter un produit
+                </button>
+              </>
+            )}
             <img
               src={PrimeroseVector}
               alt="Gym Warehouse"
@@ -391,7 +468,8 @@ export default function StockPage() {
         {/* Table header */}
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-6 gap-6 px-4 text-sm font-medium text-gray-700 mb-4">
+            <div className={`grid gap-6 px-4 text-sm font-medium text-gray-700 mb-4 ${reorderMode ? 'grid-cols-7' : 'grid-cols-6'}`}>
+              {reorderMode && <div>Ordre</div>}
               <div>Produits</div>
               <div>Quantités</div>
               <div className="col-span-2">Description</div>
@@ -419,11 +497,35 @@ export default function StockPage() {
                 </div>
               )}
               
-              {filteredProducts.map((p) => (
+              {filteredProducts.map((p, index) => (
                 <div
                   key={p.id}
-                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-6 items-center text-black hover:shadow-md transition-shadow"
+                  className={`bg-white rounded-lg p-4 shadow-sm grid items-center text-black hover:shadow-md transition-shadow ${reorderMode ? 'grid-cols-7' : 'grid-cols-6'}`}
                 >
+                  {reorderMode && (
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => moveProduct(p.id, 'up')}
+                        disabled={index === 0}
+                        className="p-1 hover:bg-purple-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Monter"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M18 15l-6-6-6 6" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => moveProduct(p.id, 'down')}
+                        disabled={index === filteredProducts.length - 1}
+                        className="p-1 hover:bg-purple-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Descendre"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M6 9l6 6 6-6" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                   <div className="truncate font-medium">{p.name}</div>
                   <div className={p.quantity === 0 ? "text-red-600 font-medium" : ""}>{p.quantity}</div>
                   <div className="col-span-2 truncate text-sm text-gray-600">
@@ -432,36 +534,38 @@ export default function StockPage() {
                   <div>{Number(p.price).toFixed(2)} €</div>
                   <div className="flex items-center justify-between">
                     <span>{p.trainerPrice ? `${Number(p.trainerPrice).toFixed(2)} €` : "-"}</span>
-                    <div className="flex items-center gap-2 ml-2">
-                      <button 
-                        onClick={() => openEditForm(p)} 
-                        className="p-1 hover:bg-blue-50 rounded"
-                        title="Modifier ce produit"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(p.id)} 
-                        className="p-1 hover:bg-red-50 rounded"
-                        title="Supprimer ce produit"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                          <path d="M3 6h18" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
-                          <path
-                            d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6"
-                            stroke="#E74C3C"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path d="M10 11v6" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M14 11v6" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </div>
+                    {!reorderMode && (
+                      <div className="flex items-center gap-2 ml-2">
+                        <button
+                          onClick={() => openEditForm(p)}
+                          className="p-1 hover:bg-blue-50 rounded"
+                          title="Modifier ce produit"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="p-1 hover:bg-red-50 rounded"
+                          title="Supprimer ce produit"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 6h18" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
+                            <path
+                              d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6"
+                              stroke="#E74C3C"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path d="M10 11v6" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
+                            <path d="M14 11v6" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

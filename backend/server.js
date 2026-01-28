@@ -310,7 +310,10 @@ app.post('/api/products', async (req, res) => {
 app.get('/api/products', async (req, res) => {
     try {
         const products = await prisma.product.findMany({
-            orderBy: { id: 'asc' },
+            orderBy: [
+                { displayOrder: 'asc' },
+                { id: 'asc' }
+            ],
             select: {
                 id: true,
                 name: true,
@@ -320,6 +323,7 @@ app.get('/api/products', async (req, res) => {
                 trainerPrice: true,
                 cost: true,
                 isActive: true,
+                displayOrder: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -328,6 +332,33 @@ app.get('/api/products', async (req, res) => {
     } catch (err) {
         console.error('Error fetching products: ', err);
         res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// Update product display order (must be before /api/products/:id)
+app.put('/api/products/reorder', async (req, res) => {
+    try {
+        const { orders } = req.body;
+        // orders: [{ id: number, displayOrder: number }]
+
+        if (!orders || orders.length === 0) {
+            return res.status(400).json({ error: 'No orders provided' });
+        }
+
+        // Update all products in a transaction
+        await prisma.$transaction(
+            orders.map(item =>
+                prisma.product.update({
+                    where: { id: item.id },
+                    data: { displayOrder: item.displayOrder }
+                })
+            )
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating product order: ', err);
+        res.status(500).json({ error: 'Failed to update product order' });
     }
 });
 
