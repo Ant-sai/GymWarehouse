@@ -454,13 +454,14 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                         addToCart(product);
                         setShowProductDropdown(false);
                       }}
-                      disabled={product.quantity <= 0}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
                     >
                       <div className="flex justify-between items-center">
                         <div>
                           <span className="font-medium">{product.name}</span>
-                          <span className="text-xs text-gray-500 ml-2">Stock: {product.quantity}</span>
+                          <span className={`text-xs ml-2 ${product.quantity <= 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                            Stock: {product.quantity}
+                          </span>
                         </div>
                         <span className="text-gray-600">
                           {useTrainerPrice ? product.trainerPrice : product.price}€
