@@ -254,19 +254,18 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
 // ============================================
 // EXPORT DU STOCK (Ajouts de stock)
 // ============================================
-
 export type ExportStockAdditionData = {
   date: string;
   productName: string;
   quantity: number;
   trainerPrice: number;
+  initialStock?: number; // Stock initial avant l'ajout
 };
 
 export async function exportStockToExcel() {
   try {
     const response = await fetch('/api/stock-additions/export');
     if (!response.ok) throw new Error('Erreur lors de la récupération des données');
-
     const data: ExportStockAdditionData[] = await response.json();
     generateStockExcelFile(data);
   } catch (error) {
@@ -277,34 +276,53 @@ export async function exportStockToExcel() {
 
 function generateStockExcelFile(data: ExportStockAdditionData[]) {
   // Créer les lignes pour l'export
-  const stockRows = data.map(addition => ({
-    'Date': new Date(addition.date).toLocaleDateString('fr-FR', {
+  const stockRows = data.map(addition => {
+    const initialStock = addition.initialStock || 0;
+    const addedQuantity = addition.quantity;
+    const totalQuantity = initialStock + addedQuantity;
+    const stockValue = addition.trainerPrice * totalQuantity;
+    
+    const formattedDate = new Date(addition.date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
-    }),
-    'Produit': addition.productName,
-    'Quantité': addition.quantity,
-    'Prix Entraîneur': formatPrice(addition.trainerPrice)
-  }));
+    });
+
+    return {
+      'Produit': addition.productName,
+      'Stock initial': initialStock,
+      [`Rajout du ${formattedDate}`]: addedQuantity,
+      'Quantité totale': totalQuantity,
+      'Prix Entraîneur': addition.trainerPrice,
+      'Valeur Stock': stockValue
+    };
+  });
 
   const stockSheet = XLSX.utils.json_to_sheet(stockRows);
 
   // Largeur des colonnes
   stockSheet['!cols'] = [
-    { wch: 12 },  // Date
     { wch: 30 },  // Produit
-    { wch: 12 },  // Quantité
-    { wch: 15 },  // Prix Entraîneur
+    { wch: 15 },  // Stock initial
+    { wch: 20 },  // Rajout du dd/mm/yyyy
+    { wch: 15 },  // Quantité totale
+    { wch: 18 },  // Prix Entraîneur
+    { wch: 18 },  // Valeur Stock
   ];
 
-  // Appliquer le format monétaire à la colonne Prix Entraîneur
+  // Appliquer les formats
   const range = XLSX.utils.decode_range(stockSheet['!ref'] || 'A1');
   for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-    // Prix Entraîneur (colonne D - index 3)
-    const cellD = XLSX.utils.encode_cell({ r: R, c: 3 });
-    if (stockSheet[cellD] && typeof stockSheet[cellD].v === 'number') {
-      stockSheet[cellD].z = '#,##0.00 "€"';
+    // Prix Entraîneur (colonne E - index 4)
+    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
+    if (stockSheet[cellE] && typeof stockSheet[cellE].v === 'number') {
+      stockSheet[cellE].z = '#,##0.00 "€"';
+    }
+    
+    // Valeur Stock (colonne F - index 5)
+    const cellF = XLSX.utils.encode_cell({ r: R, c: 5 });
+    if (stockSheet[cellF] && typeof stockSheet[cellF].v === 'number') {
+      stockSheet[cellF].z = '#,##0.00 "€"';
     }
   }
 
