@@ -259,78 +259,126 @@ export type ExportStockAdditionData = {
   productName: string;
   quantity: number;
   trainerPrice: number;
-  initialStock?: number; // Stock initial avant l'ajout
+};
+
+type ProductData = {
+  id: number;
+  name: string;
+  quantity: number;
+  trainerPrice: number;
 };
 
 export async function exportStockToExcel() {
   try {
-    const response = await fetch('/api/stock-additions/export');
-    if (!response.ok) throw new Error('Erreur lors de la récupération des données');
-    const data: ExportStockAdditionData[] = await response.json();
-    generateStockExcelFile(data);
+    const [additionsRes, productsRes] = await Promise.all([
+      fetch('/api/stock-additions/export'),
+      fetch('/api/products')
+    ]);
+
+    if (!additionsRes.ok) throw new Error('Erreur lors de la récupération des ajouts de stock');
+    if (!productsRes.ok) throw new Error('Erreur lors de la récupération des produits');
+
+    const additions: ExportStockAdditionData[] = await additionsRes.json();
+    const products: ProductData[] = await productsRes.json();
+    generateStockExcelFile(additions, products);
   } catch (error) {
     console.error('Erreur export stock:', error);
     throw error;
   }
 }
 
-function generateStockExcelFile(data: ExportStockAdditionData[]) {
-  // Créer les lignes pour l'export
-  const stockRows = data.map(addition => {
-    const initialStock = addition.initialStock || 0;
-    const addedQuantity = addition.quantity;
-    const totalQuantity = initialStock + addedQuantity;
-    const stockValue = addition.trainerPrice * totalQuantity;
-    
+function generateStockExcelFile(data: ExportStockAdditionData[], products: ProductData[]) {
+  // ============================================
+  // FEUILLE 1 : Historique des ajouts par date
+  // ============================================
+
+  // Grouper les données par produit et date
+  const productMap = new Map<string, Map<string, number>>();
+  const allDates = new Set<string>();
+
+  data.forEach(addition => {
     const formattedDate = new Date(addition.date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     });
 
-    return {
-      'Produit': addition.productName,
-      'Stock initial': initialStock,
-      [`Rajout du ${formattedDate}`]: addedQuantity,
-      'Quantité totale': totalQuantity,
-      'Prix Entraîneur': addition.trainerPrice,
-      'Valeur Stock': stockValue
-    };
+    allDates.add(formattedDate);
+
+    if (!productMap.has(addition.productName)) {
+      productMap.set(addition.productName, new Map());
+    }
+
+    const dateMap = productMap.get(addition.productName)!;
+    const currentQty = dateMap.get(formattedDate) || 0;
+    dateMap.set(formattedDate, currentQty + addition.quantity);
   });
 
-  const stockSheet = XLSX.utils.json_to_sheet(stockRows);
+  // Trier les dates chronologiquement
+  const sortedDates = Array.from(allDates).sort((a, b) => {
+    const [dayA, monthA, yearA] = a.split('/').map(Number);
+    const [dayB, monthB, yearB] = b.split('/').map(Number);
+    return new Date(yearA, monthA - 1, dayA).getTime() - new Date(yearB, monthB - 1, dayB).getTime();
+  });
 
-  // Largeur des colonnes
-  stockSheet['!cols'] = [
-    { wch: 30 },  // Produit
-    { wch: 15 },  // Stock initial
-    { wch: 20 },  // Rajout du dd/mm/yyyy
-    { wch: 15 },  // Quantité totale
-    { wch: 18 },  // Prix Entraîneur
-    { wch: 18 },  // Valeur Stock
+  // Créer les lignes pour la feuille 1
+  const historyRows = Array.from(productMap.entries()).map(([productName, dateMap]) => {
+    const row: Record<string, string | number> = { 'Produit': productName };
+
+    sortedDates.forEach(date => {
+      row[date] = dateMap.get(date) || 0;
+    });
+
+    return row;
+  });
+
+  const historySheet = XLSX.utils.json_to_sheet(historyRows);
+
+  // Largeur des colonnes pour la feuille 1
+  const colWidths = [{ wch: 30 }];
+  sortedDates.forEach(() => colWidths.push({ wch: 15 }));
+  historySheet['!cols'] = colWidths;
+
+  // ============================================
+  // FEUILLE 2 : Stock actuel et valeur
+  // ============================================
+
+  const valueRows = products.map(product => ({
+    'Produit': product.name,
+    'Stock Actuel': product.quantity,
+    'Prix Entraîneur': formatPrice(Number(product.trainerPrice)),
+    'Valeur Stock': formatPrice(product.quantity * Number(product.trainerPrice))
+  }));
+
+  const valueSheet = XLSX.utils.json_to_sheet(valueRows);
+
+  valueSheet['!cols'] = [
+    { wch: 30 },
+    { wch: 15 },
+    { wch: 18 },
+    { wch: 18 },
   ];
 
-  // Appliquer les formats
-  const range = XLSX.utils.decode_range(stockSheet['!ref'] || 'A1');
+  // Formater les prix (colonnes C et D)
+  const range = XLSX.utils.decode_range(valueSheet['!ref'] || 'A1');
   for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-    // Prix Entraîneur (colonne E - index 4)
-    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
-    if (stockSheet[cellE] && typeof stockSheet[cellE].v === 'number') {
-      stockSheet[cellE].z = '#,##0.00 "€"';
+    const cellC = XLSX.utils.encode_cell({ r: R, c: 2 });
+    if (valueSheet[cellC] && typeof valueSheet[cellC].v === 'number') {
+      valueSheet[cellC].z = '#,##0.00 "€"';
     }
-    
-    // Valeur Stock (colonne F - index 5)
-    const cellF = XLSX.utils.encode_cell({ r: R, c: 5 });
-    if (stockSheet[cellF] && typeof stockSheet[cellF].v === 'number') {
-      stockSheet[cellF].z = '#,##0.00 "€"';
+    const cellD = XLSX.utils.encode_cell({ r: R, c: 3 });
+    if (valueSheet[cellD] && typeof valueSheet[cellD].v === 'number') {
+      valueSheet[cellD].z = '#,##0.00 "€"';
     }
   }
 
-  // Créer le classeur
+  // ============================================
+  // Créer le classeur avec les deux feuilles
+  // ============================================
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, stockSheet, 'Ajouts de Stock');
+  XLSX.utils.book_append_sheet(workbook, historySheet, 'Historique Ajouts');
+  XLSX.utils.book_append_sheet(workbook, valueSheet, 'Stock et Valeur');
 
-  // Télécharger le fichier
   const filenameDate = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
-  XLSX.writeFile(workbook, `ajouts-stock-${filenameDate}.xlsx`);
+  XLSX.writeFile(workbook, `stock-${filenameDate}.xlsx`);
 }
