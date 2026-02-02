@@ -343,6 +343,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                             setSelectedUser(user);
                             setUserSearch('');
                             setShowUserDropdown(false);
+                            setTimeout(() => productSearchRef.current?.focus(), 0);
                           }}
                           className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
                         >
