@@ -83,7 +83,7 @@ export default function DailyOrdersPage() {
   const [showTrouModal, setShowTrouModal] = useState(false);
   const [showRetraitModal, setShowRetraitModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showDailyStockModal, setShowDailyStockModal] = useState(true);
+  const [showDailyStockModal, setShowDailyStockModal] = useState(false);
 
 
   useEffect(() => {
