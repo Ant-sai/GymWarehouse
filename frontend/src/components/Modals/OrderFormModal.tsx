@@ -67,7 +67,8 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [userManuallyCleared, setUserManuallyCleared] = useState(false);
 
-  // Ref pour le champ de recherche produit
+  // Refs pour les champs de recherche
+  const userSearchRef = useRef<HTMLInputElement>(null);
   const productSearchRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
@@ -93,8 +94,14 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setDiscountComment(initialDiscountComment);
       setUseTrainerPrice(initialUseTrainerPrice);
       setUserManuallyCleared(false);
+      // Focus sur le champ client en mode création, produit en mode édition
+      if (mode === 'create') {
+        setTimeout(() => userSearchRef.current?.focus(), 100);
+      } else {
+        setTimeout(() => productSearchRef.current?.focus(), 100);
+      }
     }
-  }, [isOpen, initialUser, initialCart, initialPaymentMethod, initialNotes, initialDiscountValue, initialDiscountComment, initialUseTrainerPrice]);
+  }, [isOpen, initialUser, initialCart, initialPaymentMethod, initialNotes, initialDiscountValue, initialDiscountComment, initialUseTrainerPrice, mode]);
 
   // Sélectionner automatiquement "Vente instantané" au premier chargement
   useEffect(() => {
@@ -316,6 +323,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
             <div className="flex gap-2">
               <div className="flex-1 relative user-search-container">
                 <input
+                  ref={userSearchRef}
                   type="text"
                   placeholder="Rechercher un client..."
                   value={userSearch}
