@@ -94,8 +94,8 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setDiscountComment(initialDiscountComment);
       setUseTrainerPrice(initialUseTrainerPrice);
       setUserManuallyCleared(false);
-      // Focus sur le champ client en mode création, produit en mode édition
-      if (mode === 'create') {
+      // Focus : produit si client déjà sélectionné (standby/édition), sinon client
+      if (mode === 'create' && !initialUser) {
         setTimeout(() => userSearchRef.current?.focus(), 100);
       } else {
         setTimeout(() => productSearchRef.current?.focus(), 100);
