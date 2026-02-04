@@ -57,6 +57,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<"QRCODE" | "CASH" | "ACCOUNT_DEBIT" | "FREE" | null>(initialPaymentMethod || null);
   const [notes, setNotes] = useState(initialNotes);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue);
+  const [discountInput, setDiscountInput] = useState(initialDiscountValue > 0 ? String(initialDiscountValue) : '');
   const [discountComment, setDiscountComment] = useState(initialDiscountComment);
   const [useTrainerPrice, setUseTrainerPrice] = useState(initialUseTrainerPrice);
 
@@ -91,6 +92,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
       setPaymentMethod(initialPaymentMethod || null);
       setNotes(initialNotes);
       setDiscountValue(initialDiscountValue);
+      setDiscountInput(initialDiscountValue > 0 ? String(initialDiscountValue) : '');
       setDiscountComment(initialDiscountComment);
       setUseTrainerPrice(initialUseTrainerPrice);
       setUserManuallyCleared(false);
@@ -297,6 +299,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     setPaymentMethod(null);
     setNotes("");
     setDiscountValue(0);
+    setDiscountInput('');
     setDiscountComment("");
     setUseTrainerPrice(false);
     setUserSearch("");
@@ -530,10 +533,11 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                       <input
                         type="text"
                         inputMode="decimal"
-                        value={discountValue}
+                        value={discountInput}
                         onChange={(e) => {
                           const val = e.target.value.replace(',', '.');
-                          if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                          if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                            setDiscountInput(val);
                             setDiscountValue(val === '' || val === '.' ? 0 : Number(val));
                           }
                         }}
@@ -545,6 +549,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                         <button
                           onClick={() => {
                             setDiscountValue(0);
+                            setDiscountInput('');
                             setDiscountComment("");
                           }}
                           className="text-red-500 text-sm hover:text-red-700 transition-colors"
