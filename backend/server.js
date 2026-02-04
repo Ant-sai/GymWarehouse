@@ -1384,7 +1384,7 @@ app.put('/api/orders/:id', async (req, res) => {
 
             if (existingReport) {
                 // Recalculer endingCash avec les nouveaux revenus
-                const endingCash = Number(existingReport.startingCash) + cashRevenue + Number(existingReport.trou);
+                const endingCash = Number(existingReport.startingCash) + cashRevenue + Number(existingReport.trou) + Number(existingReport.retrait || 0);
 
                 await prismaTransaction.dailyReport.update({
                     where: { date: orderDate },
@@ -1414,7 +1414,7 @@ app.put('/api/orders/:id', async (req, res) => {
 
                 let previousEndingCash = endingCash;
                 for (const report of subsequentReports) {
-                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou);
+                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou) + Number(report.retrait || 0);
 
                     await prismaTransaction.dailyReport.update({
                         where: { id: report.id },
@@ -1580,8 +1580,8 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 });
 
                 // Calculate new endingCash
-                // endingCash = startingCash + cashRevenue + trou (trou peut être négatif pour une dépense)
-                const endingCash = Number(dailyReport.startingCash) + cashRevenue + Number(dailyReport.trou);
+                // endingCash = startingCash + cashRevenue + trou + retrait
+                const endingCash = Number(dailyReport.startingCash) + cashRevenue + Number(dailyReport.trou) + Number(dailyReport.retrait || 0);
 
                 // Update the daily report
                 await prisma.dailyReport.update({
@@ -1613,7 +1613,7 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 // Update each subsequent report's startingCash and endingCash
                 let previousEndingCash = endingCash;
                 for (const report of subsequentReports) {
-                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou);
+                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou) + Number(report.retrait || 0);
 
                     await prisma.dailyReport.update({
                         where: { id: report.id },
@@ -1773,7 +1773,8 @@ app.post('/api/refunds', async (req, res) => {
             if (existingReport) {
                 // Rapport existe : mettre à jour les revenus et recalculer endingCash
                 const trou = Number(existingReport.trou) || 0;
-                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou;
+                const retrait = Number(existingReport.retrait || 0);
+                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou + retrait;
 
                 await prismaTransaction.dailyReport.update({
                     where: { date: refundDate },
@@ -1803,7 +1804,7 @@ app.post('/api/refunds', async (req, res) => {
 
                 let previousEndingCash = endingCash;
                 for (const report of subsequentReports) {
-                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou);
+                    const newEndingCash = Number(previousEndingCash) + Number(report.cashRevenue) + Number(report.trou) + Number(report.retrait || 0);
 
                     await prismaTransaction.dailyReport.update({
                         where: { id: report.id },
@@ -2094,7 +2095,8 @@ app.put('/api/daily-reports/:date', async (req, res) => {
         });
 
         const nouvelleTrou = trou !== undefined ? Number(trou) : 0;
-        const endingCash = startingCash + cashRevenue + nouvelleTrou;
+        const nouveauRetrait = retrait !== undefined ? Number(retrait) : 0;
+        const endingCash = startingCash + cashRevenue + nouvelleTrou + nouveauRetrait;
 
         const dailyReport = await prisma.dailyReport.create({
             data: {
@@ -2104,6 +2106,7 @@ app.put('/api/daily-reports/:date', async (req, res) => {
                 qrRevenue,
                 creditRevenue,
                 trou: nouvelleTrou,
+                retrait: nouveauRetrait,
                 endingCash
             }
         });
@@ -2185,9 +2188,10 @@ app.post('/api/daily-reports', async (req, res) => {
             }
         });
 
-        // Formule: endingCash = startingCash + cashRevenue + trou (le trou est négatif)
+        // Formule: endingCash = startingCash + cashRevenue + trou + retrait
         const trouValue = trou !== undefined ? Number(trou) : 0;
-        const endingCash = startingCash + cashRevenue + trouValue;
+        const retraitValue = retrait !== undefined ? Number(retrait) : 0;
+        const endingCash = startingCash + cashRevenue + trouValue + retraitValue;
 
         // Créer ou mettre à jour le rapport
         const dailyReport = await prisma.dailyReport.upsert({
@@ -2199,6 +2203,7 @@ app.post('/api/daily-reports', async (req, res) => {
                 qrRevenue,
                 creditRevenue,
                 trou: trouValue,
+                retrait: retraitValue,
                 endingCash,
                 notes,
                 closedBy
@@ -2210,6 +2215,7 @@ app.post('/api/daily-reports', async (req, res) => {
                 qrRevenue,
                 creditRevenue,
                 trou: trouValue,
+                retrait: retraitValue,
                 endingCash,
                 notes,
                 closedBy
@@ -2303,7 +2309,8 @@ app.get('/api/daily-reports/:date', async (req, res) => {
             });
 
             const trou = 0; // Par défaut, pas de trou
-            const endingCash = startingCash + cashRevenue + trou;
+            const retraitDefault = 0; // Par défaut, pas de retrait
+            const endingCash = startingCash + cashRevenue + trou + retraitDefault;
 
             console.log(`   💰 Calcul du rapport:`);
             console.log(`      - startingCash: ${startingCash}€`);
@@ -2311,6 +2318,7 @@ app.get('/api/daily-reports/:date', async (req, res) => {
             console.log(`      - qrRevenue: ${qrRevenue}€`);
             console.log(`      - creditRevenue: ${creditRevenue}€`);
             console.log(`      - trou: ${trou}€`);
+            console.log(`      - retrait: ${retraitDefault}€`);
             console.log(`      - endingCash: ${endingCash}€`);
 
             // Créer le rapport
@@ -2322,6 +2330,7 @@ app.get('/api/daily-reports/:date', async (req, res) => {
                     qrRevenue,
                     creditRevenue,
                     trou,
+                    retrait: retraitDefault,
                     endingCash
                 }
             });
