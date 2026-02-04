@@ -528,12 +528,15 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                     <>
                       <label className="text-sm font-medium text-gray-700">Réduction:</label>
                       <input
-                        type="number"
-                        min="0"
-                        max={calculateSubtotal()}
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={discountValue}
-                        onChange={(e) => setDiscountValue(Number(e.target.value))}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(',', '.');
+                          if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                            setDiscountValue(val === '' || val === '.' ? 0 : Number(val));
+                          }
+                        }}
                         className="border rounded px-2 py-1 text-sm w-20 outline-none focus:ring-2 focus:ring-blue-300"
                         placeholder="0.00"
                       />
