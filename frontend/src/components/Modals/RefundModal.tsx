@@ -40,7 +40,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
     }
 
     const refundAmount = Number(amount);
-    if (isNaN(refundAmount) || refundAmount <= 0) {
+    if (isNaN(refundAmount) || refundAmount === 0) {
       alert('Veuillez entrer un montant valide');
       return;
     }
@@ -135,7 +135,6 @@ export const RefundModal: React.FC<RefundModalProps> = ({
             <input
               type="number"
               step="0.01"
-              min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
@@ -143,8 +142,8 @@ export const RefundModal: React.FC<RefundModalProps> = ({
               required
             />
             
-            {calculateNewBalance() !== null && (
-              <div className="text-sm mt-2 text-green-600">
+            {calculateNewBalance() !== null && Number(amount) !== 0 && (
+              <div className={`text-sm mt-2 ${Number(amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>
                 Nouveau solde: <span className="font-medium">
                   {calculateNewBalance()!.toFixed(2)}€
                 </span>

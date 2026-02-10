@@ -1675,9 +1675,9 @@ app.post('/api/refunds', async (req, res) => {
         }
         
         const refundAmount = Number(amount);
-        if (isNaN(refundAmount) || refundAmount <= 0) {
+        if (isNaN(refundAmount) || refundAmount === 0) {
             return res.status(400).json({
-                error: 'Le montant du remboursement doit être positif'
+                error: 'Le montant du remboursement ne peut pas être zéro'
             });
         }
         

@@ -393,7 +393,7 @@ export default function DailyOrdersPage() {
     }
 
     const amount = Number(refundAmount);
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(amount) || amount === 0) {
       alert("Veuillez entrer un montant valide");
       return;
     }
@@ -808,13 +808,12 @@ export default function DailyOrdersPage() {
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(e.target.value)}
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     placeholder="0.00"
                   />
-                  {refundUser && refundAmount && Number(refundAmount) > 0 && (
+                  {refundUser && refundAmount && Number(refundAmount) !== 0 && (
                     <div className="text-sm mt-2 text-green-600">
                       Nouveau solde: <span className="font-medium">
                         {(Number(refundUser.balance) + Number(refundAmount)).toFixed(2)}€
@@ -871,7 +870,7 @@ export default function DailyOrdersPage() {
                 </button>
                 <button
                   onClick={handleRefund}
-                  disabled={saving || !refundUser || !refundAmount || Number(refundAmount) <= 0 || !refundPaymentMethod}
+                  disabled={saving || !refundUser || !refundAmount || Number(refundAmount) === 0 || isNaN(Number(refundAmount)) || !refundPaymentMethod}
                   className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Remboursement..." : "Effectuer le remboursement"}
