@@ -80,6 +80,12 @@ export default function DailyOrdersPage() {
   const [showEditOrderForm, setShowEditOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
+  const [showEditRefundForm, setShowEditRefundForm] = useState(false);
+  const [editingRefundOrder, setEditingRefundOrder] = useState<Order | null>(null);
+  const [editRefundAmount, setEditRefundAmount] = useState<string>("");
+  const [editRefundPaymentMethod, setEditRefundPaymentMethod] = useState<"CASH" | "QRCODE" | null>(null);
+  const [editRefundNotes, setEditRefundNotes] = useState("");
+
   const [showTrouModal, setShowTrouModal] = useState(false);
   const [showRetraitModal, setShowRetraitModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -540,8 +546,58 @@ export default function DailyOrdersPage() {
   }
 
   function openEditOrderForm(order: Order) {
-    setEditingOrder(order);
-    setShowEditOrderForm(true);
+    if (order.notes?.startsWith("[REMBOURSEMENT CRÉDIT]")) {
+      // Extract the notes without the prefix
+      const notesWithoutPrefix = order.notes.replace("[REMBOURSEMENT CRÉDIT] ", "").replace("[REMBOURSEMENT CRÉDIT]", "");
+      setEditingRefundOrder(order);
+      setEditRefundAmount(String(order.totalAmount));
+      setEditRefundPaymentMethod(order.paymentMethod as "CASH" | "QRCODE");
+      setEditRefundNotes(notesWithoutPrefix === "Remboursement de dette" ? "" : notesWithoutPrefix);
+      setShowEditRefundForm(true);
+    } else {
+      setEditingOrder(order);
+      setShowEditOrderForm(true);
+    }
+  }
+
+  async function handleUpdateRefund() {
+    if (!editingRefundOrder) return;
+    const amount = Number(editRefundAmount);
+    if (isNaN(amount) || amount === 0) {
+      alert("Veuillez entrer un montant valide");
+      return;
+    }
+    if (!editRefundPaymentMethod) {
+      alert("Veuillez sélectionner une méthode de paiement");
+      return;
+    }
+    setSaving(true);
+    try {
+      const notesValue = `[REMBOURSEMENT CRÉDIT] ${editRefundNotes || "Remboursement de dette"}`;
+      const response = await fetch(`/api/orders/${editingRefundOrder.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: editingRefundOrder.client.id,
+          paymentMethod: editRefundPaymentMethod,
+          notes: notesValue,
+          totalAmount: amount,
+          products: [],
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+      setShowEditRefundForm(false);
+      setEditingRefundOrder(null);
+      await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate), fetchUsers()]);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Impossible de modifier le remboursement";
+      alert(errorMessage);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleUpdateOrderModal(orderId: number, orderData: CreateOrderData) {
@@ -874,6 +930,94 @@ export default function DailyOrdersPage() {
                   className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Remboursement..." : "Effectuer le remboursement"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal modification remboursement */}
+        {showEditRefundForm && editingRefundOrder && (
+          <div className="fixed inset-0 flex items-center justify-center z-40">
+            <div className="absolute inset-0 bg-black/30" onClick={() => setShowEditRefundForm(false)} />
+            <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
+              <h3 className="text-xl font-semibold mb-6 text-black">Modifier le remboursement</h3>
+
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <div className="font-medium text-blue-900">
+                    {editingRefundOrder.client ? [editingRefundOrder.client.firstName, editingRefundOrder.client.lastName].filter(Boolean).join(" ") || "Utilisateur sans nom" : "Client inconnu"}
+                  </div>
+                  <div className="text-sm text-blue-700">
+                    Solde actuel: <span className="font-medium">{Number(editingRefundOrder.client?.balance ?? 0).toFixed(2)}€</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Montant du remboursement (€) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editRefundAmount}
+                    onChange={(e) => setEditRefundAmount(e.target.value)}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Moyen de paiement *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditRefundPaymentMethod("CASH")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${editRefundPaymentMethod === "CASH" ? "border-green-500 bg-green-50 text-green-700 font-semibold" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"}`}
+                    >
+                      💵 Espèces
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditRefundPaymentMethod("QRCODE")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-all ${editRefundPaymentMethod === "QRCODE" ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"}`}
+                    >
+                      📱 QR Code
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={editRefundNotes}
+                    onChange={(e) => setEditRefundNotes(e.target.value)}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Notes optionnelles..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditRefundForm(false); setEditingRefundOrder(null); }}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={saving}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleUpdateRefund}
+                  disabled={saving || !editRefundAmount || Number(editRefundAmount) === 0 || isNaN(Number(editRefundAmount)) || !editRefundPaymentMethod}
+                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Modification..." : "Modifier le remboursement"}
                 </button>
               </div>
             </div>
