@@ -8,6 +8,7 @@ type DailyStockItem = {
   price: number;
   trainerPrice: number;
   dailyStockId: number | null;
+  displayOrder: number;
 };
 
 type Product = {
@@ -107,6 +108,31 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
       setError("Impossible de modifier le stock");
     } finally {
       setSaving(null);
+    }
+  }
+
+  async function handleMove(index: number, direction: 'up' | 'down') {
+    const newStocks = [...stocks];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newStocks.length) return;
+
+    // Swap
+    [newStocks[index], newStocks[targetIndex]] = [newStocks[targetIndex], newStocks[index]];
+    setStocks(newStocks);
+
+    // Persist new displayOrder
+    try {
+      await fetch('/api/products/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orders: newStocks.map((item, i) => ({ id: item.productId, displayOrder: i }))
+        })
+      });
+    } catch (err) {
+      console.error('Erreur lors du réordonnancement:', err);
+      setError("Impossible de sauvegarder l'ordre");
+      await fetchDailyStock();
     }
   }
 
@@ -211,6 +237,7 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
+                    <th className="text-left px-3 py-2 text-sm font-medium text-gray-700 w-8"></th>
                     <th className="text-left px-3 py-2 text-sm font-medium text-gray-700">Produit</th>
                     <th className="text-center px-3 py-2 text-sm font-medium text-gray-700">Stock Principal</th>
                     <th className="text-center px-3 py-2 text-sm font-medium text-gray-700">Stock Journalier</th>
@@ -218,8 +245,24 @@ export function DailyStockModal({ isOpen, date, onClose, onStockUpdated }: Daily
                   </tr>
                 </thead>
 <tbody>
-  {stocks.map((item) => (
+  {stocks.map((item, index) => (
     <tr key={item.productId} className="border-b border-gray-100 hover:bg-gray-50">
+      <td className="px-2 py-2">
+        <div className="flex flex-col gap-0.5">
+          <button
+            onClick={() => handleMove(index, 'up')}
+            disabled={index === 0}
+            className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed text-xs leading-none"
+            title="Monter"
+          >▲</button>
+          <button
+            onClick={() => handleMove(index, 'down')}
+            disabled={index === stocks.length - 1}
+            className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed text-xs leading-none"
+            title="Descendre"
+          >▼</button>
+        </div>
+      </td>
       <td className="px-3 py-2">
         <div className="font-medium text-gray-900 text-sm">{item.productName}</div>
       </td>

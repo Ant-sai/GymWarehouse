@@ -2464,13 +2464,14 @@ app.get('/api/daily-stock/:date', async (req, res) => {
         // Get all products with daily stock enabled
         const productsWithDailyStock = await prisma.product.findMany({
             where: { hasDailyStock: true },
-            orderBy: { name: 'asc' },
+            orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
             select: {
                 id: true,
                 name: true,
                 quantity: true,
                 price: true,
-                trainerPrice: true
+                trainerPrice: true,
+                displayOrder: true
             }
         });
 
@@ -2501,7 +2502,8 @@ app.get('/api/daily-stock/:date', async (req, res) => {
             dailyStock: stockMap.has(product.id) ? stockMap.get(product.id).quantity : 0,
             price: product.price,
             trainerPrice: product.trainerPrice,
-            dailyStockId: stockMap.has(product.id) ? stockMap.get(product.id).id : null
+            dailyStockId: stockMap.has(product.id) ? stockMap.get(product.id).id : null,
+            displayOrder: product.displayOrder
         }));
 
         res.json({
