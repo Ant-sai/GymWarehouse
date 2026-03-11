@@ -573,16 +573,13 @@ export default function DailyOrdersPage() {
     }
     setSaving(true);
     try {
-      const notesValue = `[REMBOURSEMENT CRÉDIT] ${editRefundNotes || "Remboursement de dette"}`;
-      const response = await fetch(`/api/orders/${editingRefundOrder.id}`, {
+      const response = await fetch(`/api/refunds/${editingRefundOrder.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientId: editingRefundOrder.client.id,
+          amount,
           paymentMethod: editRefundPaymentMethod,
-          notes: notesValue,
-          totalAmount: amount,
-          products: [],
+          notes: editRefundNotes,
         }),
       });
       if (!response.ok) {

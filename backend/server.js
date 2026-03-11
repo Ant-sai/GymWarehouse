@@ -1859,6 +1859,82 @@ app.post('/api/refunds', async (req, res) => {
     }
 });
 
+// Update a refund (credit remboursement)
+app.put('/api/refunds/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, paymentMethod, notes } = req.body;
+
+        if (!amount || !paymentMethod) {
+            return res.status(400).json({ error: 'Champs requis manquants: amount, paymentMethod' });
+        }
+
+        const refundAmount = Number(amount);
+        if (isNaN(refundAmount) || refundAmount === 0) {
+            return res.status(400).json({ error: 'Montant invalide' });
+        }
+
+        // Récupérer l'order original
+        const existingOrder = await prisma.order.findUnique({
+            where: { id: Number(id) },
+            include: { client: true }
+        });
+
+        if (!existingOrder) {
+            return res.status(404).json({ error: 'Remboursement introuvable' });
+        }
+
+        const oldAmount = Number(existingOrder.totalAmount);
+        const amountDiff = refundAmount - oldAmount;
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Mettre à jour l'order
+            const updatedOrder = await tx.order.update({
+                where: { id: Number(id) },
+                data: {
+                    totalAmount: refundAmount,
+                    paymentMethod,
+                    notes: `[REMBOURSEMENT CRÉDIT] ${notes || 'Remboursement de dette'}`
+                },
+                include: { client: { select: { id: true, firstName: true, lastName: true, role: true, balance: true } } }
+            });
+
+            // Ajuster le solde du client selon la différence
+            const updatedUser = await tx.user.update({
+                where: { id: existingOrder.clientId },
+                data: { balance: { increment: amountDiff } }
+            });
+
+            // Mettre à jour le rapport journalier
+            const orderDate = new Date(existingOrder.date);
+            orderDate.setHours(0, 0, 0, 0);
+
+            const report = await tx.dailyReport.findUnique({ where: { date: orderDate } });
+            if (report) {
+                const cashDiff = paymentMethod === 'CASH' ? (existingOrder.paymentMethod === 'CASH' ? amountDiff : refundAmount) : 0;
+                const qrDiff = paymentMethod === 'QRCODE' ? (existingOrder.paymentMethod === 'QRCODE' ? amountDiff : refundAmount) : 0;
+                const oldCashDiff = existingOrder.paymentMethod === 'CASH' && paymentMethod !== 'CASH' ? -oldAmount : 0;
+                const oldQrDiff = existingOrder.paymentMethod === 'QRCODE' && paymentMethod !== 'QRCODE' ? -oldAmount : 0;
+
+                await tx.dailyReport.update({
+                    where: { date: orderDate },
+                    data: {
+                        cashRevenue: { increment: cashDiff + oldCashDiff },
+                        qrRevenue: { increment: qrDiff + oldQrDiff }
+                    }
+                });
+            }
+
+            return { order: updatedOrder, newBalance: updatedUser.balance };
+        });
+
+        res.json(result);
+    } catch (err) {
+        console.error('Error updating refund:', err);
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
 // Get previous day report
 app.get('/api/daily-reports/previous/:date', async (req, res) => {
     try {
