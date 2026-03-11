@@ -1516,7 +1516,9 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                 }
             }
             // Restore balance if payment was by account debit
+            // OR reverse balance credit if it was a credit refund
             let balanceRestored = 0;
+            const isRefund = existingOrder.notes && existingOrder.notes.startsWith('[REMBOURSEMENT CRÉDIT]');
             if (existingOrder.paymentMethod === 'ACCOUNT_DEBIT') {
                 await prisma.user.update({
                     where: { id: existingOrder.clientId },
@@ -1527,6 +1529,17 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                     }
                 });
                 balanceRestored = existingOrder.totalAmount;
+            } else if (isRefund) {
+                // The refund had credited the account — reverse it
+                await prisma.user.update({
+                    where: { id: existingOrder.clientId },
+                    data: {
+                        balance: {
+                            decrement: existingOrder.totalAmount
+                        }
+                    }
+                });
+                balanceRestored = -existingOrder.totalAmount;
             }
             // Delete OrderDetails
             await prisma.orderDetail.deleteMany({
