@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
@@ -79,6 +79,21 @@ export default function DailyOrdersPage() {
 
   const [showEditOrderForm, setShowEditOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+
+  const refundSearchRef = useRef<HTMLInputElement>(null);
+  const refundAmountRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showRefundForm) {
+      setTimeout(() => refundSearchRef.current?.focus(), 50);
+    }
+  }, [showRefundForm]);
+
+  useEffect(() => {
+    if (refundUser) {
+      setTimeout(() => refundAmountRef.current?.focus(), 50);
+    }
+  }, [refundUser]);
 
   const [showEditRefundForm, setShowEditRefundForm] = useState(false);
   const [editingRefundOrder, setEditingRefundOrder] = useState<Order | null>(null);
@@ -787,6 +802,7 @@ export default function DailyOrdersPage() {
 
                   {/* Champ de recherche */}
                   <input
+                    ref={refundSearchRef}
                     type="text"
                     placeholder="Rechercher un membre..."
                     value={refundUserSearch}
@@ -859,6 +875,7 @@ export default function DailyOrdersPage() {
                     Montant du remboursement (€) *
                   </label>
                   <input
+                    ref={refundAmountRef}
                     type="number"
                     step="0.01"
                     value={refundAmount}
