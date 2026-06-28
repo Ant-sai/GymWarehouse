@@ -61,7 +61,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           onClick={onNewAbonnement}
           className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
         >
-          Abonnement 
+          Visite 
         </button>
         <button
           onClick={onNewOrder}
