@@ -105,6 +105,11 @@ export default function DailyOrdersPage() {
   const [showRetraitModal, setShowRetraitModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDailyStockModal, setShowDailyStockModal] = useState(false);
+  const [showAbonnementModal, setShowAbonnementModal] = useState(false);
+  const [abonnementUser, setAbonnementUser] = useState<User | null>(null);
+  const [abonnementDate, setAbonnementDate] = useState<string>("");
+  const [abonnementUserSearch, setAbonnementUserSearch] = useState("");
+  const [savingAbonnement, setSavingAbonnement] = useState(false);
 
 
   useEffect(() => {
@@ -509,6 +514,43 @@ export default function DailyOrdersPage() {
       throw err;
     }
   }
+   async function handleSaveAbonnement() {
+  if (!abonnementUser) {
+    alert("Veuillez sélectionner un membre");
+    return;
+  }
+  if (!abonnementDate) {
+    alert("Veuillez sélectionner une date de fin d'abonnement");
+    return;
+  }
+
+  setSavingAbonnement(true);
+  try {
+    const response = await fetch(`/api/users/${abonnementUser.id}/subscription`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subscriptionEndDate: new Date(abonnementDate).toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+    }
+
+    setShowAbonnementModal(false);
+    setAbonnementUser(null);
+    setAbonnementDate("");
+    setAbonnementUserSearch("");
+    await fetchUsers();
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Impossible de mettre à jour l'abonnement";
+    alert(errorMessage);
+  } finally {
+    setSavingAbonnement(false);
+  }
+}
 
   async function handleEditProduct(e?: React.FormEvent) {
     e?.preventDefault();
@@ -651,6 +693,7 @@ export default function DailyOrdersPage() {
           onRefund={() => setShowRefundForm(true)}
           onStandby={() => setShowStandbyList(true)}
           onDailyStock={() => setShowDailyStockModal(true)}
+          onNewAbonnement={() => setShowAbonnementModal(true)}
           standbyCount={standbyOrders.length}
           loading={loading}
           selectedDate={selectedDate}
@@ -1272,6 +1315,139 @@ export default function DailyOrdersPage() {
           onClose={() => setShowDailyStockModal(false)}
           onStockUpdated={fetchProducts}
         />
+        {/* Modal Abonnement */}
+{showAbonnementModal && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black/40" onClick={() => setShowAbonnementModal(false)} />
+    <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
+      <h3 className="text-xl font-semibold mb-6 text-black">Gérer l'abonnement</h3>
+
+      <div className="space-y-4">
+        {/* Recherche membre */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Membre *
+          </label>
+          <input
+            type="text"
+            placeholder="Rechercher un membre..."
+            value={abonnementUserSearch}
+            onChange={(e) => {
+              setAbonnementUserSearch(e.target.value);
+              if (!e.target.value) setAbonnementUser(null);
+            }}
+            className="w-full mb-2 border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+
+          {/* Liste résultats */}
+          {abonnementUserSearch && !abonnementUser && (
+            <div className="border border-gray-300 rounded max-h-48 overflow-y-auto mb-2">
+              {users
+                .filter(u => getFullName(u).toLowerCase().includes(abonnementUserSearch.toLowerCase()))
+                .length === 0 ? (
+                <div className="p-3 text-center text-gray-500 text-sm">Aucun membre trouvé</div>
+              ) : (
+                users
+                  .filter(u => getFullName(u).toLowerCase().includes(abonnementUserSearch.toLowerCase()))
+                  .map(user => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => {
+                        setAbonnementUser(user);
+                        setAbonnementUserSearch(getFullName(user));
+                        // Pré-remplir la date si elle existe déjà
+                        if (user.subscriptionEndDate) {
+                          setAbonnementDate(
+                            new Date(user.subscriptionEndDate).toISOString().split('T')[0]
+                          );
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                    >
+                      <div className="font-medium">{getFullName(user)}</div>
+                      <div className="text-xs text-gray-500">
+                        {user.role === "TRAINER" ? "Entraîneur" : "Utilisateur"}
+                        {user.subscriptionEndDate && (
+                          <span className="ml-2 text-orange-600">
+                            • Abonnement jusqu'au {new Date(user.subscriptionEndDate).toLocaleDateString('fr-FR')}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+              )}
+            </div>
+          )}
+
+          {/* Membre sélectionné */}
+          {abonnementUser && (
+            <div className="p-3 bg-blue-50 rounded border border-blue-200">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-medium text-blue-900">{getFullName(abonnementUser)}</div>
+                  <div className="text-sm text-blue-700">
+                    {abonnementUser.role === "TRAINER" ? "Entraîneur" : "Utilisateur"}
+                    {abonnementUser.subscriptionEndDate && (
+                      <span className="ml-2">
+                        • Abonnement actuel jusqu'au{" "}
+                        {new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); }}
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  ✕ Changer
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Date picker */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Date de fin d'abonnement *
+          </label>
+          <input
+            type="date"
+            value={abonnementDate}
+            onChange={(e) => setAbonnementDate(e.target.value)}
+            min={new Date().toISOString().split('T')[0]}
+            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setShowAbonnementModal(false);
+            setAbonnementUser(null);
+            setAbonnementDate("");
+            setAbonnementUserSearch("");
+          }}
+          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+          disabled={savingAbonnement}
+        >
+          Annuler
+        </button>
+        <button
+          onClick={handleSaveAbonnement}
+          disabled={savingAbonnement || !abonnementUser || !abonnementDate}
+          className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {savingAbonnement ? "Enregistrement..." : "Confirmer"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </main>
     </div>
   );

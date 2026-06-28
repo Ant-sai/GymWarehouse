@@ -9,6 +9,7 @@ export type User = {
   lastName?: string;
   role: UserRole;
   balance: number;
+  subscriptionEndDate?: string | null;
 }
 
 export type Product = {

@@ -151,6 +151,7 @@ app.get('/api/users', async (req, res) => {
                 lastName: true,
                 role: true,
                 balance: true,
+                subscriptionEndDate: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -215,6 +216,52 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 });
 
+// -----------------------------------------------
+// ------------ Subscription routes --------------
+// -----------------------------------------------
+
+// Update subscription end date for a user
+app.patch('/api/users/:id/subscription', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { subscriptionEndDate } = req.body;
+
+        if (!subscriptionEndDate) {
+            return res.status(400).json({ error: 'subscriptionEndDate est requis' });
+        }
+
+        const parsedDate = new Date(subscriptionEndDate);
+        if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ error: 'Format de date invalide. Utilise le format ISO 8601' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: Number(id) }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur introuvable' });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(id) },
+            data: { subscriptionEndDate: parsedDate },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                balance: true,
+                subscriptionEndDate: true,
+            }
+        });
+
+        res.json(updatedUser);
+    } catch (err) {
+        console.error('Error updating subscription:', err);
+        res.status(500).json({ error: 'Failed to update subscription' });
+    }
+});
 
 // Get all users with their balance for Excel export
 app.get('/api/users/export/balances', async (req, res) => {
