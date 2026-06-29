@@ -1434,6 +1434,7 @@ export default function DailyOrdersPage() {
           ? new Date(abonnementUser!.subscriptionEndDate!)
           : new Date();
         base.setMonth(base.getMonth() + months);
+        base.setDate(base.getDate() - 1);
         setAbonnementDate(base.toISOString().split('T')[0]);
         setSelectedDuration(months);
       }}
