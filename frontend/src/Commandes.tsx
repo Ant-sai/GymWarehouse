@@ -889,7 +889,7 @@ export default function DailyOrdersPage() {
 
                   {/* Membre sélectionné */}
                   {refundUser && (
-                    <div className="p-3 bg-blue-50 rounded border border-blue-200 mb-2">
+                    <div className={`p-3 ${Number(refundUser.balance) >= 0 ? 'bg-green-50' : 'bg-red-50'} rounded border border-blue-200 mb-2`}>
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-medium text-blue-900">{getFullName(refundUser)}</div>
@@ -1382,7 +1382,7 @@ export default function DailyOrdersPage() {
 
           {/* Membre sélectionné */}
           {abonnementUser && (
-            <div className="p-3 bg-blue-50 rounded border border-blue-200">
+            <div className={`p-3 ${abonnementUser.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date() ? 'bg-green-50' : 'bg-red-50'} rounded border border-blue-200`}>
               <div className="flex justify-between items-start">
                 <div>
                   <div className="font-medium text-blue-900">{getFullName(abonnementUser)}</div>
