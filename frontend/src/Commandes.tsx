@@ -1409,18 +1409,46 @@ export default function DailyOrdersPage() {
         </div>
 
         {/* Date picker */}
-        <div>
+      <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Date de fin d'abonnement *
-          </label>
-          <input
-            type="date"
-            value={abonnementDate}
-            onChange={(e) => setAbonnementDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-            className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+    Date de fin d'abonnement *
+  </label>
+
+  {/* Boutons raccourcis */}
+  <div className="grid grid-cols-4 gap-2 mb-3">
+    {[
+      { label: "+1 mois", months: 1 },
+      { label: "+3 mois", months: 3 },
+      { label: "+6 mois", months: 6 },
+      { label: "+1 an", months: 12 },
+    ].map(({ label, months }) => (
+      <button
+        key={months}
+        type="button"
+        onClick={() => {
+          const base = abonnementDate
+            ? new Date(abonnementDate)
+            : new Date();
+          base.setMonth(base.getMonth() + months);
+          setAbonnementDate(base.toISOString().split('T')[0]);
+        }}
+        className="px-3 py-2 rounded-lg border-2 border-[#1E2A47] text-[#1E2A47] text-sm font-medium hover:bg-[#1E2A47] hover:text-white transition-all"
+      >
+        {label}
+      </button>
+    ))}
+  </div>
+    {/* Aperçu de la date sélectionnée */}
+  {abonnementDate && (
+    <p className="text-sm text-gray-500 mt-2">
+      Expire le : <span className="font-medium text-gray-700">
+        {new Date(abonnementDate).toLocaleDateString('fr-FR', {
+          day: 'numeric', month: 'long', year: 'numeric'
+        })}
+      </span>
+    </p>
+  )}
+      </div>
       </div>
 
       <div className="mt-6 flex justify-end gap-3">

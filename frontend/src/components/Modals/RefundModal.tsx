@@ -122,7 +122,10 @@ export const RefundModal: React.FC<RefundModalProps> = ({
             
             {selectedUser && (
               <div className="text-sm mt-2 text-gray-600">
-                Solde actuel: <span className="font-medium">{Number(selectedUser.balance).toFixed(2)}€</span>
+                Solde actuel:{" "}
+                <span className={`font-medium ${Number(selectedUser.balance) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {Number(selectedUser.balance).toFixed(2)}€
+                </span>
               </div>
             )}
           </div>
