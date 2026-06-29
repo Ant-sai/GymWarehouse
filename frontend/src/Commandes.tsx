@@ -1427,7 +1427,12 @@ export default function DailyOrdersPage() {
       key={months}
       type="button"
       onClick={() => {
-        const base = new Date();
+        const hasActiveSubscription =
+          abonnementUser?.subscriptionEndDate &&
+          new Date(abonnementUser.subscriptionEndDate) >= new Date();
+        const base = hasActiveSubscription
+          ? new Date(abonnementUser!.subscriptionEndDate!)
+          : new Date();
         base.setMonth(base.getMonth() + months);
         setAbonnementDate(base.toISOString().split('T')[0]);
         setSelectedDuration(months);
@@ -1462,11 +1467,24 @@ export default function DailyOrdersPage() {
     {/* Aperçu de la date sélectionnée */}
   {abonnementDate && (
     <p className="text-sm text-gray-500 mt-2">
-      Expire le : <span className="font-medium text-gray-700">
-        {new Date(abonnementDate).toLocaleDateString('fr-FR', {
-          day: 'numeric', month: 'long', year: 'numeric'
-        })}
-      </span>
+      {abonnementUser?.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date() ? (
+        <>
+          Prolongation depuis le{" "}
+          <span className="font-medium text-gray-700">
+            {new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+          {" "}— Expire le :{" "}
+          <span className="font-medium text-emerald-700">
+            {new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+        </>
+      ) : (
+        <>
+          Expire le : <span className="font-medium text-gray-700">
+            {new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+        </>
+      )}
     </p>
   )}
       </div>

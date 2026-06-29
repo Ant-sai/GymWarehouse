@@ -13,7 +13,8 @@
       "Bash(dir:*)",
       "Bash(findstr:*)",
       "Bash(npx prisma generate)",
-      "Bash(npx prisma db pull:*)"
+      "Bash(npx prisma db pull:*)",
+      "Bash(xargs -I {} bash -c \"ls -la {} | head -5\")"
     ]
   }
 }
