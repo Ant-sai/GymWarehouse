@@ -109,6 +109,7 @@ export default function DailyOrdersPage() {
   const [abonnementUser, setAbonnementUser] = useState<User | null>(null);
   const [abonnementDate, setAbonnementDate] = useState<string>("");
   const [abonnementUserSearch, setAbonnementUserSearch] = useState("");
+  const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
   const [savingAbonnement, setSavingAbonnement] = useState(false);
 
 
@@ -1415,29 +1416,49 @@ export default function DailyOrdersPage() {
   </label>
 
   {/* Boutons raccourcis */}
-  <div className="grid grid-cols-4 gap-2 mb-3">
-    {[
-      { label: "+1 mois", months: 1 },
-      { label: "+3 mois", months: 3 },
-      { label: "+6 mois", months: 6 },
-      { label: "+1 an", months: 12 },
-    ].map(({ label, months }) => (
-      <button
-        key={months}
-        type="button"
-        onClick={() => {
-          const base = abonnementDate
-            ? new Date(abonnementDate)
-            : new Date();
-          base.setMonth(base.getMonth() + months);
-          setAbonnementDate(base.toISOString().split('T')[0]);
-        }}
-        className="px-3 py-2 rounded-lg border-2 border-[#1E2A47] text-[#1E2A47] text-sm font-medium hover:bg-[#1E2A47] hover:text-white transition-all"
-      >
-        {label}
-      </button>
-    ))}
-  </div>
+<div className="grid grid-cols-4 gap-2 mb-3">
+  {[
+    { label: "+1 mois", months: 1 },
+    { label: "+3 mois", months: 3 },
+    { label: "+6 mois", months: 6 },
+    { label: "+1 an", months: 12 },
+  ].map(({ label, months }) => (
+    <button
+      key={months}
+      type="button"
+      onClick={() => {
+        const base = new Date();
+        base.setMonth(base.getMonth() + months);
+        setAbonnementDate(base.toISOString().split('T')[0]);
+        setSelectedDuration(months);
+      }}
+      className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+        selectedDuration === months
+          ? "border-[#1E2A47] bg-[#1E2A47] text-white"
+          : selectedDuration !== null
+          ? "border-gray-200 text-gray-400 cursor-not-allowed"
+          : "border-[#1E2A47] text-[#1E2A47] hover:bg-[#1E2A47] hover:text-white"
+      }`}
+      disabled={selectedDuration !== null && selectedDuration !== months}
+    >
+      {label}
+    </button>
+  ))}
+</div>
+
+{/* Bouton reset si on veut changer */}
+{selectedDuration !== null && (
+  <button
+    type="button"
+    onClick={() => {
+      setSelectedDuration(null);
+      setAbonnementDate("");
+    }}
+    className="text-xs text-gray-400 hover:text-gray-600 mb-2"
+  >
+    ✕ Changer la durée
+  </button>
+)}
     {/* Aperçu de la date sélectionnée */}
   {abonnementDate && (
     <p className="text-sm text-gray-500 mt-2">
