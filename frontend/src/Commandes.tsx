@@ -889,11 +889,11 @@ export default function DailyOrdersPage() {
 
                   {/* Membre sélectionné */}
                   {refundUser && (
-                    <div className={`p-3 ${Number(refundUser.balance) >= 0 ? 'bg-green-50' : 'bg-red-50'} rounded border border-blue-200 mb-2`}>
+                    <div className={`p-3 ${Number(refundUser.balance) >= 0 ? 'bg-emerald-50' : 'bg-red-50'} rounded border border-blue-200 mb-2`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-medium text-blue-900">{getFullName(refundUser)}</div>
-                          <div className="text-sm text-blue-700">
+                          <div className="font-medium text-black-900">{getFullName(refundUser)}</div>
+                          <div className="text-sm text-black-700">
                             Solde actuel: <span className="font-medium">{Number(refundUser.balance).toFixed(2)}€</span>
                             {refundUser.role === "TRAINER" && " • Entraîneur"}
                           </div>
@@ -904,7 +904,7 @@ export default function DailyOrdersPage() {
                             setRefundUser(null);
                             setRefundUserSearch("");
                           }}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
+                          className="text-black-600 hover:text-blue-800 text-sm"
                         >
                           ✕ Changer
                         </button>
@@ -1382,11 +1382,11 @@ export default function DailyOrdersPage() {
 
           {/* Membre sélectionné */}
           {abonnementUser && (
-            <div className={`p-3 ${abonnementUser.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date() ? 'bg-green-50' : 'bg-red-50'} rounded border border-blue-200`}>
+            <div className={`p-3 ${abonnementUser.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date() ? 'bg-emerald-50' : 'bg-red-50'} rounded border border-blue-200`}>
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="font-medium text-blue-900">{getFullName(abonnementUser)}</div>
-                  <div className="text-sm text-blue-700">
+                  <div className="font-medium text-black">{getFullName(abonnementUser)}</div>
+                  <div className="text-sm text-black">
                     {abonnementUser.role === "TRAINER" ? "Entraîneur" : "Utilisateur"}
                     {abonnementUser.subscriptionEndDate && (
                       <span className="ml-2">
@@ -1399,7 +1399,7 @@ export default function DailyOrdersPage() {
                 <button
                   type="button"
                   onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); }}
-                  className="text-blue-600 hover:text-blue-800 text-sm"
+                  className="text-blue-black hover:text-black-800 text-sm"
                 >
                   ✕ Changer
                 </button>
