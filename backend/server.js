@@ -2825,3 +2825,67 @@ app.post('/api/daily-stock/:date/initialize', async (req, res) => {
     }
 });
 
+// -----------------------------------------------
+// ------------ Daily Presence routes ------------
+// -----------------------------------------------
+
+// GET /api/daily-presence — Présences du jour
+app.get('/api/daily-presence', async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        const presences = await prisma.dailyPresence.findMany({
+            where: {
+                arrivedAt: { gte: today, lt: tomorrow },
+            },
+            include: {
+                member: {
+                    select: { id: true, firstName: true, lastName: true },
+                },
+            },
+            orderBy: { arrivedAt: 'desc' },
+        });
+
+        res.json(presences);
+    } catch (err) {
+        console.error('Error fetching daily presences:', err);
+        res.status(500).json({ error: 'Failed to fetch daily presences' });
+    }
+});
+
+// POST /api/daily-presence — Enregistrer une présence
+app.post('/api/daily-presence', async (req, res) => {
+    try {
+        const { memberId } = req.body;
+
+        if (!memberId) {
+            return res.status(400).json({ error: 'memberId est requis' });
+        }
+
+        const member = await prisma.user.findUnique({
+            where: { id: Number(memberId) },
+        });
+
+        if (!member) {
+            return res.status(404).json({ error: 'Membre introuvable' });
+        }
+
+        const presence = await prisma.dailyPresence.create({
+            data: { memberId: Number(memberId) },
+            include: {
+                member: {
+                    select: { id: true, firstName: true, lastName: true },
+                },
+            },
+        });
+
+        res.status(201).json(presence);
+    } catch (err) {
+        console.error('Error creating daily presence:', err);
+        res.status(500).json({ error: 'Failed to create daily presence' });
+    }
+});
+

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
+import { DailyPresenceSidebar } from './components/DailyPresenceSidebar';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { TrouModal } from './components/Modals/TrouModal';
 import { ExportModal } from './components/Modals/ExportModal';
@@ -686,8 +687,8 @@ export default function DailyOrdersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="p-8">
+    <div className="min-h-screen bg-gray-50 flex">
+      <main className="flex-1 min-w-0 p-8 overflow-auto">
         <PageHeader
           onRefresh={fetchOrders}
           onNewOrder={() => setShowForm(true)}
@@ -1517,6 +1518,7 @@ export default function DailyOrdersPage() {
   </div>
 )}
       </main>
+      <DailyPresenceSidebar users={users} />
     </div>
   );
 }

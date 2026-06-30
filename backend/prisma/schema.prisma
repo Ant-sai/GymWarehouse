@@ -1,3 +1,5 @@
+
+//Schema local
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,6 +15,7 @@ model User {
   lastName            String?
   role                Role            @default(USER)
   balance             Decimal         @default(0.00) @db.Decimal(10, 2)
+  subscriptionEndDate DateTime?       @map("subscription_end_date")
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
   cashMovements       CashMovement[]
@@ -20,6 +23,7 @@ model User {
   openedCashRegisters CashRegister[]  @relation("OpenedBy")
   orders              Order[]
   standbyOrders       StandbyOrder[]
+  dailyPresences      DailyPresence[]
 
   @@map("users")
 }
@@ -177,6 +181,17 @@ model StockAddition {
   @@index([productId], map: "stock_addition_productId_fkey")
   @@index([date], map: "stock_addition_date_idx")
   @@map("stock_additions")
+}
+
+model DailyPresence {
+  id        Int      @id @default(autoincrement())
+  memberId  Int      @map("member_id")
+  member    User     @relation(fields: [memberId], references: [id])
+  arrivedAt DateTime @default(now()) @map("arrived_at")
+
+  @@index([memberId], map: "daily_presence_memberId_fkey")
+  @@index([arrivedAt], map: "daily_presence_arrivedAt_idx")
+  @@map("daily_presences")
 }
 
 enum Role {
