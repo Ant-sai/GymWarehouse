@@ -68,7 +68,7 @@ export function DailyPresenceSidebar({ users }: Props) {
   }
 
   return (
-    <aside className="w-[300px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col h-screen sticky top-0">
+    <aside className="w-[150px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col h-screen sticky top-0">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
           Présences du jour
