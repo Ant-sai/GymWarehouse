@@ -1372,7 +1372,9 @@ export default function DailyOrdersPage() {
                         {user.role === "TRAINER" ? "Entraîneur" : "Utilisateur"}
                         {user.subscriptionEndDate && (
                           <span className="ml-2 text-orange-600">
-                            • Abonnement jusqu'au {new Date(user.subscriptionEndDate).toLocaleDateString('fr-FR')}
+                            {new Date(user.subscriptionEndDate).getFullYear() >= 2099
+                              ? '• Domiciliation'
+                              : `• Abonnement jusqu'au ${new Date(user.subscriptionEndDate).toLocaleDateString('fr-FR')}`}
                           </span>
                         )}
                       </div>
@@ -1383,31 +1385,33 @@ export default function DailyOrdersPage() {
           )}
 
           {/* Membre sélectionné */}
-          {abonnementUser && (
-            <div className={`p-3 ${abonnementUser.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date() ? 'bg-emerald-50' : 'bg-red-50'} rounded border border-blue-200`}>
-              <div className="flex justify-between items-start">
-                <div>
+          {abonnementUser && (() => {
+            const isValid = abonnementUser.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date();
+            const isDomi = abonnementUser.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate).getFullYear() >= 2099;
+            return (
+              <div className={`p-3 rounded border ${isValid ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`}>
+                <div className="flex justify-between items-center mb-1">
                   <div className="font-medium text-black">{getFullName(abonnementUser)}</div>
-                  <div className="text-sm text-black">
-                    {abonnementUser.role === "TRAINER" ? "Entraîneur" : "Utilisateur"}
-                    {abonnementUser.subscriptionEndDate && (
-                      <span className="ml-2">
-                        • Abonnement actuel jusqu'au{" "}
-                        {new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR')}
-                      </span>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); setSelectedDuration(null); }}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline"
+                  >
+                    Changer
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); }}
-                  className="text-blue-black hover:text-black-800 text-sm"
-                >
-                  ✕ Changer
-                </button>
+                {abonnementUser.subscriptionEndDate ? (
+                  <div className={`text-base font-semibold ${isValid ? 'text-green-700' : 'text-red-700'}`}>
+                    {isDomi
+                      ? 'Domiciliation (sans limite)'
+                      : `Jusqu'au ${new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                  </div>
+                ) : (
+                  <div className="text-sm font-medium text-red-700">Pas d'abonnement</div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Date picker */}
@@ -1417,17 +1421,23 @@ export default function DailyOrdersPage() {
   </label>
 
   {/* Boutons raccourcis */}
-<div className="grid grid-cols-4 gap-2 mb-3">
+<div className="grid grid-cols-5 gap-2 mb-3">
   {[
     { label: "+1 mois", months: 1 },
     { label: "+3 mois", months: 3 },
     { label: "+6 mois", months: 6 },
     { label: "+1 an", months: 12 },
+    { label: "Domi", months: 999 },
   ].map(({ label, months }) => (
     <button
       key={months}
       type="button"
       onClick={() => {
+        if (months === 999) {
+          setAbonnementDate('2099-12-31');
+          setSelectedDuration(999);
+          return;
+        }
         const hasActiveSubscription =
           abonnementUser?.subscriptionEndDate &&
           new Date(abonnementUser.subscriptionEndDate) >= new Date();
@@ -1468,25 +1478,13 @@ export default function DailyOrdersPage() {
 )}
     {/* Aperçu de la date sélectionnée */}
   {abonnementDate && (
-    <p className="text-sm text-gray-500 mt-2">
-      {abonnementUser?.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date() ? (
-        <>
-          Prolongation depuis le{" "}
-          <span className="font-medium text-gray-700">
-            {new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </span>
-          {" "}— Expire le :{" "}
-          <span className="font-medium text-emerald-700">
-            {new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </span>
-        </>
-      ) : (
-        <>
-          Expire le : <span className="font-medium text-gray-700">
-            {new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </span>
-        </>
-      )}
+    <p className="text-base font-semibold text-emerald-700 mt-2">
+      {abonnementDate === '2099-12-31'
+        ? 'Domiciliation (sans limite)'
+        : abonnementUser?.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date()
+          ? `Prolongé jusqu'au ${new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          : `Jusqu'au ${new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+      }
     </p>
   )}
       </div>

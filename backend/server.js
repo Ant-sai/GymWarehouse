@@ -2843,7 +2843,7 @@ app.get('/api/daily-presence', async (req, res) => {
             },
             include: {
                 member: {
-                    select: { id: true, firstName: true, lastName: true },
+                    select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
                 },
             },
             orderBy: { arrivedAt: 'desc' },
@@ -2877,7 +2877,7 @@ app.post('/api/daily-presence', async (req, res) => {
             data: { memberId: Number(memberId) },
             include: {
                 member: {
-                    select: { id: true, firstName: true, lastName: true },
+                    select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
                 },
             },
         });
@@ -2886,6 +2886,23 @@ app.post('/api/daily-presence', async (req, res) => {
     } catch (err) {
         console.error('Error creating daily presence:', err);
         res.status(500).json({ error: 'Failed to create daily presence' });
+    }
+});
+
+// DELETE /api/daily-presence/:id — Supprimer une présence
+app.delete('/api/daily-presence/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.dailyPresence.delete({
+            where: { id: Number(id) },
+        });
+        res.status(204).send();
+    } catch (err) {
+        console.error('Error deleting daily presence:', err);
+        if (err.code === 'P2025') {
+            return res.status(404).json({ error: 'Presence not found' });
+        }
+        res.status(500).json({ error: 'Failed to delete daily presence' });
     }
 });
 
