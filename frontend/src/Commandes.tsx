@@ -1322,14 +1322,10 @@ export default function DailyOrdersPage() {
   <div className="fixed inset-0 flex items-center justify-center z-50">
     <div className="absolute inset-0 bg-black/40" onClick={() => setShowAbonnementModal(false)} />
     <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
-      <h3 className="text-xl font-semibold mb-6 text-black">Gérer l'abonnement</h3>
 
       <div className="space-y-4">
         {/* Recherche membre */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Membre *
-          </label>
           <input
             type="text"
             placeholder="Rechercher un membre..."
@@ -1404,7 +1400,7 @@ export default function DailyOrdersPage() {
                   <div className={`text-base font-semibold ${isValid ? 'text-green-700' : 'text-red-700'}`}>
                     {isDomi
                       ? 'Domiciliation (sans limite)'
-                      : `Jusqu'au ${new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                      : `${new Date(abonnementUser.subscriptionEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`}
                   </div>
                 ) : (
                   <div className="text-sm font-medium text-red-700">Pas d'abonnement</div>
@@ -1416,17 +1412,14 @@ export default function DailyOrdersPage() {
 
         {/* Date picker */}
       <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-    Date de fin d'abonnement *
-  </label>
 
   {/* Boutons raccourcis */}
 <div className="grid grid-cols-5 gap-2 mb-3">
   {[
-    { label: "+1 mois", months: 1 },
-    { label: "+3 mois", months: 3 },
-    { label: "+6 mois", months: 6 },
-    { label: "+1 an", months: 12 },
+    { label: "1 mois", months: 1 },
+    { label: "3 mois", months: 3 },
+    { label: "6 mois", months: 6 },
+    { label: "12 mois", months: 12 },
     { label: "Domi", months: 999 },
   ].map(({ label, months }) => (
     <button
@@ -1482,7 +1475,7 @@ export default function DailyOrdersPage() {
       {abonnementDate === '2099-12-31'
         ? 'Domiciliation (sans limite)'
         : abonnementUser?.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date()
-          ? `Prolongé jusqu'au ${new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          ? `${new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
           : `Jusqu'au ${new Date(abonnementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
       }
     </p>

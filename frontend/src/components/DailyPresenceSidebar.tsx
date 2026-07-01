@@ -39,7 +39,7 @@ function getSubTooltip(endDate: string | null): string {
     year: "numeric",
   });
   return status === "valid"
-    ? `Valide jusqu'au ${formatted}`
+    ? `${formatted}`
     : `Expiré le ${formatted}`;
 }
 
@@ -122,7 +122,8 @@ export function DailyPresenceSidebar({ users }: Props) {
                   onMouseDown={() => handleSelectUser(user)}
                   className="w-full text-left px-2 py-1.5 text-xs hover:bg-blue-50 border-b last:border-b-0 transition-colors"
                 >
-                  {getFullName(user)}
+                  <div>{user.firstName ?? ""}</div>
+                  <div>{user.lastName ?? ""}</div>
                 </button>
               ))}
             </div>
