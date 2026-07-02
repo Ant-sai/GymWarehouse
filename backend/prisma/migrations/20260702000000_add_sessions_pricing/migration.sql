@@ -1,17 +1,17 @@
 -- AlterTable: add session_count to users
-ALTER TABLE "users" ADD COLUMN "session_count" INTEGER;
+ALTER TABLE `users` ADD COLUMN `session_count` INT NULL;
 
 -- CreateTable: subscription_durations
-CREATE TABLE "subscription_durations" (
-    "id" SERIAL NOT NULL,
-    "duration" INTEGER NOT NULL,
-    "label" VARCHAR(50) NOT NULL,
-    "price" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    CONSTRAINT "subscription_durations_pkey" PRIMARY KEY ("id")
-);
+CREATE TABLE `subscription_durations` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `duration` INT NOT NULL,
+    `label` VARCHAR(50) NOT NULL,
+    `price` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Seed default subscription durations (prices to be updated by admin)
-INSERT INTO "subscription_durations" ("duration", "label", "price") VALUES
+INSERT INTO `subscription_durations` (`duration`, `label`, `price`) VALUES
 (1, '1 mois', 0.00),
 (3, '3 mois', 0.00),
 (6, '6 mois', 0.00),
@@ -19,16 +19,16 @@ INSERT INTO "subscription_durations" ("duration", "label", "price") VALUES
 (999, 'Domiciliation', 0.00);
 
 -- CreateTable: session_pass_prices
-CREATE TABLE "session_pass_prices" (
-    "id" SERIAL NOT NULL,
-    "sessions" INTEGER NOT NULL,
-    "label" VARCHAR(50) NOT NULL,
-    "price" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    CONSTRAINT "session_pass_prices_pkey" PRIMARY KEY ("id")
-);
+CREATE TABLE `session_pass_prices` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `sessions` INT NOT NULL,
+    `label` VARCHAR(50) NOT NULL,
+    `price` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Seed default session pass prices (prices to be updated by admin)
-INSERT INTO "session_pass_prices" ("sessions", "label", "price") VALUES
+INSERT INTO `session_pass_prices` (`sessions`, `label`, `price`) VALUES
 (1, '1 séance', 0.00),
 (10, '10 séances', 0.00),
 (20, '20 séances', 0.00),
