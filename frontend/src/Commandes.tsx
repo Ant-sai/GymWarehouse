@@ -112,10 +112,18 @@ export default function DailyOrdersPage() {
   const [abonnementUserSearch, setAbonnementUserSearch] = useState("");
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
   const [savingAbonnement, setSavingAbonnement] = useState(false);
+  const [subscriptionDurations, setSubscriptionDurations] = useState<{ id: number; duration: number; label: string; price: number }[]>([]);
 
+  const [showForfaitModal, setShowForfaitModal] = useState(false);
+  const [forfaitUser, setForfaitUser] = useState<User | null>(null);
+  const [forfaitUserSearch, setForfaitUserSearch] = useState("");
+  const [forfaitSessions, setForfaitSessions] = useState<number | null>(null);
+  const [forfaitPayment, setForfaitPayment] = useState<"CASH" | "QRCODE" | null>(null);
+  const [savingForfait, setSavingForfait] = useState(false);
+  const [sessionPassPrices, setSessionPassPrices] = useState<{ id: number; sessions: number; label: string; price: number }[]>([]);
 
   useEffect(() => {
-    Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders()]);
+    Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders(), fetchSubscriptionDurations(), fetchSessionPassPrices()]);
   }, []);
 
   useEffect(() => {
@@ -240,6 +248,74 @@ export default function DailyOrdersPage() {
       setStandbyOrders(standbyData);
     } catch (err) {
       console.error('Erreur lors de la récupération des commandes en standby:', err);
+    }
+  }
+
+  async function fetchSubscriptionDurations() {
+    try {
+      const response = await fetch("/api/subscription-durations");
+      if (!response.ok) return;
+      const data = await response.json();
+      setSubscriptionDurations(data.map((d: { id: number; duration: number; label: string; price: string | number }) => ({
+        ...d,
+        price: Number(d.price),
+      })));
+    } catch (err) {
+      console.error('Erreur lors de la récupération des durées d\'abonnement:', err);
+    }
+  }
+
+  async function fetchSessionPassPrices() {
+    try {
+      const response = await fetch("/api/session-pass-prices");
+      if (!response.ok) return;
+      const data = await response.json();
+      setSessionPassPrices(data.map((p: { id: number; sessions: number; label: string; price: string | number }) => ({
+        ...p,
+        price: Number(p.price),
+      })));
+    } catch (err) {
+      console.error('Erreur lors de la récupération des prix de forfaits:', err);
+    }
+  }
+
+  async function handleSaveForfait() {
+    if (!forfaitUser) { alert("Veuillez sélectionner un membre"); return; }
+    if (!forfaitSessions) { alert("Veuillez sélectionner un forfait"); return; }
+    if (!forfaitPayment) { alert("Veuillez sélectionner un mode de paiement"); return; }
+
+    const passPrice = sessionPassPrices.find(p => p.sessions === forfaitSessions)?.price ?? 0;
+
+    setSavingForfait(true);
+    try {
+      const response = await fetch("/api/session-passes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId: forfaitUser.id,
+          sessions: forfaitSessions,
+          paymentMethod: forfaitPayment,
+          price: passPrice,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
+      setShowForfaitModal(false);
+      setForfaitUser(null);
+      setForfaitUserSearch("");
+      setForfaitSessions(null);
+      setForfaitPayment(null);
+      await fetchUsers();
+      await fetchOrders();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Impossible d'enregistrer le forfait";
+      alert(errorMessage);
+    } finally {
+      setSavingForfait(false);
     }
   }
 
@@ -696,6 +772,7 @@ export default function DailyOrdersPage() {
           onStandby={() => setShowStandbyList(true)}
           onDailyStock={() => setShowDailyStockModal(true)}
           onNewAbonnement={() => setShowAbonnementModal(true)}
+          onNewForfait={() => setShowForfaitModal(true)}
           standbyCount={standbyOrders.length}
           loading={loading}
           selectedDate={selectedDate}
@@ -1413,7 +1490,7 @@ export default function DailyOrdersPage() {
         {/* Date picker */}
       <div>
 
-  {/* Boutons raccourcis */}
+  {/* Boutons raccourcis durées */}
 <div className="grid grid-cols-5 gap-2 mb-3">
   {[
     { label: "1 mois", months: 1 },
@@ -1421,7 +1498,9 @@ export default function DailyOrdersPage() {
     { label: "6 mois", months: 6 },
     { label: "12 mois", months: 12 },
     { label: "Domi", months: 999 },
-  ].map(({ label, months }) => (
+  ].map(({ label, months }) => {
+    const durPrice = subscriptionDurations.find(d => d.duration === months)?.price;
+    return (
     <button
       key={months}
       type="button"
@@ -1442,7 +1521,7 @@ export default function DailyOrdersPage() {
         setAbonnementDate(base.toISOString().split('T')[0]);
         setSelectedDuration(months);
       }}
-      className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+      className={`flex flex-col items-center px-2 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
         selectedDuration === months
           ? "border-[#1E2A47] bg-[#1E2A47] text-white"
           : selectedDuration !== null
@@ -1451,9 +1530,13 @@ export default function DailyOrdersPage() {
       }`}
       disabled={selectedDuration !== null && selectedDuration !== months}
     >
-      {label}
+      <span>{label}</span>
+      {durPrice !== undefined && (
+        <span className="text-xs mt-0.5 opacity-80">{durPrice > 0 ? `${durPrice} €` : "—"}</span>
+      )}
     </button>
-  ))}
+    );
+  })}
 </div>
 
 {/* Bouton reset si on veut changer */}
@@ -1469,6 +1552,21 @@ export default function DailyOrdersPage() {
     ✕ Changer la durée
   </button>
 )}
+
+{/* Prix pour la durée sélectionnée */}
+{selectedDuration !== null && (() => {
+  const durPrice = subscriptionDurations.find(d => d.duration === selectedDuration)?.price;
+  if (durPrice === undefined) return null;
+  return (
+    <div className="mb-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
+      <span className="text-gray-600">Prix : </span>
+      <span className="font-semibold text-[#1E2A47]">
+        {durPrice > 0 ? `${durPrice} €` : "—"}
+      </span>
+    </div>
+  );
+})()}
+
     {/* Aperçu de la date sélectionnée */}
   {abonnementDate && (
     <p className="text-base font-semibold text-emerald-700 mt-2">
@@ -1508,8 +1606,123 @@ export default function DailyOrdersPage() {
     </div>
   </div>
 )}
+        {/* Modal Forfait Séances */}
+        {showForfaitModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={() => { setShowForfaitModal(false); setForfaitUser(null); setForfaitUserSearch(""); setForfaitSessions(null); setForfaitPayment(null); }} />
+            <div className="relative bg-white rounded-lg p-6 w-[420px] shadow-lg z-50">
+              <h3 className="text-lg font-semibold mb-4 text-black">Forfait séances</h3>
+
+              <div className="space-y-4">
+                {/* Recherche membre */}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Rechercher un membre..."
+                    value={forfaitUserSearch}
+                    onChange={(e) => { setForfaitUserSearch(e.target.value); if (!e.target.value) setForfaitUser(null); }}
+                    className="w-full mb-2 border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                  {forfaitUserSearch && !forfaitUser && (
+                    <div className="border border-gray-300 rounded max-h-40 overflow-y-auto mb-2">
+                      {users.filter(u => getFullName(u).toLowerCase().includes(forfaitUserSearch.toLowerCase())).length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">Aucun membre trouvé</div>
+                      ) : (
+                        users.filter(u => getFullName(u).toLowerCase().includes(forfaitUserSearch.toLowerCase())).map(user => (
+                          <button key={user.id} type="button" onClick={() => { setForfaitUser(user); setForfaitUserSearch(getFullName(user)); }}
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 text-sm transition-colors">
+                            <div className="font-medium">{getFullName(user)}</div>
+                            {user.sessionCount !== null && user.sessionCount !== undefined && (
+                              <div className="text-xs text-gray-500">{user.sessionCount} séance{user.sessionCount !== 1 ? 's' : ''} restante{user.sessionCount !== 1 ? 's' : ''}</div>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  {forfaitUser && (
+                    <div className="p-3 rounded border bg-blue-50 border-blue-300 flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-sm text-black">{getFullName(forfaitUser)}</div>
+                        {forfaitUser.sessionCount !== null && forfaitUser.sessionCount !== undefined && (
+                          <div className="text-xs text-gray-600">{forfaitUser.sessionCount} séance{forfaitUser.sessionCount !== 1 ? 's' : ''} restante{forfaitUser.sessionCount !== 1 ? 's' : ''}</div>
+                        )}
+                      </div>
+                      <button type="button" onClick={() => { setForfaitUser(null); setForfaitUserSearch(""); }} className="text-xs text-gray-400 hover:text-gray-600 underline">Changer</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sélection du forfait */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Nombre de séances</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[1, 10, 20, 50].map(n => {
+                      const passPrice = sessionPassPrices.find(p => p.sessions === n)?.price;
+                      return (
+                        <button key={n} type="button"
+                          onClick={() => setForfaitSessions(n)}
+                          className={`flex flex-col items-center py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                            forfaitSessions === n
+                              ? "border-[#1E2A47] bg-[#1E2A47] text-white"
+                              : "border-gray-300 text-gray-700 hover:border-[#1E2A47] hover:text-[#1E2A47]"
+                          }`}>
+                          <span>{n}</span>
+                          {passPrice !== undefined && (
+                            <span className="text-xs opacity-80">{passPrice > 0 ? `${passPrice} €` : "—"}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Prix affiché */}
+                {forfaitSessions !== null && (() => {
+                  const passPrice = sessionPassPrices.find(p => p.sessions === forfaitSessions)?.price;
+                  if (passPrice === undefined) return null;
+                  return (
+                    <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
+                      <span className="text-gray-600">Prix : </span>
+                      <span className="font-semibold text-[#1E2A47]">{passPrice > 0 ? `${passPrice} €` : "—"}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Mode de paiement */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Mode de paiement</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["CASH", "QRCODE"] as const).map(method => (
+                      <button key={method} type="button" onClick={() => setForfaitPayment(method)}
+                        className={`py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                          forfaitPayment === method
+                            ? "border-[#1E2A47] bg-[#1E2A47] text-white"
+                            : "border-gray-300 text-gray-700 hover:border-[#1E2A47]"
+                        }`}>
+                        {method === "CASH" ? "💵 Cash" : "📱 QR Code"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => { setShowForfaitModal(false); setForfaitUser(null); setForfaitUserSearch(""); setForfaitSessions(null); setForfaitPayment(null); }}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50" disabled={savingForfait}>
+                  Annuler
+                </button>
+                <button onClick={handleSaveForfait}
+                  disabled={savingForfait || !forfaitUser || !forfaitSessions || !forfaitPayment}
+                  className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed">
+                  {savingForfait ? "Enregistrement..." : "Confirmer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
-      <DailyPresenceSidebar users={users} />
+      <DailyPresenceSidebar users={users} onUserAdded={fetchUsers} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ interface PageHeaderProps {
   onExport: () => void;
   onNewOrder: () => void;
   onNewAbonnement: () => void;
+  onNewForfait: () => void;
   onRefund: () => void;
   onStandby: () => void;
   onDailyStock: () => void;
@@ -19,6 +20,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   onExport,
   onNewOrder,
   onNewAbonnement,
+  onNewForfait,
   onRefund,
   onStandby,
   onDailyStock,
@@ -61,7 +63,13 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           onClick={onNewAbonnement}
           className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
         >
-          Visite 
+          Abonnement
+        </button>
+        <button
+          onClick={onNewForfait}
+          className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
+        >
+          🎟️ Forfait séances
         </button>
         <button
           onClick={onNewOrder}

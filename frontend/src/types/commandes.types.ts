@@ -10,6 +10,7 @@ export type User = {
   role: UserRole;
   balance: number;
   subscriptionEndDate?: string | null;
+  sessionCount?: number | null;
 }
 
 export type Product = {

@@ -217,6 +217,167 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // -----------------------------------------------
+// -------- Subscription Duration routes ---------
+// -----------------------------------------------
+
+// Get all subscription durations (with prices)
+app.get('/api/subscription-durations', async (req, res) => {
+    try {
+        const durations = await prisma.subscriptionDuration.findMany({
+            orderBy: { duration: 'asc' }
+        });
+        res.json(durations);
+    } catch (err) {
+        console.error('Error fetching subscription durations:', err);
+        res.status(500).json({ error: 'Failed to fetch subscription durations' });
+    }
+});
+
+// Update price for a subscription duration
+app.put('/api/subscription-durations/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { price } = req.body;
+        const updated = await prisma.subscriptionDuration.update({
+            where: { id: Number(id) },
+            data: { price: Number(price) }
+        });
+        res.json(updated);
+    } catch (err) {
+        console.error('Error updating subscription duration:', err);
+        res.status(500).json({ error: 'Failed to update subscription duration' });
+    }
+});
+
+// -----------------------------------------------
+// --------- Session Pass Price routes -----------
+// -----------------------------------------------
+
+// Get all session pass prices
+app.get('/api/session-pass-prices', async (req, res) => {
+    try {
+        const prices = await prisma.sessionPassPrice.findMany({
+            orderBy: { sessions: 'asc' }
+        });
+        res.json(prices);
+    } catch (err) {
+        console.error('Error fetching session pass prices:', err);
+        res.status(500).json({ error: 'Failed to fetch session pass prices' });
+    }
+});
+
+// Update price for a session pass
+app.put('/api/session-pass-prices/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { price } = req.body;
+        const updated = await prisma.sessionPassPrice.update({
+            where: { id: Number(id) },
+            data: { price: Number(price) }
+        });
+        res.json(updated);
+    } catch (err) {
+        console.error('Error updating session pass price:', err);
+        res.status(500).json({ error: 'Failed to update session pass price' });
+    }
+});
+
+// -----------------------------------------------
+// ----------- Session Pass purchase route --------
+// -----------------------------------------------
+
+// POST /api/session-passes — Vente d'un forfait séances
+app.post('/api/session-passes', async (req, res) => {
+    try {
+        const { memberId, sessions, paymentMethod, price } = req.body;
+
+        if (!memberId || !sessions || !paymentMethod) {
+            return res.status(400).json({ error: 'memberId, sessions et paymentMethod sont requis' });
+        }
+
+        if (!['CASH', 'QRCODE'].includes(paymentMethod)) {
+            return res.status(400).json({ error: 'paymentMethod doit être CASH ou QRCODE' });
+        }
+
+        const member = await prisma.user.findUnique({ where: { id: Number(memberId) } });
+        if (!member) {
+            return res.status(404).json({ error: 'Membre introuvable' });
+        }
+
+        const passAmount = Number(price) || 0;
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Créer une commande pour le paiement (même logique que les remboursements)
+            const passOrder = await tx.order.create({
+                data: {
+                    clientId: Number(memberId),
+                    totalAmount: passAmount,
+                    paymentMethod,
+                    notes: `[FORFAIT SÉANCES] ${sessions} séance${sessions > 1 ? 's' : ''}`,
+                },
+                include: {
+                    client: { select: { id: true, firstName: true, lastName: true } }
+                }
+            });
+
+            // Incrémenter le compteur de séances du membre
+            const updatedUser = await tx.user.update({
+                where: { id: Number(memberId) },
+                data: { sessionCount: { increment: Number(sessions) } }
+            });
+
+            // Mettre à jour le rapport quotidien
+            const saleDate = new Date();
+            saleDate.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(saleDate);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const allOrdersToday = await tx.order.findMany({
+                where: { date: { gte: saleDate, lte: dayEnd } }
+            });
+
+            let cashRevenue = 0, qrRevenue = 0, creditRevenue = 0;
+            allOrdersToday.forEach(o => {
+                const amount = Number(o.totalAmount);
+                if (o.paymentMethod !== 'FREE') {
+                    if (o.paymentMethod === 'CASH') cashRevenue += amount;
+                    else if (o.paymentMethod === 'QRCODE') qrRevenue += amount;
+                    else if (o.paymentMethod === 'ACCOUNT_DEBIT') creditRevenue += amount;
+                }
+            });
+
+            const existingReport = await tx.dailyReport.findUnique({ where: { date: saleDate } });
+            if (existingReport) {
+                const trou = Number(existingReport.trou) || 0;
+                const retrait = Number(existingReport.retrait) || 0;
+                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou + retrait;
+                await tx.dailyReport.update({
+                    where: { date: saleDate },
+                    data: { cashRevenue, qrRevenue, creditRevenue, endingCash }
+                });
+            } else {
+                const previousReport = await tx.dailyReport.findFirst({
+                    where: { date: { lt: saleDate } },
+                    orderBy: { date: 'desc' }
+                });
+                const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
+                const endingCash = startingCash + cashRevenue;
+                await tx.dailyReport.create({
+                    data: { date: saleDate, startingCash, cashRevenue, qrRevenue, creditRevenue, trou: 0, retrait: 0, endingCash }
+                });
+            }
+
+            return { order: passOrder, newSessionCount: updatedUser.sessionCount, sessions };
+        });
+
+        res.status(201).json(result);
+    } catch (err) {
+        console.error('Error creating session pass:', err);
+        res.status(500).json({ error: 'Failed to create session pass', message: err.message });
+    }
+});
+
+// -----------------------------------------------
 // ------------ Subscription routes --------------
 // -----------------------------------------------
 
@@ -2843,7 +3004,7 @@ app.get('/api/daily-presence', async (req, res) => {
             },
             include: {
                 member: {
-                    select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
+                    select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true, sessionCount: true },
                 },
             },
             orderBy: { arrivedAt: 'desc' },
@@ -2873,11 +3034,19 @@ app.post('/api/daily-presence', async (req, res) => {
             return res.status(404).json({ error: 'Membre introuvable' });
         }
 
+        // Décrémenter le compteur de séances si le membre en possède
+        if (member.sessionCount !== null) {
+            await prisma.user.update({
+                where: { id: Number(memberId) },
+                data: { sessionCount: { decrement: 1 } }
+            });
+        }
+
         const presence = await prisma.dailyPresence.create({
             data: { memberId: Number(memberId) },
             include: {
                 member: {
-                    select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
+                    select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true, sessionCount: true },
                 },
             },
         });

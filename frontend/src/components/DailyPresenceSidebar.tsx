@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import type { User } from "../types/commandes.types";
+import { AddMemberModal } from "./Modals/AddMemberModal";
 
 type Presence = {
   id: number;
@@ -10,11 +12,13 @@ type Presence = {
     firstName: string | null;
     lastName: string | null;
     subscriptionEndDate: string | null;
+    sessionCount: number | null;
   };
 };
 
 type Props = {
   users: User[];
+  onUserAdded?: () => void;
 };
 
 function getFullName(user: { firstName?: string | null; lastName?: string | null }) {
@@ -22,32 +26,76 @@ function getFullName(user: { firstName?: string | null; lastName?: string | null
   return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
 }
 
-function getSubStatus(endDate: string | null): "domi" | "valid" | "expired" | "none" {
+function daysUntilExpiry(endDate: string | null): number | null {
+  if (!endDate) return null;
+  const d = new Date(endDate);
+  if (d.getFullYear() >= 2099) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function getSubStatus(endDate: string | null): "domi" | "valid" | "expiring" | "expired" | "none" {
   if (!endDate) return "none";
   const d = new Date(endDate);
   if (d.getFullYear() >= 2099) return "domi";
-  return d >= new Date() ? "valid" : "expired";
+  const days = daysUntilExpiry(endDate);
+  if (days === null) return "domi";
+  if (days < 0) return "expired";
+  if (days <= 3) return "expiring";
+  return "valid";
 }
 
-function getSubTooltip(endDate: string | null): string {
-  const status = getSubStatus(endDate);
-  if (status === "none") return "Pas d'abonnement";
-  if (status === "domi") return "Domiciliation (sans limite)";
-  const formatted = new Date(endDate!).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  return status === "valid"
-    ? `${formatted}`
-    : `Expiré le ${formatted}`;
+function getNameColor(sessionCount: number | null | undefined, subStatus: string): string {
+  // Rouge si séances épuisées (sessionCount non null ET ≤ 0)
+  if (sessionCount !== null && sessionCount !== undefined && sessionCount <= 0) {
+    return "text-red-600";
+  }
+  // Orange si abonnement expire dans 3 jours ou moins
+  if (subStatus === "expiring") return "text-orange-500";
+  // Vert si abonnement valide
+  if (subStatus === "valid" || subStatus === "domi") return "text-green-700";
+  // Rouge si abonnement expiré ou absent
+  if (subStatus === "expired" || subStatus === "none") return "text-red-600";
+  return "text-gray-700";
 }
 
-export function DailyPresenceSidebar({ users }: Props) {
+function getSubTooltip(endDate: string | null, sessionCount: number | null | undefined): string {
+  const parts: string[] = [];
+
+  if (sessionCount !== null && sessionCount !== undefined) {
+    parts.push(`${sessionCount} séance${sessionCount !== 1 ? "s" : ""} restante${sessionCount !== 1 ? "s" : ""}`);
+  }
+
+  if (!endDate) {
+    if (parts.length === 0) parts.push("Pas d'abonnement");
+  } else {
+    const d = new Date(endDate);
+    if (d.getFullYear() >= 2099) {
+      parts.push("Domiciliation (sans limite)");
+    } else {
+      const formatted = d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      const days = daysUntilExpiry(endDate);
+      if (days !== null && days < 0) {
+        parts.push(`Expiré le ${formatted}`);
+      } else if (days !== null && days <= 3) {
+        parts.push(`Expire le ${formatted} (dans ${days} j.)`);
+      } else {
+        parts.push(formatted);
+      }
+    }
+  }
+
+  return parts.join(" · ");
+}
+
+export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
   const [presences, setPresences] = useState<Presence[]>([]);
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchPresences();
@@ -96,6 +144,21 @@ export function DailyPresenceSidebar({ users }: Props) {
     }
   }
 
+  async function handleAddMember(userData: Partial<User>): Promise<User> {
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || "Impossible d'ajouter le membre");
+    }
+    const newUser = await response.json();
+    onUserAdded?.();
+    return newUser;
+  }
+
   return (
     <aside className="w-[150px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col h-screen sticky top-0">
       <div className="p-3 border-b border-gray-200">
@@ -129,6 +192,17 @@ export function DailyPresenceSidebar({ users }: Props) {
             </div>
           )}
         </div>
+
+        {/* Bouton ajout membre */}
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          title="Ajouter un nouveau membre"
+          className="mt-2 w-full text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded py-1 transition-colors flex items-center justify-center gap-1 border border-dashed border-gray-300 hover:border-blue-400"
+        >
+          <span className="text-base leading-none">+</span>
+          <span>Nouveau membre</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -138,21 +212,21 @@ export function DailyPresenceSidebar({ users }: Props) {
           <ul>
             {presences.map((p) => {
               const status = getSubStatus(p.member.subscriptionEndDate);
-              const nameColor =
-                status === "valid" || status === "domi"
-                  ? "text-green-700"
-                  : "text-red-600";
+              const nameColor = getNameColor(p.member.sessionCount, status);
+              const tooltip = getSubTooltip(p.member.subscriptionEndDate, p.member.sessionCount);
               return (
                 <li
                   key={p.id}
                   className="px-2 py-2 flex items-center justify-between group border-b border-gray-100"
                 >
-                  <span
-                    title={getSubTooltip(p.member.subscriptionEndDate)}
-                    className={`text-xs truncate flex-1 cursor-default ${nameColor}`}
+                  <button
+                    type="button"
+                    title={tooltip}
+                    onClick={() => navigate("/membres")}
+                    className={`text-xs truncate flex-1 text-left hover:underline ${nameColor}`}
                   >
                     {getFullName(p.member)}
-                  </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleRemove(p.id)}
@@ -171,6 +245,12 @@ export function DailyPresenceSidebar({ users }: Props) {
       <div className="px-3 py-1.5 border-t border-gray-100 text-xs text-gray-400 text-right">
         {presences.length} présence{presences.length !== 1 ? "s" : ""}
       </div>
+
+      <AddMemberModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddMember}
+      />
     </aside>
   );
 }
