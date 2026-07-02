@@ -324,7 +324,7 @@ app.post('/api/session-passes', async (req, res) => {
             // Incrémenter le compteur de séances du membre
             const updatedUser = await tx.user.update({
                 where: { id: Number(memberId) },
-                data: { sessionCount: { increment: Number(sessions) } }
+                data: { sessionCount: (member.sessionCount ?? 0) + Number(sessions) }
             });
 
             // Mettre à jour le rapport quotidien
