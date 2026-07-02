@@ -119,8 +119,14 @@ export default function DailyOrdersPage() {
   const [forfaitUserSearch, setForfaitUserSearch] = useState("");
   const [forfaitSessions, setForfaitSessions] = useState<number | null>(null);
   const [forfaitPayment, setForfaitPayment] = useState<"CASH" | "QRCODE" | null>(null);
+  const [forfaitPrice, setForfaitPrice] = useState<string>("");
+  const [forfaitNotes, setForfaitNotes] = useState<string>("");
   const [savingForfait, setSavingForfait] = useState(false);
   const [sessionPassPrices, setSessionPassPrices] = useState<{ id: number; sessions: number; label: string; price: number }[]>([]);
+
+  const [abonnementPrice, setAbonnementPrice] = useState<string>("");
+  const [abonnementPayment, setAbonnementPayment] = useState<"CASH" | "QRCODE" | null>(null);
+  const [abonnementNotes, setAbonnementNotes] = useState<string>("");
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders(), fetchSubscriptionDurations(), fetchSessionPassPrices()]);
@@ -284,7 +290,7 @@ export default function DailyOrdersPage() {
     if (!forfaitSessions) { alert("Veuillez sélectionner un forfait"); return; }
     if (!forfaitPayment) { alert("Veuillez sélectionner un mode de paiement"); return; }
 
-    const passPrice = sessionPassPrices.find(p => p.sessions === forfaitSessions)?.price ?? 0;
+    const passPrice = forfaitPrice !== "" ? Number(forfaitPrice) : (sessionPassPrices.find(p => p.sessions === forfaitSessions)?.price ?? 0);
 
     setSavingForfait(true);
     try {
@@ -296,6 +302,7 @@ export default function DailyOrdersPage() {
           sessions: forfaitSessions,
           paymentMethod: forfaitPayment,
           price: passPrice,
+          notes: forfaitNotes,
         }),
       });
 
@@ -309,6 +316,8 @@ export default function DailyOrdersPage() {
       setForfaitUserSearch("");
       setForfaitSessions(null);
       setForfaitPayment(null);
+      setForfaitPrice("");
+      setForfaitNotes("");
       await fetchUsers();
       await fetchOrders();
     } catch (err) {
@@ -593,22 +602,20 @@ export default function DailyOrdersPage() {
     }
   }
    async function handleSaveAbonnement() {
-  if (!abonnementUser) {
-    alert("Veuillez sélectionner un membre");
-    return;
-  }
-  if (!abonnementDate) {
-    alert("Veuillez sélectionner une date de fin d'abonnement");
-    return;
-  }
+  if (!abonnementUser) { alert("Veuillez sélectionner un membre"); return; }
+  if (!abonnementDate) { alert("Veuillez sélectionner une date de fin d'abonnement"); return; }
 
   setSavingAbonnement(true);
   try {
-    const response = await fetch(`/api/users/${abonnementUser.id}/subscription`, {
-      method: "PATCH",
+    const response = await fetch(`/api/abonnement-payments`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        memberId: abonnementUser.id,
         subscriptionEndDate: new Date(abonnementDate).toISOString(),
+        amount: Number(abonnementPrice) || 0,
+        paymentMethod: abonnementPayment,
+        notes: abonnementNotes,
       }),
     });
 
@@ -621,7 +628,12 @@ export default function DailyOrdersPage() {
     setAbonnementUser(null);
     setAbonnementDate("");
     setAbonnementUserSearch("");
+    setSelectedDuration(null);
+    setAbonnementPrice("");
+    setAbonnementPayment(null);
+    setAbonnementNotes("");
     await fetchUsers();
+    await fetchOrders();
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Impossible de mettre à jour l'abonnement";
     alert(errorMessage);
@@ -1520,6 +1532,8 @@ export default function DailyOrdersPage() {
         base.setDate(base.getDate() - 1);
         setAbonnementDate(base.toISOString().split('T')[0]);
         setSelectedDuration(months);
+        const p = subscriptionDurations.find(d => d.duration === months)?.price;
+        setAbonnementPrice(p !== undefined ? String(p) : "");
       }}
       className={`flex flex-col items-center px-2 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
         selectedDuration === months
@@ -1546,6 +1560,8 @@ export default function DailyOrdersPage() {
     onClick={() => {
       setSelectedDuration(null);
       setAbonnementDate("");
+      setAbonnementPrice("");
+      setAbonnementPayment(null);
     }}
     className="text-xs text-gray-400 hover:text-gray-600 mb-2"
   >
@@ -1553,19 +1569,49 @@ export default function DailyOrdersPage() {
   </button>
 )}
 
-{/* Prix pour la durée sélectionnée */}
-{selectedDuration !== null && (() => {
-  const durPrice = subscriptionDurations.find(d => d.duration === selectedDuration)?.price;
-  if (durPrice === undefined) return null;
-  return (
-    <div className="mb-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
-      <span className="text-gray-600">Prix : </span>
-      <span className="font-semibold text-[#1E2A47]">
-        {durPrice > 0 ? `${durPrice} €` : "—"}
-      </span>
+{/* Prix éditable + mode de paiement + commentaire */}
+{selectedDuration !== null && (
+  <div className="space-y-3">
+    <div className="flex items-center gap-2">
+      <label className="text-sm text-gray-600 whitespace-nowrap">Prix :</label>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={abonnementPrice}
+        onChange={(e) => setAbonnementPrice(e.target.value)}
+        placeholder="0.00"
+        className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      />
+      <span className="text-sm text-gray-500">€</span>
     </div>
-  );
-})()}
+    <div>
+      <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement <span className="text-gray-400 font-normal">(optionnel)</span></p>
+      <div className="grid grid-cols-2 gap-2">
+        {(["CASH", "QRCODE"] as const).map(method => (
+          <button key={method} type="button" onClick={() => setAbonnementPayment(abonnementPayment === method ? null : method)}
+            className={`py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+              abonnementPayment === method
+                ? "border-[#1E2A47] bg-[#1E2A47] text-white"
+                : "border-gray-300 text-gray-700 hover:border-[#1E2A47]"
+            }`}>
+            {method === "CASH" ? "💵 Cash" : "📱 QR Code"}
+          </button>
+        ))}
+      </div>
+    </div>
+    <div>
+      <label className="text-sm font-medium text-gray-700 mb-1 block">Commentaire</label>
+      <textarea
+        value={abonnementNotes}
+        onChange={(e) => setAbonnementNotes(e.target.value)}
+        placeholder="Notes optionnelles..."
+        rows={2}
+        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+      />
+    </div>
+  </div>
+)}
 
     {/* Aperçu de la date sélectionnée */}
   {abonnementDate && (
@@ -1589,6 +1635,10 @@ export default function DailyOrdersPage() {
             setAbonnementUser(null);
             setAbonnementDate("");
             setAbonnementUserSearch("");
+            setSelectedDuration(null);
+            setAbonnementPrice("");
+            setAbonnementPayment(null);
+            setAbonnementNotes("");
           }}
           className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
           disabled={savingAbonnement}
@@ -1661,7 +1711,11 @@ export default function DailyOrdersPage() {
                       const passPrice = sessionPassPrices.find(p => p.sessions === n)?.price;
                       return (
                         <button key={n} type="button"
-                          onClick={() => setForfaitSessions(n)}
+                          onClick={() => {
+                            setForfaitSessions(n);
+                            const p = sessionPassPrices.find(p => p.sessions === n)?.price;
+                            setForfaitPrice(p !== undefined ? String(p) : "");
+                          }}
                           className={`flex flex-col items-center py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                             forfaitSessions === n
                               ? "border-[#1E2A47] bg-[#1E2A47] text-white"
@@ -1677,17 +1731,22 @@ export default function DailyOrdersPage() {
                   </div>
                 </div>
 
-                {/* Prix affiché */}
-                {forfaitSessions !== null && (() => {
-                  const passPrice = sessionPassPrices.find(p => p.sessions === forfaitSessions)?.price;
-                  if (passPrice === undefined) return null;
-                  return (
-                    <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
-                      <span className="text-gray-600">Prix : </span>
-                      <span className="font-semibold text-[#1E2A47]">{passPrice > 0 ? `${passPrice} €` : "—"}</span>
-                    </div>
-                  );
-                })()}
+                {/* Prix éditable */}
+                {forfaitSessions !== null && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 whitespace-nowrap">Prix :</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={forfaitPrice}
+                      onChange={(e) => setForfaitPrice(e.target.value)}
+                      placeholder="0.00"
+                      className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-500">€</span>
+                  </div>
+                )}
 
                 {/* Mode de paiement */}
                 <div>
@@ -1704,6 +1763,18 @@ export default function DailyOrdersPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Commentaire */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Commentaire</label>
+                  <textarea
+                    value={forfaitNotes}
+                    onChange={(e) => setForfaitNotes(e.target.value)}
+                    placeholder="Notes optionnelles..."
+                    rows={2}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                  />
                 </div>
               </div>
 

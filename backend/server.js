@@ -289,7 +289,7 @@ app.put('/api/session-pass-prices/:id', async (req, res) => {
 // POST /api/session-passes — Vente d'un forfait séances
 app.post('/api/session-passes', async (req, res) => {
     try {
-        const { memberId, sessions, paymentMethod, price } = req.body;
+        const { memberId, sessions, paymentMethod, price, notes } = req.body;
 
         if (!memberId || !sessions || !paymentMethod) {
             return res.status(400).json({ error: 'memberId, sessions et paymentMethod sont requis' });
@@ -313,7 +313,7 @@ app.post('/api/session-passes', async (req, res) => {
                     clientId: Number(memberId),
                     totalAmount: passAmount,
                     paymentMethod,
-                    notes: `[FORFAIT SÉANCES] ${sessions} séance${sessions > 1 ? 's' : ''}`,
+                    notes: `[FORFAIT SÉANCES] ${sessions} séance${sessions > 1 ? 's' : ''}${notes ? ' — ' + notes : ''}`,
                 },
                 include: {
                     client: { select: { id: true, firstName: true, lastName: true } }
@@ -374,6 +374,89 @@ app.post('/api/session-passes', async (req, res) => {
     } catch (err) {
         console.error('Error creating session pass:', err);
         res.status(500).json({ error: 'Failed to create session pass', message: err.message });
+    }
+});
+
+// -----------------------------------------------
+// --------- Abonnement payment route ------------
+// -----------------------------------------------
+
+// POST /api/abonnement-payments — Enregistre un paiement d'abonnement + met à jour la date
+app.post('/api/abonnement-payments', async (req, res) => {
+    try {
+        const { memberId, subscriptionEndDate, amount, paymentMethod, notes } = req.body;
+
+        if (!memberId || !subscriptionEndDate) {
+            return res.status(400).json({ error: 'memberId et subscriptionEndDate sont requis' });
+        }
+
+        const member = await prisma.user.findUnique({ where: { id: Number(memberId) } });
+        if (!member) return res.status(404).json({ error: 'Membre introuvable' });
+
+        const parsedDate = new Date(subscriptionEndDate);
+        if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ error: 'Format de date invalide' });
+        }
+
+        const paymentAmount = Number(amount) || 0;
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Mettre à jour la date d'abonnement
+            const updatedUser = await tx.user.update({
+                where: { id: Number(memberId) },
+                data: { subscriptionEndDate: parsedDate },
+                select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true }
+            });
+
+            let order = null;
+
+            // Créer un Order pour le paiement si montant > 0 et méthode fournie
+            if (paymentAmount > 0 && paymentMethod && ['CASH', 'QRCODE'].includes(paymentMethod)) {
+                order = await tx.order.create({
+                    data: {
+                        clientId: Number(memberId),
+                        totalAmount: paymentAmount,
+                        paymentMethod,
+                        notes: `[ABONNEMENT] ${notes || ''}`.trim(),
+                    }
+                });
+
+                // Mettre à jour le rapport quotidien
+                const saleDate = new Date();
+                saleDate.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(saleDate);
+                dayEnd.setHours(23, 59, 59, 999);
+
+                const allOrdersToday = await tx.order.findMany({
+                    where: { date: { gte: saleDate, lte: dayEnd } }
+                });
+
+                let cashRevenue = 0, qrRevenue = 0, creditRevenue = 0;
+                allOrdersToday.forEach(o => {
+                    const amt = Number(o.totalAmount);
+                    if (o.paymentMethod === 'CASH') cashRevenue += amt;
+                    else if (o.paymentMethod === 'QRCODE') qrRevenue += amt;
+                    else if (o.paymentMethod === 'ACCOUNT_DEBIT') creditRevenue += amt;
+                });
+
+                const existingReport = await tx.dailyReport.findUnique({ where: { date: saleDate } });
+                if (existingReport) {
+                    const endingCash = Number(existingReport.startingCash) + cashRevenue + Number(existingReport.trou) + Number(existingReport.retrait || 0);
+                    await tx.dailyReport.update({ where: { date: saleDate }, data: { cashRevenue, qrRevenue, creditRevenue, endingCash } });
+                } else {
+                    const previousReport = await tx.dailyReport.findFirst({ where: { date: { lt: saleDate } }, orderBy: { date: 'desc' } });
+                    const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
+                    await tx.dailyReport.create({ data: { date: saleDate, startingCash, cashRevenue, qrRevenue, creditRevenue, trou: 0, retrait: 0, endingCash: startingCash + cashRevenue } });
+                }
+            }
+
+            return { user: updatedUser, order };
+        });
+
+        res.status(201).json(result);
+    } catch (err) {
+        console.error('Error processing abonnement payment:', err);
+        res.status(500).json({ error: 'Failed to process abonnement payment', message: err.message });
     }
 });
 
