@@ -152,6 +152,7 @@ app.get('/api/users', async (req, res) => {
                 role: true,
                 balance: true,
                 subscriptionEndDate: true,
+                sessionCount: true,
                 createdAt: true,
                 updatedAt: true,
             },

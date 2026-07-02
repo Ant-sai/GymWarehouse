@@ -7,6 +7,7 @@ export type User = {
   firstName?: string;
   lastName?: string;
   subscriptionEndDate?: string | null;
+  sessionCount?: number | null;
   role: "USER" | "TRAINER";
   balance: number;
   createdAt: string;
@@ -310,6 +311,7 @@ async function handleAddUser(e?: React.FormEvent) {
               <div>Rôle</div>
               <div>Solde</div>
               <div>Date d'abonnement</div>
+              <div>Nb entrées</div>
               <div>Actions</div>
             </div>
 
@@ -342,7 +344,7 @@ async function handleAddUser(e?: React.FormEvent) {
               {filteredUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-6 items-center text-black hover:shadow-md transition-shadow"
+                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-7 items-center text-black hover:shadow-md transition-shadow"
                 >
                   <div className="truncate font-medium">{getFullName(user)}</div>
                   <div>
@@ -372,8 +374,19 @@ async function handleAddUser(e?: React.FormEvent) {
                                 <span className="text-gray-400 text-xs">—</span>
                               )}
                             </div>
+                  <div className="text-sm">
+                    {user.sessionCount !== null && user.sessionCount !== undefined ? (
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        user.sessionCount <= 0 ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {user.sessionCount}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => startEditUser(user)}
                       className="p-1 hover:bg-blue-50 rounded"
                       title="Modifier le membre"
