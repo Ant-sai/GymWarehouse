@@ -14,7 +14,8 @@
       "Bash(findstr:*)",
       "Bash(npx prisma generate)",
       "Bash(npx prisma db pull:*)",
-      "Bash(xargs -I {} bash -c \"ls -la {} | head -5\")"
+      "Bash(xargs -I {} bash -c \"ls -la {} | head -5\")",
+      "Bash(node --check \"c:/Users/antoi/Documents/GymWarehouse/backend/server.js\")"
     ]
   }
 }

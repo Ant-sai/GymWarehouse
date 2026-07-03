@@ -1818,7 +1818,6 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
                     where: { id: existingOrder.clientId },
                     data: { balance: { decrement: existingOrder.totalAmount } },
                     select: { id: true },
-                }
                 });
                 balanceRestored = -existingOrder.totalAmount;
             }
