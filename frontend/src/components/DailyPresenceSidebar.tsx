@@ -222,10 +222,11 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
                   <button
                     type="button"
                     title={tooltip}
-                    onClick={() => navigate("/membres")}
-                    className={`text-xs truncate flex-1 text-left hover:underline ${nameColor}`}
+                    onClick={() => navigate(`/membres?search=${encodeURIComponent(getFullName(p.member))}`)}
+                    className={`text-xs flex-1 text-left hover:underline ${nameColor}`}
                   >
-                    {getFullName(p.member)}
+                    <div>{p.member.firstName ?? ""}</div>
+                    <div>{p.member.lastName ?? ""}</div>
                   </button>
                   <button
                     type="button"

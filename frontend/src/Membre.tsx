@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import PrimeroseVector from './assets/PrimeroseVector.svg';
+import { ForfaitModal } from "./components/Modals/ForfaitModal";
+import { AbonnementModal } from "./components/Modals/AbonnementModal";
 
 
 export type User = {
@@ -8,6 +11,7 @@ export type User = {
   lastName?: string;
   subscriptionEndDate?: string | null;
   sessionCount?: number | null;
+  notes?: string | null;
   role: "USER" | "TRAINER";
   balance: number;
   createdAt: string;
@@ -15,10 +19,14 @@ export type User = {
 };
 
 export default function MembersPage() {
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("search") ?? "");
+  const [showForfait, setShowForfait] = useState(false);
+  const [showAbonnement, setShowAbonnement] = useState(false);
+  const [modalUser, setModalUser] = useState<User | null>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -26,6 +34,7 @@ export default function MembersPage() {
     lastName: "",
     role: "USER" as "USER" | "TRAINER",
     balance: "",
+    notes: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -33,6 +42,7 @@ export default function MembersPage() {
   const [editBalance, setEditBalance] = useState("");
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editNotes, setEditNotes] = useState("");
 
   // Fonction pour formater le nom complet
   const getFullName = (user: User) => {
@@ -107,6 +117,7 @@ async function handleAddUser(e?: React.FormEvent) {
         lastName: form.lastName || null,
         role: form.role,
         balance: Number(form.balance || 0),
+        notes: form.notes || null,
       }),
     });
     
@@ -128,6 +139,7 @@ async function handleAddUser(e?: React.FormEvent) {
       lastName: "",
       role: "USER",
       balance: "",
+      notes: "",
     });
    
   } catch (err) {
@@ -162,6 +174,7 @@ async function handleAddUser(e?: React.FormEvent) {
           lastName: editLastName || null,
           role: editingUser?.role,
           balance: newBalance,
+          notes: editNotes || null,
         }),
       });
 
@@ -181,6 +194,7 @@ async function handleAddUser(e?: React.FormEvent) {
       setEditFirstName("");
       setEditLastName("");
       setEditBalance("");
+      setEditNotes("");
 
     } catch (err) {
       console.error('Erreur lors de la mise à jour du membre:', err);
@@ -194,6 +208,7 @@ async function handleAddUser(e?: React.FormEvent) {
     setEditFirstName(user.firstName || "");
     setEditLastName(user.lastName || "");
     setEditBalance(user.balance.toString());
+    setEditNotes(user.notes || "");
   }
 
   async function handleDelete(id: number) {
@@ -306,13 +321,14 @@ async function handleAddUser(e?: React.FormEvent) {
         {/* Table header */}
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-7 gap-6 px-4 text-sm font-medium text-gray-700 mb-4">
+            <div className="grid grid-cols-9 gap-6 px-4 text-sm font-medium text-gray-700 mb-4">
               <div>Nom complet</div>
               <div>Rôle</div>
               <div>Solde</div>
               <div>Date d'abonnement</div>
               <div>Nb entrées</div>
-              <div>Actions</div>
+              <div className="col-span-2">Commentaire</div>
+              <div className="col-span-2">Actions</div>
             </div>
 
             {/* Content */}
@@ -344,7 +360,7 @@ async function handleAddUser(e?: React.FormEvent) {
               {filteredUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-7 items-center text-black hover:shadow-md transition-shadow"
+                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-9 items-center text-black hover:shadow-md transition-shadow"
                 >
                   <div className="truncate font-medium">{getFullName(user)}</div>
                   <div>
@@ -385,7 +401,24 @@ async function handleAddUser(e?: React.FormEvent) {
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="col-span-2 text-sm text-gray-600 truncate" title={user.notes || ""}>
+                    {user.notes || <span className="text-gray-400 text-xs">—</span>}
+                  </div>
+                  <div className="col-span-2 flex items-center gap-1 flex-wrap">
+                    <button
+                      onClick={() => { setModalUser(user); setShowForfait(true); }}
+                      className="px-2 py-1 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
+                      title="Ajouter un forfait séances"
+                    >
+                      Séance
+                    </button>
+                    <button
+                      onClick={() => { setModalUser(user); setShowAbonnement(true); }}
+                      className="px-2 py-1 text-xs rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium"
+                      title="Renouveler l'abonnement"
+                    >
+                      Abonn.
+                    </button>
                     <button
                       onClick={() => startEditUser(user)}
                       className="p-1 hover:bg-blue-50 rounded"
@@ -465,6 +498,16 @@ async function handleAddUser(e?: React.FormEvent) {
                     placeholder="0.00"
                   />
                 </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire</label>
+                  <textarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                    placeholder="Commentaire (optionnel)"
+                    rows={3}
+                  />
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
@@ -538,6 +581,16 @@ async function handleAddUser(e?: React.FormEvent) {
                     placeholder="0.00"
                   />
                 </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Commentaire</label>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                    placeholder="Commentaire (optionnel)"
+                    rows={3}
+                  />
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
@@ -560,7 +613,23 @@ async function handleAddUser(e?: React.FormEvent) {
             </form>
           </div>
         )}
-      </main>
+      {showForfait && (
+        <ForfaitModal
+          users={users}
+          initialUser={modalUser}
+          onClose={() => { setShowForfait(false); setModalUser(null); }}
+          onSuccess={fetchUsers}
+        />
+      )}
+      {showAbonnement && (
+        <AbonnementModal
+          users={users}
+          initialUser={modalUser}
+          onClose={() => { setShowAbonnement(false); setModalUser(null); }}
+          onSuccess={fetchUsers}
+        />
+      )}
+    </main>
     </div>
   );
 }

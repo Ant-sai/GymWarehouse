@@ -17,6 +17,7 @@ model User {
   balance             Decimal         @default(0.00) @db.Decimal(10, 2)
   subscriptionEndDate DateTime?       @map("subscription_end_date")
   sessionCount        Int?            @map("session_count")
+  notes               String?         @db.Text
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
   cashMovements       CashMovement[]

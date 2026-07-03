@@ -123,14 +123,15 @@ process.on('SIGTERM', gracefulShutdown);
 //Create a user
 app.post('/api/users', async (req, res) => {
     try {
-        const { firstName, lastName, role, balance } = req.body;
-       
+        const { firstName, lastName, role, balance, notes } = req.body;
+
         const user = await prisma.user.create({
             data: {
                 firstName: firstName,
                 lastName: lastName,
                 role: role,
                 balance: balance,
+                notes: notes || null,
             }
         });
         res.status(201).json(user);
@@ -153,6 +154,7 @@ app.get('/api/users', async (req, res) => {
                 balance: true,
                 subscriptionEndDate: true,
                 sessionCount: true,
+                notes: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -186,7 +188,7 @@ app.get('/api/users/:id', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, role, balance } = req.body;
+        const { firstName, lastName, role, balance, notes } = req.body;
         const user = await prisma.user.update({
             where: { id: Number(id), },
             data: {
@@ -194,6 +196,7 @@ app.put('/api/users/:id', async (req, res) => {
                 lastName: lastName,
                 role: role,
                 balance: balance,
+                notes: notes !== undefined ? (notes || null) : undefined,
             },
         });
         res.json(user);
