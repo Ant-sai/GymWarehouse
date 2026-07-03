@@ -195,6 +195,7 @@ app.put('/api/users/:id', async (req, res) => {
                 role: role,
                 balance: balance,
             },
+            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, createdAt: true, updatedAt: true },
         });
         res.json(user);
     } catch (err) {
@@ -300,7 +301,7 @@ app.post('/api/session-passes', async (req, res) => {
             return res.status(400).json({ error: 'paymentMethod doit être CASH ou QRCODE' });
         }
 
-        const member = await prisma.user.findUnique({ where: { id: Number(memberId) } });
+        const member = await prisma.user.findUnique({ where: { id: Number(memberId) }, select: { id: true, sessionCount: true } });
         if (!member) {
             return res.status(404).json({ error: 'Membre introuvable' });
         }
@@ -324,7 +325,8 @@ app.post('/api/session-passes', async (req, res) => {
             // Incrémenter le compteur de séances du membre
             const updatedUser = await tx.user.update({
                 where: { id: Number(memberId) },
-                data: { sessionCount: (member.sessionCount ?? 0) + Number(sessions) }
+                data: { sessionCount: (member.sessionCount ?? 0) + Number(sessions) },
+                select: { id: true, sessionCount: true },
             });
 
             // Mettre à jour le rapport quotidien
@@ -391,7 +393,7 @@ app.post('/api/abonnement-payments', async (req, res) => {
             return res.status(400).json({ error: 'memberId et subscriptionEndDate sont requis' });
         }
 
-        const member = await prisma.user.findUnique({ where: { id: Number(memberId) } });
+        const member = await prisma.user.findUnique({ where: { id: Number(memberId) }, select: { id: true } });
         if (!member) return res.status(404).json({ error: 'Membre introuvable' });
 
         const parsedDate = new Date(subscriptionEndDate);
@@ -481,7 +483,8 @@ app.patch('/api/users/:id/subscription', async (req, res) => {
         }
 
         const user = await prisma.user.findUnique({
-            where: { id: Number(id) }
+            where: { id: Number(id) },
+            select: { id: true },
         });
 
         if (!user) {
@@ -1017,11 +1020,8 @@ app.post('/api/orders', async (req, res) => {
             if (paymentMethod === 'ACCOUNT_DEBIT') {
                 await prismaTransaction.user.update({
                     where: { id: Number(clientId) },
-                    data: {
-                        balance: {
-                            decrement: totalAmount
-                        }
-                    }
+                    data: { balance: { decrement: totalAmount } },
+                    select: { id: true },
                 });
             }
             
@@ -1503,11 +1503,8 @@ app.put('/api/orders/:id', async (req, res) => {
             if (existingOrder.paymentMethod === 'ACCOUNT_DEBIT') {
                 await prismaTransaction.user.update({
                     where: { id: existingOrder.clientId },
-                    data: {
-                        balance: {
-                            increment: existingOrder.totalAmount
-                        }
-                    }
+                    data: { balance: { increment: existingOrder.totalAmount } },
+                    select: { id: true },
                 });
             }
 
@@ -1589,11 +1586,8 @@ app.put('/api/orders/:id', async (req, res) => {
             if (paymentMethod === 'ACCOUNT_DEBIT') {
                 await prismaTransaction.user.update({
                     where: { id: Number(clientId) },
-                    data: {
-                        balance: {
-                            decrement: totalAmount
-                        }
-                    }
+                    data: { balance: { decrement: totalAmount } },
+                    select: { id: true },
                 });
             }
 
@@ -1814,22 +1808,17 @@ app.delete('/api/orders/:id/hard', async (req, res) => {
             if (existingOrder.paymentMethod === 'ACCOUNT_DEBIT') {
                 await prisma.user.update({
                     where: { id: existingOrder.clientId },
-                    data: {
-                        balance: {
-                            increment: existingOrder.totalAmount
-                        }
-                    }
+                    data: { balance: { increment: existingOrder.totalAmount } },
+                    select: { id: true },
                 });
                 balanceRestored = existingOrder.totalAmount;
             } else if (isRefund) {
                 // The refund had credited the account — reverse it
                 await prisma.user.update({
                     where: { id: existingOrder.clientId },
-                    data: {
-                        balance: {
-                            decrement: existingOrder.totalAmount
-                        }
-                    }
+                    data: { balance: { decrement: existingOrder.totalAmount } },
+                    select: { id: true },
+                }
                 });
                 balanceRestored = -existingOrder.totalAmount;
             }
@@ -1988,9 +1977,10 @@ app.post('/api/refunds', async (req, res) => {
         
         // Vérifier que l'utilisateur existe
         const user = await prisma.user.findUnique({
-            where: { id: Number(userId) }
+            where: { id: Number(userId) },
+            select: { id: true },
         });
-        
+
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -2023,11 +2013,8 @@ app.post('/api/refunds', async (req, res) => {
             // Créditer le compte de l'utilisateur (réduire sa dette)
             const updatedUser = await prismaTransaction.user.update({
                 where: { id: Number(userId) },
-                data: {
-                    balance: {
-                        increment: refundAmount
-                    }
-                }
+                data: { balance: { increment: refundAmount } },
+                select: { id: true, balance: true },
             });
 
             // Mettre à jour le rapport quotidien
@@ -2207,7 +2194,8 @@ app.put('/api/refunds/:id', async (req, res) => {
             // Ajuster le solde du client selon la différence
             const updatedUser = await tx.user.update({
                 where: { id: existingOrder.clientId },
-                data: { balance: { increment: amountDiff } }
+                data: { balance: { increment: amountDiff } },
+                select: { id: true, balance: true },
             });
 
             // Mettre à jour le rapport journalier
@@ -3112,6 +3100,7 @@ app.post('/api/daily-presence', async (req, res) => {
 
         const member = await prisma.user.findUnique({
             where: { id: Number(memberId) },
+            select: { id: true, sessionCount: true },
         });
 
         if (!member) {
@@ -3122,7 +3111,8 @@ app.post('/api/daily-presence', async (req, res) => {
         if (member.sessionCount !== null) {
             await prisma.user.update({
                 where: { id: Number(memberId) },
-                data: { sessionCount: { decrement: 1 } }
+                data: { sessionCount: { decrement: 1 } },
+                select: { id: true },
             });
         }
 
