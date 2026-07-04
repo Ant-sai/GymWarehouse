@@ -11,6 +11,8 @@ export type User = {
   lastName?: string;
   subscriptionEndDate?: string | null;
   sessionCount?: number | null;
+  dateOfBirth?: string | null;
+  postalCode?: string | null;
   notes?: string | null;
   role: "USER" | "TRAINER";
   balance: number;
@@ -34,6 +36,8 @@ export default function MembersPage() {
     lastName: "",
     role: "USER" as "USER" | "TRAINER",
     balance: "",
+    dateOfBirth: "",
+    postalCode: "",
     notes: "",
   });
 
@@ -42,6 +46,8 @@ export default function MembersPage() {
   const [editBalance, setEditBalance] = useState("");
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editDateOfBirth, setEditDateOfBirth] = useState("");
+  const [editPostalCode, setEditPostalCode] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
   // Fonction pour formater le nom complet
@@ -117,6 +123,8 @@ async function handleAddUser(e?: React.FormEvent) {
         lastName: form.lastName || null,
         role: form.role,
         balance: Number(form.balance || 0),
+        dateOfBirth: form.dateOfBirth || null,
+        postalCode: form.postalCode || null,
         notes: form.notes || null,
       }),
     });
@@ -139,6 +147,8 @@ async function handleAddUser(e?: React.FormEvent) {
       lastName: "",
       role: "USER",
       balance: "",
+      dateOfBirth: "",
+      postalCode: "",
       notes: "",
     });
    
@@ -174,6 +184,8 @@ async function handleAddUser(e?: React.FormEvent) {
           lastName: editLastName || null,
           role: editingUser?.role,
           balance: newBalance,
+          dateOfBirth: editDateOfBirth || null,
+          postalCode: editPostalCode || null,
           notes: editNotes || null,
         }),
       });
@@ -194,6 +206,8 @@ async function handleAddUser(e?: React.FormEvent) {
       setEditFirstName("");
       setEditLastName("");
       setEditBalance("");
+      setEditDateOfBirth("");
+      setEditPostalCode("");
       setEditNotes("");
 
     } catch (err) {
@@ -208,6 +222,8 @@ async function handleAddUser(e?: React.FormEvent) {
     setEditFirstName(user.firstName || "");
     setEditLastName(user.lastName || "");
     setEditBalance(user.balance.toString());
+    setEditDateOfBirth(user.dateOfBirth ? user.dateOfBirth.split("T")[0] : "");
+    setEditPostalCode(user.postalCode || "");
     setEditNotes(user.notes || "");
   }
 
@@ -486,7 +502,28 @@ async function handleAddUser(e?: React.FormEvent) {
                     />
                   </div>
                 </div>
-                <div className="col-span-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date de naissance</label>
+                    <input
+                      type="date"
+                      value={editDateOfBirth}
+                      onChange={(e) => setEditDateOfBirth(e.target.value)}
+                      className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Code postal</label>
+                    <input
+                      type="text"
+                      value={editPostalCode}
+                      onChange={(e) => setEditPostalCode(e.target.value)}
+                      className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="75001"
+                    />
+                  </div>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire</label>
                   <textarea
                     value={editNotes}
@@ -567,6 +604,25 @@ async function handleAddUser(e?: React.FormEvent) {
                     onChange={(e) => setForm({ ...form, balance: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date de naissance</label>
+                  <input
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Code postal</label>
+                  <input
+                    type="text"
+                    value={form.postalCode}
+                    onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="75001"
                   />
                 </div>
                 <div className="col-span-2">
