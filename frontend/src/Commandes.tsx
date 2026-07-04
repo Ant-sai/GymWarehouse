@@ -834,7 +834,7 @@ export default function DailyOrdersPage() {
                           >
                             <div className="font-medium">{getFullName(user)}</div>
                             <div className="text-xs text-gray-600">
-                              Solde: {Number(user.balance).toFixed(2)}€
+                              Solde: <span className={`font-medium ${Number(user.balance) >= 0 ? "text-green-700" : "text-red-500"}`}>{Number(user.balance).toFixed(2)} €</span>
                               {user.role === "TRAINER" && " • Entraîneur"}
                             </div>
                           </button>
@@ -850,7 +850,7 @@ export default function DailyOrdersPage() {
                         <div>
                           <div className="font-medium text-black-900">{getFullName(refundUser)}</div>
                           <div className="text-sm text-black-700">
-                            Solde actuel: <span className="font-medium">{Number(refundUser.balance).toFixed(2)}€</span>
+                            Solde actuel: <span className={`font-bold text-base ${Number(refundUser.balance) >= 0 ? "text-green-700" : "text-red-500"}`}>{Number(refundUser.balance).toFixed(2)} €</span>
                             {refundUser.role === "TRAINER" && " • Entraîneur"}
                           </div>
                         </div>
@@ -882,13 +882,16 @@ export default function DailyOrdersPage() {
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     placeholder="0.00"
                   />
-                  {refundUser && refundAmount && Number(refundAmount) !== 0 && (
-                    <div className="text-sm mt-2 text-green-600">
-                      Nouveau solde: <span className="font-medium">
-                        {(Number(refundUser.balance) + Number(refundAmount)).toFixed(2)}€
-                      </span>
-                    </div>
-                  )}
+                  {refundUser && refundAmount && Number(refundAmount) !== 0 && (() => {
+                    const newBal = Number(refundUser.balance) + Number(refundAmount);
+                    return (
+                      <div className="text-sm mt-2">
+                        Nouveau solde: <span className={`font-bold text-base ${newBal >= 0 ? "text-green-700" : "text-red-500"}`}>
+                          {newBal.toFixed(2)} €
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div>
@@ -962,7 +965,7 @@ export default function DailyOrdersPage() {
                     {editingRefundOrder.client ? [editingRefundOrder.client.firstName, editingRefundOrder.client.lastName].filter(Boolean).join(" ") || "Utilisateur sans nom" : "Client inconnu"}
                   </div>
                   <div className="text-sm text-blue-700">
-                    Solde actuel: <span className="font-medium">{Number(editingRefundOrder.client?.balance ?? 0).toFixed(2)}€</span>
+                    Solde actuel: <span className={`font-bold text-base ${Number(editingRefundOrder.client?.balance ?? 0) >= 0 ? "text-green-700" : "text-red-500"}`}>{Number(editingRefundOrder.client?.balance ?? 0).toFixed(2)} €</span>
                   </div>
                 </div>
 
