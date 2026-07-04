@@ -845,12 +845,12 @@ export default function DailyOrdersPage() {
 
                   {/* Membre sélectionné */}
                   {refundUser && (
-                    <div className={`p-3 ${Number(refundUser.balance) >= 0 ? 'bg-emerald-50' : 'bg-red-50'} rounded border border-blue-200 mb-2`}>
+                    <div className={`p-3 rounded border-2 mb-2 ${Number(refundUser.balance) >= 0 ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-medium text-black-900">{getFullName(refundUser)}</div>
-                          <div className="text-sm text-black-700">
-                            Solde actuel: <span className={`font-bold text-base ${Number(refundUser.balance) >= 0 ? "text-green-700" : "text-red-500"}`}>{Number(refundUser.balance).toFixed(2)} €</span>
+                          <div className="font-medium text-gray-900">{getFullName(refundUser)}</div>
+                          <div className="text-sm text-gray-700">
+                            Solde actuel: <span className={`font-bold text-base ${Number(refundUser.balance) >= 0 ? "text-green-700" : "text-red-600"}`}>{Number(refundUser.balance).toFixed(2)} €</span>
                             {refundUser.role === "TRAINER" && " • Entraîneur"}
                           </div>
                         </div>
@@ -960,12 +960,12 @@ export default function DailyOrdersPage() {
               <h3 className="text-xl font-semibold mb-6 text-black">Modifier le remboursement</h3>
 
               <div className="space-y-4">
-                <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                  <div className="font-medium text-blue-900">
+                <div className={`p-3 rounded border-2 ${Number(editingRefundOrder.client?.balance ?? 0) >= 0 ? "bg-green-100 border-green-500" : "bg-red-100 border-red-500"}`}>
+                  <div className="font-medium text-gray-900">
                     {editingRefundOrder.client ? [editingRefundOrder.client.firstName, editingRefundOrder.client.lastName].filter(Boolean).join(" ") || "Utilisateur sans nom" : "Client inconnu"}
                   </div>
-                  <div className="text-sm text-blue-700">
-                    Solde actuel: <span className={`font-bold text-base ${Number(editingRefundOrder.client?.balance ?? 0) >= 0 ? "text-green-700" : "text-red-500"}`}>{Number(editingRefundOrder.client?.balance ?? 0).toFixed(2)} €</span>
+                  <div className="text-sm text-gray-700">
+                    Solde actuel: <span className={`font-bold text-base ${Number(editingRefundOrder.client?.balance ?? 0) >= 0 ? "text-green-700" : "text-red-600"}`}>{Number(editingRefundOrder.client?.balance ?? 0).toFixed(2)} €</span>
                   </div>
                 </div>
 
