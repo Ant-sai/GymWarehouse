@@ -94,6 +94,8 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<User | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -120,11 +122,27 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
   async function handleSelectUser(user: User) {
     setSearch("");
     setShowDropdown(false);
+
+    const hasActiveSub = user.subscriptionEndDate != null && new Date(user.subscriptionEndDate) >= new Date();
+    const hasSessions = user.sessionCount != null && user.sessionCount > 0;
+
+    if (hasActiveSub && hasSessions) {
+      setPendingUser(user);
+      setShowChoiceModal(true);
+      return;
+    }
+
+    await submitPresence(user, hasSessions && !hasActiveSub);
+  }
+
+  async function submitPresence(user: User, useSession: boolean) {
+    setShowChoiceModal(false);
+    setPendingUser(null);
     try {
       const res = await fetch("/api/daily-presence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId: user.id }),
+        body: JSON.stringify({ memberId: user.id, useSession }),
       });
       if (res.ok) {
         const presence: Presence = await res.json();
@@ -252,6 +270,32 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddMember}
       />
+
+      {showChoiceModal && pendingUser && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowChoiceModal(false); setPendingUser(null); }} />
+          <div className="relative bg-white rounded-lg p-5 w-64 shadow-lg z-50">
+            <p className="text-sm font-medium text-gray-800 mb-1">{getFullName(pendingUser)}</p>
+            <p className="text-xs text-gray-500 mb-4">Abonnement actif + séances disponibles.<br />Comment enregistrer cette présence ?</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => submitPresence(pendingUser, false)}
+                className="flex-1 py-2 rounded-lg border-2 border-[#1E2A47] bg-[#1E2A47] text-white text-xs font-medium hover:bg-[#2A3B5A]"
+              >
+                Abonnement
+              </button>
+              <button
+                type="button"
+                onClick={() => submitPresence(pendingUser, true)}
+                className="flex-1 py-2 rounded-lg border-2 border-blue-600 bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+              >
+                Séance
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

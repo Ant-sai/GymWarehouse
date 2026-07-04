@@ -123,7 +123,7 @@ process.on('SIGTERM', gracefulShutdown);
 //Create a user
 app.post('/api/users', async (req, res) => {
     try {
-        const { firstName, lastName, role, balance } = req.body;
+        const { firstName, lastName, role, balance, notes } = req.body;
 
         const user = await prisma.user.create({
             data: {
@@ -131,7 +131,9 @@ app.post('/api/users', async (req, res) => {
                 lastName: lastName,
                 role: role,
                 balance: balance,
-            }
+                notes: notes ?? null,
+            },
+            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, notes: true, createdAt: true, updatedAt: true },
         });
         res.status(201).json(user);
     } catch (err) {
@@ -153,6 +155,7 @@ app.get('/api/users', async (req, res) => {
                 balance: true,
                 subscriptionEndDate: true,
                 sessionCount: true,
+                notes: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -186,7 +189,7 @@ app.get('/api/users/:id', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, role, balance } = req.body;
+        const { firstName, lastName, role, balance, notes } = req.body;
         const user = await prisma.user.update({
             where: { id: Number(id), },
             data: {
@@ -194,8 +197,9 @@ app.put('/api/users/:id', async (req, res) => {
                 lastName: lastName,
                 role: role,
                 balance: balance,
+                notes: notes ?? null,
             },
-            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, createdAt: true, updatedAt: true },
+            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, notes: true, createdAt: true, updatedAt: true },
         });
         res.json(user);
     } catch (err) {
@@ -288,92 +292,30 @@ app.put('/api/session-pass-prices/:id', async (req, res) => {
 // ----------- Session Pass purchase route --------
 // -----------------------------------------------
 
-// POST /api/session-passes — Vente d'un forfait séances
+// POST /api/session-passes — Ajout de séances (sans création de commande)
 app.post('/api/session-passes', async (req, res) => {
     try {
-        const { memberId, sessions, paymentMethod, price, notes } = req.body;
+        const { memberId, sessions } = req.body;
 
-        if (!memberId || !sessions || !paymentMethod) {
-            return res.status(400).json({ error: 'memberId, sessions et paymentMethod sont requis' });
+        if (!memberId || !sessions) {
+            return res.status(400).json({ error: 'memberId et sessions sont requis' });
         }
 
-        if (!['CASH', 'QRCODE'].includes(paymentMethod)) {
-            return res.status(400).json({ error: 'paymentMethod doit être CASH ou QRCODE' });
-        }
-
-        const member = await prisma.user.findUnique({ where: { id: Number(memberId) }, select: { id: true, sessionCount: true } });
+        const member = await prisma.user.findUnique({
+            where: { id: Number(memberId) },
+            select: { id: true, sessionCount: true },
+        });
         if (!member) {
             return res.status(404).json({ error: 'Membre introuvable' });
         }
 
-        const passAmount = Number(price) || 0;
-
-        const result = await prisma.$transaction(async (tx) => {
-            // Créer une commande pour le paiement (même logique que les remboursements)
-            const passOrder = await tx.order.create({
-                data: {
-                    clientId: Number(memberId),
-                    totalAmount: passAmount,
-                    paymentMethod,
-                    notes: `[FORFAIT SÉANCES] ${sessions} séance${sessions > 1 ? 's' : ''}${notes ? ' — ' + notes : ''}`,
-                },
-                include: {
-                    client: { select: { id: true, firstName: true, lastName: true } }
-                }
-            });
-
-            // Incrémenter le compteur de séances du membre
-            const updatedUser = await tx.user.update({
-                where: { id: Number(memberId) },
-                data: { sessionCount: (member.sessionCount ?? 0) + Number(sessions) },
-                select: { id: true, sessionCount: true },
-            });
-
-            // Mettre à jour le rapport quotidien
-            const saleDate = new Date();
-            saleDate.setHours(0, 0, 0, 0);
-            const dayEnd = new Date(saleDate);
-            dayEnd.setHours(23, 59, 59, 999);
-
-            const allOrdersToday = await tx.order.findMany({
-                where: { date: { gte: saleDate, lte: dayEnd } }
-            });
-
-            let cashRevenue = 0, qrRevenue = 0, creditRevenue = 0;
-            allOrdersToday.forEach(o => {
-                const amount = Number(o.totalAmount);
-                if (o.paymentMethod !== 'FREE') {
-                    if (o.paymentMethod === 'CASH') cashRevenue += amount;
-                    else if (o.paymentMethod === 'QRCODE') qrRevenue += amount;
-                    else if (o.paymentMethod === 'ACCOUNT_DEBIT') creditRevenue += amount;
-                }
-            });
-
-            const existingReport = await tx.dailyReport.findUnique({ where: { date: saleDate } });
-            if (existingReport) {
-                const trou = Number(existingReport.trou) || 0;
-                const retrait = Number(existingReport.retrait) || 0;
-                const endingCash = Number(existingReport.startingCash) + cashRevenue + trou + retrait;
-                await tx.dailyReport.update({
-                    where: { date: saleDate },
-                    data: { cashRevenue, qrRevenue, creditRevenue, endingCash }
-                });
-            } else {
-                const previousReport = await tx.dailyReport.findFirst({
-                    where: { date: { lt: saleDate } },
-                    orderBy: { date: 'desc' }
-                });
-                const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
-                const endingCash = startingCash + cashRevenue;
-                await tx.dailyReport.create({
-                    data: { date: saleDate, startingCash, cashRevenue, qrRevenue, creditRevenue, trou: 0, retrait: 0, endingCash }
-                });
-            }
-
-            return { order: passOrder, newSessionCount: updatedUser.sessionCount, sessions };
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(memberId) },
+            data: { sessionCount: (member.sessionCount ?? 0) + Number(sessions) },
+            select: { id: true, firstName: true, lastName: true, sessionCount: true },
         });
 
-        res.status(201).json(result);
+        res.status(201).json({ newSessionCount: updatedUser.sessionCount, sessions });
     } catch (err) {
         console.error('Error creating session pass:', err);
         res.status(500).json({ error: 'Failed to create session pass', message: err.message });
@@ -384,10 +326,10 @@ app.post('/api/session-passes', async (req, res) => {
 // --------- Abonnement payment route ------------
 // -----------------------------------------------
 
-// POST /api/abonnement-payments — Enregistre un paiement d'abonnement + met à jour la date
+// POST /api/abonnement-payments — Met à jour l'abonnement (sans création de commande)
 app.post('/api/abonnement-payments', async (req, res) => {
     try {
-        const { memberId, subscriptionEndDate, amount, paymentMethod, notes } = req.body;
+        const { memberId, subscriptionEndDate } = req.body;
 
         if (!memberId || !subscriptionEndDate) {
             return res.status(400).json({ error: 'memberId et subscriptionEndDate sont requis' });
@@ -401,65 +343,16 @@ app.post('/api/abonnement-payments', async (req, res) => {
             return res.status(400).json({ error: 'Format de date invalide' });
         }
 
-        const paymentAmount = Number(amount) || 0;
-
-        const result = await prisma.$transaction(async (tx) => {
-            // Mettre à jour la date d'abonnement
-            const updatedUser = await tx.user.update({
-                where: { id: Number(memberId) },
-                data: { subscriptionEndDate: parsedDate },
-                select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true }
-            });
-
-            let order = null;
-
-            // Créer un Order pour le paiement si montant > 0 et méthode fournie
-            if (paymentAmount > 0 && paymentMethod && ['CASH', 'QRCODE'].includes(paymentMethod)) {
-                order = await tx.order.create({
-                    data: {
-                        clientId: Number(memberId),
-                        totalAmount: paymentAmount,
-                        paymentMethod,
-                        notes: `[ABONNEMENT] ${notes || ''}`.trim(),
-                    }
-                });
-
-                // Mettre à jour le rapport quotidien
-                const saleDate = new Date();
-                saleDate.setHours(0, 0, 0, 0);
-                const dayEnd = new Date(saleDate);
-                dayEnd.setHours(23, 59, 59, 999);
-
-                const allOrdersToday = await tx.order.findMany({
-                    where: { date: { gte: saleDate, lte: dayEnd } }
-                });
-
-                let cashRevenue = 0, qrRevenue = 0, creditRevenue = 0;
-                allOrdersToday.forEach(o => {
-                    const amt = Number(o.totalAmount);
-                    if (o.paymentMethod === 'CASH') cashRevenue += amt;
-                    else if (o.paymentMethod === 'QRCODE') qrRevenue += amt;
-                    else if (o.paymentMethod === 'ACCOUNT_DEBIT') creditRevenue += amt;
-                });
-
-                const existingReport = await tx.dailyReport.findUnique({ where: { date: saleDate } });
-                if (existingReport) {
-                    const endingCash = Number(existingReport.startingCash) + cashRevenue + Number(existingReport.trou) + Number(existingReport.retrait || 0);
-                    await tx.dailyReport.update({ where: { date: saleDate }, data: { cashRevenue, qrRevenue, creditRevenue, endingCash } });
-                } else {
-                    const previousReport = await tx.dailyReport.findFirst({ where: { date: { lt: saleDate } }, orderBy: { date: 'desc' } });
-                    const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
-                    await tx.dailyReport.create({ data: { date: saleDate, startingCash, cashRevenue, qrRevenue, creditRevenue, trou: 0, retrait: 0, endingCash: startingCash + cashRevenue } });
-                }
-            }
-
-            return { user: updatedUser, order };
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(memberId) },
+            data: { subscriptionEndDate: parsedDate },
+            select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
         });
 
-        res.status(201).json(result);
+        res.status(201).json({ user: updatedUser });
     } catch (err) {
-        console.error('Error processing abonnement payment:', err);
-        res.status(500).json({ error: 'Failed to process abonnement payment', message: err.message });
+        console.error('Error processing abonnement:', err);
+        res.status(500).json({ error: 'Failed to process abonnement', message: err.message });
     }
 });
 
@@ -3091,7 +2984,7 @@ app.get('/api/daily-presence', async (req, res) => {
 // POST /api/daily-presence — Enregistrer une présence
 app.post('/api/daily-presence', async (req, res) => {
     try {
-        const { memberId } = req.body;
+        const { memberId, useSession } = req.body;
 
         if (!memberId) {
             return res.status(400).json({ error: 'memberId est requis' });
@@ -3106,8 +2999,8 @@ app.post('/api/daily-presence', async (req, res) => {
             return res.status(404).json({ error: 'Membre introuvable' });
         }
 
-        // Décrémenter le compteur de séances si le membre en possède
-        if (member.sessionCount !== null) {
+        // Décrémenter uniquement si le frontend a explicitement demandé l'utilisation d'une séance
+        if (useSession === true && member.sessionCount !== null) {
             await prisma.user.update({
                 where: { id: Number(memberId) },
                 data: { sessionCount: { decrement: 1 } },

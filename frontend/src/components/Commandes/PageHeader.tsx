@@ -5,8 +5,6 @@ interface PageHeaderProps {
   onRefresh: () => Promise<void>;
   onExport: () => void;
   onNewOrder: () => void;
-  onNewAbonnement: () => void;
-  onNewForfait: () => void;
   onRefund: () => void;
   onStandby: () => void;
   onDailyStock: () => void;
@@ -19,8 +17,6 @@ interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({
   onExport,
   onNewOrder,
-  onNewAbonnement,
-  onNewForfait,
   onRefund,
   onStandby,
   onDailyStock,
@@ -59,18 +55,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
       {/* Boutons et image à droite */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={onNewAbonnement}
-          className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
-        >
-          Abonnement
-        </button>
-        <button
-          onClick={onNewForfait}
-          className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
-        >
-          🎟️ Forfait séances
-        </button>
         <button
           onClick={onNewOrder}
           className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"

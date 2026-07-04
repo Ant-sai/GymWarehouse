@@ -6,8 +6,6 @@ import { TrouModal } from './components/Modals/TrouModal';
 import { ExportModal } from './components/Modals/ExportModal';
 import { RetraitModal } from './components/Modals/RetraitModal';
 import { DailyStockModal } from './components/Modals/DailyStockModal';
-import { ForfaitModal } from './components/Modals/ForfaitModal';
-import { AbonnementModal } from './components/Modals/AbonnementModal';
 import type { User, Product, OrderItem, Order, CreateOrderData, StandbyData } from './types/commandes.types';
 
 export type { User, Product, OrderItem, Order };
@@ -108,8 +106,6 @@ export default function DailyOrdersPage() {
   const [showRetraitModal, setShowRetraitModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDailyStockModal, setShowDailyStockModal] = useState(false);
-  const [showAbonnementModal, setShowAbonnementModal] = useState(false);
-  const [showForfaitModal, setShowForfaitModal] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchUsers(), fetchProducts(), fetchStandbyOrders()]);
@@ -654,8 +650,6 @@ export default function DailyOrdersPage() {
           onRefund={() => setShowRefundForm(true)}
           onStandby={() => setShowStandbyList(true)}
           onDailyStock={() => setShowDailyStockModal(true)}
-          onNewAbonnement={() => setShowAbonnementModal(true)}
-          onNewForfait={() => setShowForfaitModal(true)}
           standbyCount={standbyOrders.length}
           loading={loading}
           selectedDate={selectedDate}
@@ -1277,21 +1271,6 @@ export default function DailyOrdersPage() {
           onClose={() => setShowDailyStockModal(false)}
           onStockUpdated={fetchProducts}
         />
-        {/* Modal Abonnement */}
-        {showAbonnementModal && (
-          <AbonnementModal
-            users={users}
-            onClose={() => setShowAbonnementModal(false)}
-            onSuccess={() => { fetchUsers(); fetchOrders(); }}
-          />
-        )}
-        {showForfaitModal && (
-          <ForfaitModal
-            users={users}
-            onClose={() => setShowForfaitModal(false)}
-            onSuccess={() => { fetchUsers(); fetchOrders(); }}
-          />
-        )}
       </main>
       <DailyPresenceSidebar users={users} onUserAdded={fetchUsers} />
     </div>

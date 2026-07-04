@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import type { User } from "../../types/commandes.types";
 
 type SubscriptionDuration = { id: number; duration: number; label: string; price: number };
@@ -15,7 +16,8 @@ function getFullName(user: { firstName?: string | null; lastName?: string | null
   return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
 }
 
-export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Props) {
+export function AbonnementModal({ users, initialUser, onClose }: Props) {
+  const navigate = useNavigate();
   const [abonnementUser, setAbonnementUser] = useState<User | null>(initialUser ?? null);
   const [abonnementUserSearch, setAbonnementUserSearch] = useState(initialUser ? getFullName(initialUser) : "");
   const [abonnementDate, setAbonnementDate] = useState<string>(() => {
@@ -25,9 +27,6 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
     return "";
   });
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
-  const [abonnementPrice, setAbonnementPrice] = useState<string>("");
-  const [abonnementPayment, setAbonnementPayment] = useState<"CASH" | "QRCODE" | null>(null);
-  const [abonnementNotes, setAbonnementNotes] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [subscriptionDurations, setSubscriptionDurations] = useState<SubscriptionDuration[]>([]);
 
@@ -50,9 +49,6 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
         body: JSON.stringify({
           memberId: abonnementUser.id,
           subscriptionEndDate: new Date(abonnementDate).toISOString(),
-          amount: Number(abonnementPrice) || 0,
-          paymentMethod: abonnementPayment,
-          notes: abonnementNotes,
         }),
       });
 
@@ -61,8 +57,7 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      onSuccess();
-      onClose();
+      navigate("/commandes");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Impossible de mettre à jour l'abonnement");
     } finally {
@@ -173,8 +168,6 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                       base.setDate(base.getDate() - 1);
                       setAbonnementDate(base.toISOString().split("T")[0]);
                       setSelectedDuration(months);
-                      const p = subscriptionDurations.find(d => d.duration === months)?.price;
-                      setAbonnementPrice(p !== undefined ? String(p) : "");
                     }}
                     className={`flex flex-col items-center px-2 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       selectedDuration === months
@@ -195,54 +188,10 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
 
             {selectedDuration !== null && (
               <button type="button"
-                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); setAbonnementPrice(""); setAbonnementPayment(null); }}
+                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); }}
                 className="text-xs text-gray-400 hover:text-gray-600 mb-2">
                 ✕ Changer la durée
               </button>
-            )}
-
-            {selectedDuration !== null && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 whitespace-nowrap">Prix :</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={abonnementPrice}
-                    onChange={(e) => setAbonnementPrice(e.target.value)}
-                    placeholder="0.00"
-                    className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-500">€</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement <span className="text-gray-400 font-normal">(optionnel)</span></p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["CASH", "QRCODE"] as const).map(method => (
-                      <button key={method} type="button"
-                        onClick={() => setAbonnementPayment(abonnementPayment === method ? null : method)}
-                        className={`py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                          abonnementPayment === method
-                            ? "border-[#1E2A47] bg-[#1E2A47] text-white"
-                            : "border-gray-300 text-gray-700 hover:border-[#1E2A47]"
-                        }`}>
-                        {method === "CASH" ? "💵 Cash" : "📱 QR Code"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Commentaire</label>
-                  <textarea
-                    value={abonnementNotes}
-                    onChange={(e) => setAbonnementNotes(e.target.value)}
-                    placeholder="Notes optionnelles..."
-                    rows={2}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-                  />
-                </div>
-              </div>
             )}
 
             {abonnementDate && (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import type { User } from "../../types/commandes.types";
 
 type SessionPassPrice = { id: number; sessions: number; label: string; price: number };
@@ -15,13 +16,11 @@ function getFullName(user: { firstName?: string | null; lastName?: string | null
   return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
 }
 
-export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) {
+export function ForfaitModal({ users, initialUser, onClose }: Props) {
+  const navigate = useNavigate();
   const [forfaitUser, setForfaitUser] = useState<User | null>(initialUser ?? null);
   const [forfaitUserSearch, setForfaitUserSearch] = useState(initialUser ? getFullName(initialUser) : "");
   const [forfaitSessions, setForfaitSessions] = useState<number | null>(null);
-  const [forfaitPayment, setForfaitPayment] = useState<"CASH" | "QRCODE" | null>(null);
-  const [forfaitPrice, setForfaitPrice] = useState<string>("");
-  const [forfaitNotes, setForfaitNotes] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [sessionPassPrices, setSessionPassPrices] = useState<SessionPassPrice[]>([]);
 
@@ -35,9 +34,6 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
   async function handleSave() {
     if (!forfaitUser) { alert("Veuillez sélectionner un membre"); return; }
     if (!forfaitSessions) { alert("Veuillez sélectionner un forfait"); return; }
-    if (!forfaitPayment) { alert("Veuillez sélectionner un mode de paiement"); return; }
-
-    const passPrice = forfaitPrice !== "" ? Number(forfaitPrice) : (sessionPassPrices.find(p => p.sessions === forfaitSessions)?.price ?? 0);
 
     setSaving(true);
     try {
@@ -47,9 +43,6 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
         body: JSON.stringify({
           memberId: forfaitUser.id,
           sessions: forfaitSessions,
-          paymentMethod: forfaitPayment,
-          price: passPrice,
-          notes: forfaitNotes,
         }),
       });
 
@@ -58,8 +51,7 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      onSuccess();
-      onClose();
+      navigate("/commandes");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Impossible d'enregistrer le forfait");
     } finally {
@@ -127,11 +119,7 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
                 const passPrice = sessionPassPrices.find(p => p.sessions === n)?.price;
                 return (
                   <button key={n} type="button"
-                    onClick={() => {
-                      setForfaitSessions(n);
-                      const p = sessionPassPrices.find(p => p.sessions === n)?.price;
-                      setForfaitPrice(p !== undefined ? String(p) : "");
-                    }}
+                    onClick={() => setForfaitSessions(n)}
                     className={`flex flex-col items-center py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       forfaitSessions === n
                         ? "border-[#1E2A47] bg-[#1E2A47] text-white"
@@ -146,52 +134,6 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
               })}
             </div>
           </div>
-
-          {/* Prix éditable */}
-          {forfaitSessions !== null && (
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 whitespace-nowrap">Prix :</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={forfaitPrice}
-                onChange={(e) => setForfaitPrice(e.target.value)}
-                placeholder="0.00"
-                className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-500">€</span>
-            </div>
-          )}
-
-          {/* Mode de paiement */}
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Mode de paiement</p>
-            <div className="grid grid-cols-2 gap-2">
-              {(["CASH", "QRCODE"] as const).map(method => (
-                <button key={method} type="button" onClick={() => setForfaitPayment(method)}
-                  className={`py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                    forfaitPayment === method
-                      ? "border-[#1E2A47] bg-[#1E2A47] text-white"
-                      : "border-gray-300 text-gray-700 hover:border-[#1E2A47]"
-                  }`}>
-                  {method === "CASH" ? "💵 Cash" : "📱 QR Code"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Commentaire */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Commentaire</label>
-            <textarea
-              value={forfaitNotes}
-              onChange={(e) => setForfaitNotes(e.target.value)}
-              placeholder="Notes optionnelles..."
-              rows={2}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-            />
-          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -201,7 +143,7 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
             Annuler
           </button>
           <button onClick={handleSave}
-            disabled={saving || !forfaitUser || !forfaitSessions || !forfaitPayment}
+            disabled={saving || !forfaitUser || !forfaitSessions}
             className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed">
             {saving ? "Enregistrement..." : "Confirmer"}
           </button>
