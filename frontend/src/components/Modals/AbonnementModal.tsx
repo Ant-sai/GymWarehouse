@@ -27,6 +27,8 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
     return "";
   });
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
+  const [abonnementPrice, setAbonnementPrice] = useState<string>("");
+  const [abonnementPayment, setAbonnementPayment] = useState<"CASH" | "QRCODE" | null>(null);
   const [saving, setSaving] = useState(false);
   const [subscriptionDurations, setSubscriptionDurations] = useState<SubscriptionDuration[]>([]);
 
@@ -49,6 +51,8 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
         body: JSON.stringify({
           memberId: abonnementUser.id,
           subscriptionEndDate: new Date(abonnementDate).toISOString(),
+          amount: abonnementPrice !== "" ? Number(abonnementPrice) : undefined,
+          paymentMethod: abonnementPayment ?? undefined,
         }),
       });
 
@@ -124,7 +128,7 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
                   <div className="flex justify-between items-center mb-1">
                     <div className="font-medium text-black">{getFullName(abonnementUser)}</div>
                     <button type="button"
-                      onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); setSelectedDuration(null); }}
+                      onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); setSelectedDuration(null); setAbonnementPrice(""); setAbonnementPayment(null); }}
                       className="text-xs text-gray-400 hover:text-gray-600 underline">
                       Changer
                     </button>
@@ -168,6 +172,8 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
                       base.setDate(base.getDate() - 1);
                       setAbonnementDate(base.toISOString().split("T")[0]);
                       setSelectedDuration(months);
+                      const p = subscriptionDurations.find(d => d.duration === months)?.price;
+                      setAbonnementPrice(p !== undefined ? String(p) : "");
                     }}
                     className={`flex flex-col items-center px-2 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       selectedDuration === months
@@ -188,10 +194,44 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
 
             {selectedDuration !== null && (
               <button type="button"
-                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); }}
-                className="text-xs text-gray-400 hover:text-gray-600 mb-2">
+                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); setAbonnementPrice(""); setAbonnementPayment(null); }}
+                className="text-xs text-gray-400 hover:text-gray-600 mb-3">
                 ✕ Changer la durée
               </button>
+            )}
+
+            {selectedDuration !== null && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 whitespace-nowrap">Prix :</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={abonnementPrice}
+                    onChange={(e) => setAbonnementPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-500">€</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement <span className="text-gray-400 font-normal">(optionnel)</span></p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["CASH", "QRCODE"] as const).map(method => (
+                      <button key={method} type="button"
+                        onClick={() => setAbonnementPayment(abonnementPayment === method ? null : method)}
+                        className={`py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                          abonnementPayment === method
+                            ? "border-[#1E2A47] bg-[#1E2A47] text-white"
+                            : "border-gray-300 text-gray-700 hover:border-[#1E2A47]"
+                        }`}>
+                        {method === "CASH" ? "💵 Cash" : "📱 QR Code"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
 
             {abonnementDate && (

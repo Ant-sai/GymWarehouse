@@ -47,17 +47,14 @@ function getSubStatus(endDate: string | null): "domi" | "valid" | "expiring" | "
 }
 
 function getNameColor(sessionCount: number | null | undefined, subStatus: string): string {
-  // Rouge si séances épuisées (sessionCount non null ET ≤ 0)
-  if (sessionCount !== null && sessionCount !== undefined && sessionCount <= 0) {
-    return "text-red-600";
-  }
+  // Vert si abonnement valide ou domiciliation
+  if (subStatus === "valid" || subStatus === "domi") return "text-green-700";
   // Orange si abonnement expire dans 3 jours ou moins
   if (subStatus === "expiring") return "text-orange-500";
-  // Vert si abonnement valide
-  if (subStatus === "valid" || subStatus === "domi") return "text-green-700";
-  // Rouge si abonnement expiré ou absent
-  if (subStatus === "expired" || subStatus === "none") return "text-red-600";
-  return "text-gray-700";
+  // Vert si séances disponibles (même sans abonnement actif)
+  if (sessionCount != null && sessionCount > 0) return "text-green-700";
+  // Rouge : ni abonnement actif ni séances disponibles
+  return "text-red-600";
 }
 
 function getSubTooltip(endDate: string | null, sessionCount: number | null | undefined): string {

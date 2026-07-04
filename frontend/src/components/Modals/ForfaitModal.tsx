@@ -21,6 +21,8 @@ export function ForfaitModal({ users, initialUser, onClose }: Props) {
   const [forfaitUser, setForfaitUser] = useState<User | null>(initialUser ?? null);
   const [forfaitUserSearch, setForfaitUserSearch] = useState(initialUser ? getFullName(initialUser) : "");
   const [forfaitSessions, setForfaitSessions] = useState<number | null>(null);
+  const [forfaitPrice, setForfaitPrice] = useState<string>("");
+  const [forfaitPayment, setForfaitPayment] = useState<"CASH" | "QRCODE" | null>(null);
   const [saving, setSaving] = useState(false);
   const [sessionPassPrices, setSessionPassPrices] = useState<SessionPassPrice[]>([]);
 
@@ -43,6 +45,8 @@ export function ForfaitModal({ users, initialUser, onClose }: Props) {
         body: JSON.stringify({
           memberId: forfaitUser.id,
           sessions: forfaitSessions,
+          amount: forfaitPrice !== "" ? Number(forfaitPrice) : undefined,
+          paymentMethod: forfaitPayment ?? undefined,
         }),
       });
 
@@ -119,7 +123,11 @@ export function ForfaitModal({ users, initialUser, onClose }: Props) {
                 const passPrice = sessionPassPrices.find(p => p.sessions === n)?.price;
                 return (
                   <button key={n} type="button"
-                    onClick={() => setForfaitSessions(n)}
+                    onClick={() => {
+                      setForfaitSessions(n);
+                      const p = sessionPassPrices.find(p => p.sessions === n)?.price;
+                      setForfaitPrice(p !== undefined ? String(p) : "");
+                    }}
                     className={`flex flex-col items-center py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       forfaitSessions === n
                         ? "border-[#1E2A47] bg-[#1E2A47] text-white"
@@ -134,6 +142,41 @@ export function ForfaitModal({ users, initialUser, onClose }: Props) {
               })}
             </div>
           </div>
+
+          {/* Prix et paiement */}
+          {forfaitSessions !== null && (
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 whitespace-nowrap">Prix :</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={forfaitPrice}
+                  onChange={(e) => setForfaitPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-500">€</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement <span className="text-gray-400 font-normal">(optionnel)</span></p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["CASH", "QRCODE"] as const).map(method => (
+                    <button key={method} type="button"
+                      onClick={() => setForfaitPayment(forfaitPayment === method ? null : method)}
+                      className={`py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        forfaitPayment === method
+                          ? "border-[#1E2A47] bg-[#1E2A47] text-white"
+                          : "border-gray-300 text-gray-700 hover:border-[#1E2A47]"
+                      }`}>
+                      {method === "CASH" ? "💵 Cash" : "📱 QR Code"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end gap-3">

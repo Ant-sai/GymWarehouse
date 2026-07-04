@@ -295,7 +295,7 @@ app.put('/api/session-pass-prices/:id', async (req, res) => {
 // POST /api/session-passes — Ajout de séances (sans création de commande)
 app.post('/api/session-passes', async (req, res) => {
     try {
-        const { memberId, sessions } = req.body;
+        const { memberId, sessions, amount, paymentMethod } = req.body;
 
         if (!memberId || !sessions) {
             return res.status(400).json({ error: 'memberId et sessions sont requis' });
@@ -315,6 +315,20 @@ app.post('/api/session-passes', async (req, res) => {
             select: { id: true, firstName: true, lastName: true, sessionCount: true },
         });
 
+        // Enregistrer un paiement si un montant est fourni
+        if (amount !== undefined && amount !== null && Number(amount) >= 0) {
+            await prisma.payment.create({
+                data: {
+                    memberId: Number(memberId),
+                    type: 'FORFAIT',
+                    period: String(sessions),
+                    paymentMode: paymentMethod || 'CASH',
+                    price: Number(amount),
+                    comment: null,
+                },
+            });
+        }
+
         res.status(201).json({ newSessionCount: updatedUser.sessionCount, sessions });
     } catch (err) {
         console.error('Error creating session pass:', err);
@@ -329,7 +343,7 @@ app.post('/api/session-passes', async (req, res) => {
 // POST /api/abonnement-payments — Met à jour l'abonnement (sans création de commande)
 app.post('/api/abonnement-payments', async (req, res) => {
     try {
-        const { memberId, subscriptionEndDate } = req.body;
+        const { memberId, subscriptionEndDate, amount, paymentMethod } = req.body;
 
         if (!memberId || !subscriptionEndDate) {
             return res.status(400).json({ error: 'memberId et subscriptionEndDate sont requis' });
@@ -348,6 +362,21 @@ app.post('/api/abonnement-payments', async (req, res) => {
             data: { subscriptionEndDate: parsedDate },
             select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
         });
+
+        // Enregistrer un paiement si un montant est fourni
+        if (amount !== undefined && amount !== null && Number(amount) >= 0) {
+            const expiryLabel = parsedDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+            await prisma.payment.create({
+                data: {
+                    memberId: Number(memberId),
+                    type: 'ENTREE',
+                    period: expiryLabel,
+                    paymentMode: paymentMethod || 'CASH',
+                    price: Number(amount),
+                    comment: null,
+                },
+            });
+        }
 
         res.status(201).json({ user: updatedUser });
     } catch (err) {
@@ -1269,6 +1298,77 @@ app.get('/api/orders/export/range', async (req, res) => {
             error: 'Failed to fetch orders for export',
             message: err.message
         });
+    }
+});
+
+// -----------------------------------------------
+// ------------ Payment export routes ------------
+// -----------------------------------------------
+
+function formatPaymentExport(payment) {
+    return {
+        id: payment.id,
+        memberName: `${payment.member.firstName || ''} ${payment.member.lastName || ''}`.trim(),
+        type: payment.type,
+        period: payment.period,
+        paymentMode: payment.paymentMode,
+        price: payment.price !== null ? Number(payment.price) : null,
+        comment: payment.comment || null,
+        createdAt: payment.createdAt,
+    };
+}
+
+// GET /api/payments/export — Tous les paiements
+app.get('/api/payments/export', async (req, res) => {
+    try {
+        const payments = await prisma.payment.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: { member: { select: { id: true, firstName: true, lastName: true } } },
+        });
+        res.json(payments.map(formatPaymentExport));
+    } catch (err) {
+        console.error('Error fetching payments for export:', err);
+        res.status(500).json({ error: 'Failed to fetch payments for export', message: err.message });
+    }
+});
+
+// GET /api/payments/export/from/:date — Paiements depuis une date
+app.get('/api/payments/export/from/:date', async (req, res) => {
+    try {
+        const startDate = new Date(req.params.date);
+        if (isNaN(startDate.getTime())) return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        startDate.setHours(0, 0, 0, 0);
+        const payments = await prisma.payment.findMany({
+            where: { createdAt: { gte: startDate } },
+            orderBy: { createdAt: 'desc' },
+            include: { member: { select: { id: true, firstName: true, lastName: true } } },
+        });
+        res.json({ startDate, count: payments.length, data: payments.map(formatPaymentExport) });
+    } catch (err) {
+        console.error('Error fetching payments for export:', err);
+        res.status(500).json({ error: 'Failed to fetch payments for export', message: err.message });
+    }
+});
+
+// GET /api/payments/export/range — Paiements entre deux dates
+app.get('/api/payments/export/range', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        if (!startDate || !endDate) return res.status(400).json({ error: 'startDate and endDate are required' });
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        const payments = await prisma.payment.findMany({
+            where: { createdAt: { gte: start, lte: end } },
+            orderBy: { createdAt: 'desc' },
+            include: { member: { select: { id: true, firstName: true, lastName: true } } },
+        });
+        res.json({ startDate: start, endDate: end, count: payments.length, data: payments.map(formatPaymentExport) });
+    } catch (err) {
+        console.error('Error fetching payments for export:', err);
+        res.status(500).json({ error: 'Failed to fetch payments for export', message: err.message });
     }
 });
 

@@ -252,6 +252,83 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
 }
 
 // ============================================
+// EXPORT DES PAIEMENTS (Forfaits & Abonnements)
+// ============================================
+
+export type ExportPaymentData = {
+  id: number;
+  memberName: string;
+  type: 'FORFAIT' | 'ENTREE';
+  period: string;
+  paymentMode: string;
+  price: number | null;
+  comment: string | null;
+  createdAt: string;
+};
+
+const PAYMENT_MODE_LABELS: Record<string, string> = {
+  CASH: 'Espèces',
+  CB: 'Carte bancaire',
+  VIREMENT: 'Virement',
+  QRCODE: 'QR Code',
+};
+
+const MEMBER_PAYMENT_TYPE_LABELS: Record<string, string> = {
+  FORFAIT: 'Forfait séances',
+  ENTREE: 'Abonnement',
+};
+
+function generatePaymentsExcelFile(data: ExportPaymentData[], filename: string) {
+  const rows = data.map(p => ({
+    'Date': new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    'Membre': p.memberName,
+    'Type': MEMBER_PAYMENT_TYPE_LABELS[p.type] || p.type,
+    'Période / Séances': p.period,
+    'Montant': p.price !== null ? formatPrice(p.price) : '',
+    'Mode de paiement': PAYMENT_MODE_LABELS[p.paymentMode] || p.paymentMode,
+    'Commentaire': p.comment || '',
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet['!cols'] = [
+    { wch: 18 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 30 },
+  ];
+
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
+    if (worksheet[cellE] && typeof worksheet[cellE].v === 'number') {
+      worksheet[cellE].z = '#,##0.00 "€"';
+    }
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Paiements');
+  XLSX.writeFile(workbook, `${filename}.xlsx`);
+}
+
+export async function exportAllPaymentsToExcel() {
+  const response = await fetch('/api/payments/export');
+  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
+  const data: ExportPaymentData[] = await response.json();
+  generatePaymentsExcelFile(data, 'tous-les-paiements');
+}
+
+export async function exportPaymentsFromDateToExcel(startDate: string) {
+  const response = await fetch(`/api/payments/export/from/${startDate}`);
+  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
+  const result = await response.json();
+  generatePaymentsExcelFile(result.data, `paiements-depuis-${startDate}`);
+}
+
+export async function exportPaymentsRangeToExcel(startDate: string, endDate: string) {
+  const response = await fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`);
+  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
+  const result = await response.json();
+  generatePaymentsExcelFile(result.data, `paiements-${startDate}-au-${endDate}`);
+}
+
+// ============================================
 // EXPORT DU STOCK (Ajouts de stock)
 // ============================================
 export type ExportStockAdditionData = {
