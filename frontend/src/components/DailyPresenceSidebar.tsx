@@ -238,7 +238,7 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
                     type="button"
                     title={tooltip}
                     onClick={() => navigate(`/membres?search=${encodeURIComponent(getFullName(p.member))}`)}
-                    className={`text-xs flex-1 text-left hover:underline min-w-0 ${nameColor}`}
+                    className={`text-[10px] flex-1 text-left hover:underline min-w-0 ${nameColor}`}
                   >
                     <div className="truncate">{p.member.firstName ?? ""}</div>
                     <div className="truncate">{p.member.lastName ?? ""}</div>
