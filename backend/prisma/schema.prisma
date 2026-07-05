@@ -207,11 +207,10 @@ model StockAddition {
 }
 
 model DailyPresence {
-  id          Int      @id @default(autoincrement())
-  memberId    Int      @map("member_id")
-  member      User     @relation(fields: [memberId], references: [id])
-  arrivedAt   DateTime @default(now()) @map("arrived_at")
-  usedSession Boolean  @default(false) @map("used_session")
+  id        Int      @id @default(autoincrement())
+  memberId  Int      @map("member_id")
+  member    User     @relation(fields: [memberId], references: [id])
+  arrivedAt DateTime @default(now()) @map("arrived_at")
 
   @@index([memberId], map: "daily_presence_memberId_fkey")
   @@index([arrivedAt], map: "daily_presence_arrivedAt_idx")

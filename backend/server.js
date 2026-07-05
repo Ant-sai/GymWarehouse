@@ -3114,10 +3114,8 @@ app.post('/api/daily-presence', async (req, res) => {
             });
         }
 
-        const usedSession = useSession === true && member.sessionCount !== null;
-
         const presence = await prisma.dailyPresence.create({
-            data: { memberId: Number(memberId), usedSession },
+            data: { memberId: Number(memberId) },
             include: {
                 member: {
                     select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true, sessionCount: true },
@@ -3136,6 +3134,7 @@ app.post('/api/daily-presence', async (req, res) => {
 app.delete('/api/daily-presence/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const refund = req.query.refund === 'true';
 
         const presence = await prisma.dailyPresence.findUnique({
             where: { id: Number(id) },
@@ -3145,7 +3144,7 @@ app.delete('/api/daily-presence/:id', async (req, res) => {
             return res.status(404).json({ error: 'Presence not found' });
         }
 
-        if (presence.usedSession) {
+        if (refund) {
             await prisma.user.update({
                 where: { id: presence.memberId },
                 data: { sessionCount: { increment: 1 } },

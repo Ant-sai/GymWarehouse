@@ -7,6 +7,7 @@ type Presence = {
   id: number;
   memberId: number;
   arrivedAt: string;
+  usedSession?: boolean;
   member: {
     id: number;
     firstName: string | null;
@@ -143,17 +144,20 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
       });
       if (res.ok) {
         const presence: Presence = await res.json();
-        setPresences((prev) => [presence, ...prev]);
+        setPresences((prev) => [{ ...presence, usedSession: useSession }, ...prev]);
       }
     } catch (err) {
       console.error("Error adding presence:", err);
     }
   }
 
-  async function handleRemove(id: number) {
+  async function handleRemove(presence: Presence) {
     try {
-      const res = await fetch(`/api/daily-presence/${id}`, { method: "DELETE" });
-      if (res.ok) setPresences((prev) => prev.filter((p) => p.id !== id));
+      const url = presence.usedSession
+        ? `/api/daily-presence/${presence.id}?refund=true`
+        : `/api/daily-presence/${presence.id}`;
+      const res = await fetch(url, { method: "DELETE" });
+      if (res.ok) setPresences((prev) => prev.filter((p) => p.id !== presence.id));
     } catch (err) {
       console.error("Error removing presence:", err);
     }
@@ -245,7 +249,7 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleRemove(p.id)}
+                    onClick={() => handleRemove(p)}
                     title="Retirer"
                     className="ml-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs flex-shrink-0"
                   >
