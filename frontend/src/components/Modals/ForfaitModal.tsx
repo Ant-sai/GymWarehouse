@@ -154,7 +154,6 @@ export function ForfaitModal({ users, initialUser, onClose }: Props) {
                   step="0.01"
                   value={forfaitPrice}
                   onChange={(e) => setForfaitPrice(e.target.value)}
-                  placeholder="0.00"
                   className="w-28 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-500">€</span>
