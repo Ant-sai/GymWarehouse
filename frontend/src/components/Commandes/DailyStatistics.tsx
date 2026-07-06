@@ -32,6 +32,7 @@ interface DailyStatisticsProps {
 export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   selectedDate,
   orders,
+  dailyClosing,
   loadingClosing,
   trouValue,
   retraitValue,
@@ -39,7 +40,18 @@ export const DailyStatistics: React.FC<DailyStatisticsProps> = ({
   onRetraitClick,
   startingCashFund,
 }) => {
+  // Le rapport du jour (dailyClosing) est calculé côté backend à partir des commandes
+  // ET des paiements de forfaits/abonnements. On ne recalcule à partir des commandes
+  // en local que si ce rapport n'a pas encore pu être chargé.
   const getDailyStats = () => {
+    if (dailyClosing) {
+      return {
+        cashRevenue: Number(dailyClosing.cashRevenue) || 0,
+        qrRevenue: Number(dailyClosing.qrRevenue) || 0,
+        accountDebitRevenue: Number(dailyClosing.creditRevenue) || 0,
+      };
+    }
+
     const dayOrders = orders.filter((order) => {
       const orderDate = new Date(order.date).toISOString().split("T")[0];
       return orderDate === selectedDate;
