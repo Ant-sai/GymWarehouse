@@ -181,9 +181,17 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
   return (
     <aside className="w-[150px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col h-screen sticky top-0 overflow-x-hidden">
       <div className="p-3 border-b border-gray-200">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-          Présences
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Présences
+          </h2>
+          <span
+            title="Membres présents aujourd'hui"
+            className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#1E2A47] text-white text-[11px] font-semibold"
+          >
+            {presences.length}
+          </span>
+        </div>
         <div className="relative">
           <input
             ref={inputRef}

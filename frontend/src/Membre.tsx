@@ -519,7 +519,7 @@ async function handleAddUser(e?: React.FormEvent) {
                       value={editPostalCode}
                       onChange={(e) => setEditPostalCode(e.target.value)}
                       className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                      placeholder="75001"
+                      placeholder="1000"
                     />
                   </div>
                 </div>
@@ -622,7 +622,7 @@ async function handleAddUser(e?: React.FormEvent) {
                     value={form.postalCode}
                     onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="75001"
+                    placeholder="1000"
                   />
                 </div>
                 <div className="col-span-2">
