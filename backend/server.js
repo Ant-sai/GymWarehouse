@@ -1328,6 +1328,7 @@ function formatPaymentExport(payment) {
 app.get('/api/payments/export', async (req, res) => {
     try {
         const payments = await prisma.payment.findMany({
+            where: { paymentMode: 'QRCODE' },
             orderBy: { createdAt: 'desc' },
             include: { member: { select: { id: true, firstName: true, lastName: true } } },
         });
@@ -1345,7 +1346,7 @@ app.get('/api/payments/export/from/:date', async (req, res) => {
         if (isNaN(startDate.getTime())) return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
         startDate.setHours(0, 0, 0, 0);
         const payments = await prisma.payment.findMany({
-            where: { createdAt: { gte: startDate } },
+            where: { createdAt: { gte: startDate }, paymentMode: 'QRCODE' },
             orderBy: { createdAt: 'desc' },
             include: { member: { select: { id: true, firstName: true, lastName: true } } },
         });
@@ -1367,7 +1368,7 @@ app.get('/api/payments/export/range', async (req, res) => {
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
         const payments = await prisma.payment.findMany({
-            where: { createdAt: { gte: start, lte: end } },
+            where: { createdAt: { gte: start, lte: end }, paymentMode: 'QRCODE' },
             orderBy: { createdAt: 'desc' },
             include: { member: { select: { id: true, firstName: true, lastName: true } } },
         });
