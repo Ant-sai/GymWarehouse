@@ -271,6 +271,8 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
 
 export type ExportPaymentData = {
   id: number;
+  firstName: string;
+  lastName: string;
   memberName: string;
   type: 'FORFAIT' | 'ENTREE';
   period: string;
@@ -278,6 +280,30 @@ export type ExportPaymentData = {
   price: number | null;
   comment: string | null;
   createdAt: string;
+};
+
+export type ExportMemberData = {
+  id: number;
+  firstName: string | null;
+  lastName: string | null;
+  role: 'USER' | 'TRAINER';
+  balance: number;
+  subscriptionEndDate: string | null;
+  sessionCount: number | null;
+  dateOfBirth: string | null;
+  postalCode: string | null;
+  gender: 'HOMME' | 'FEMME' | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type ExportPresenceData = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  arrivedAt: string;
 };
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
@@ -288,7 +314,7 @@ const PAYMENT_MODE_LABELS: Record<string, string> = {
 };
 
 const MEMBER_PAYMENT_TYPE_LABELS: Record<string, string> = {
-  FORFAIT: 'Forfait séances',
+  FORFAIT: 'Séances',
   ENTREE: 'Abonnement',
 };
 
@@ -297,54 +323,173 @@ const GENDER_LABELS: Record<string, string> = {
   FEMME: 'Femme',
 };
 
-function generatePaymentsExcelFile(data: ExportPaymentData[], filename: string) {
-  const rows = data.map(p => ({
-    'Date': new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    'Membre': p.memberName,
+const ROLE_LABELS: Record<string, string> = {
+  USER: 'Utilisateur',
+  TRAINER: 'Entraîneur',
+};
+
+function formatDateFr(value: string | null | undefined, withTime = false) {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('fr-FR', withTime
+    ? { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+    : { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// ============================================
+// FEUILLE 1 : Membres
+// ============================================
+function buildMembersSheet(members: ExportMemberData[]) {
+  const rows = members.map(m => ({
+    'Nom': m.lastName || '',
+    'Prénom': m.firstName || '',
+    'Rôle': ROLE_LABELS[m.role] || m.role,
+    'Solde': formatPrice(m.balance),
+    'Fin abonnement': formatDateFr(m.subscriptionEndDate),
+    'Nb séances': m.sessionCount ?? '',
+    'Date de naissance': formatDateFr(m.dateOfBirth),
+    'Code postal': m.postalCode || '',
+    'Sexe': m.gender ? (GENDER_LABELS[m.gender] || m.gender) : '',
+    'GSM': m.phone || '',
+    'Email': m.email || '',
+    'Commentaire': m.notes || '',
+    'Membre depuis': formatDateFr(m.createdAt),
+  }));
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 12 },
+    { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 30 }, { wch: 16 },
+  ];
+  return sheet;
+}
+
+// ============================================
+// FEUILLE 2 : Forfaits & Abonnements (séances/subscriptions)
+// ============================================
+function buildSubscriptionsSheet(payments: ExportPaymentData[]) {
+  const rows = payments.map(p => ({
+    'Nom': p.lastName || '',
+    'Prénom': p.firstName || '',
     'Type': MEMBER_PAYMENT_TYPE_LABELS[p.type] || p.type,
-    'Période / Séances': p.period,
+    'Date de début': formatDateFr(p.createdAt),
+    'Date de fin': '',
+    'Durée d\'abonnement': '',
+    'Date de création': formatDateFr(p.createdAt),
+    'Durée / Détail': p.period,
     'Montant': p.price !== null ? formatPrice(p.price) : '',
     'Mode de paiement': PAYMENT_MODE_LABELS[p.paymentMode] || p.paymentMode,
     'Commentaire': p.comment || '',
   }));
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  worksheet['!cols'] = [
-    { wch: 18 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 30 },
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+    { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 12 }, { wch: 18 }, { wch: 30 },
   ];
 
-  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
   for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
-    if (worksheet[cellE] && typeof worksheet[cellE].v === 'number') {
-      worksheet[cellE].z = '#,##0.00 "€"';
+    const cell = XLSX.utils.encode_cell({ r: R, c: 8 });
+    if (sheet[cell] && typeof sheet[cell].v === 'number') {
+      sheet[cell].z = '#,##0.00 "€"';
     }
   }
+  return sheet;
+}
 
+// ============================================
+// FEUILLE 3 : Visites
+// ============================================
+function buildVisitsSheet(presences: ExportPresenceData[]) {
+  const rows = presences.map(p => ({
+    'Nom': p.lastName || '',
+    'Prénom': p.firstName || '',
+    'Date de visite': formatDateFr(p.arrivedAt, true),
+  }));
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 20 }];
+  return sheet;
+}
+
+// ============================================
+// FEUILLE 4 : Fréquentation journalière (agrégat des visites)
+// ============================================
+function buildDailyAttendanceSheet(presences: ExportPresenceData[]) {
+  const countByDay = new Map<string, number>();
+  presences.forEach(p => {
+    const day = new Date(p.arrivedAt).toISOString().split('T')[0];
+    countByDay.set(day, (countByDay.get(day) || 0) + 1);
+  });
+
+  const sortedDays = Array.from(countByDay.keys()).sort();
+  const rows = sortedDays.map(day => ({
+    'Date': new Date(day).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    'Nombre de visites': countByDay.get(day) || 0,
+  }));
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [{ wch: 14 }, { wch: 18 }];
+  return sheet;
+}
+
+function generateSubscriptionsWorkbook(
+  payments: ExportPaymentData[],
+  members: ExportMemberData[],
+  presences: ExportPresenceData[],
+  filename: string
+) {
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Paiements');
+  XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members), 'Members');
+  XLSX.utils.book_append_sheet(workbook, buildSubscriptionsSheet(payments), 'Subscriptions & Sessions');
+  XLSX.utils.book_append_sheet(workbook, buildVisitsSheet(presences), 'Visits');
+  XLSX.utils.book_append_sheet(workbook, buildDailyAttendanceSheet(presences), 'Daily Attendance');
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
+async function fetchAllMembers(): Promise<ExportMemberData[]> {
+  const response = await fetch('/api/users');
+  if (!response.ok) throw new Error('Erreur lors de la récupération des membres');
+  return response.json();
+}
+
 export async function exportAllPaymentsToExcel() {
-  const response = await fetch('/api/payments/export');
-  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
-  const data: ExportPaymentData[] = await response.json();
-  generatePaymentsExcelFile(data, 'tous-les-paiements');
+  const [paymentsRes, presencesRes, members] = await Promise.all([
+    fetch('/api/payments/export'),
+    fetch('/api/daily-presences/export'),
+    fetchAllMembers(),
+  ]);
+  if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
+  if (!presencesRes.ok) throw new Error('Erreur lors de la récupération des visites');
+  const payments: ExportPaymentData[] = await paymentsRes.json();
+  const presences: ExportPresenceData[] = await presencesRes.json();
+  generateSubscriptionsWorkbook(payments, members, presences, 'tous-les-paiements');
 }
 
 export async function exportPaymentsFromDateToExcel(startDate: string) {
-  const response = await fetch(`/api/payments/export/from/${startDate}`);
-  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
-  const result = await response.json();
-  generatePaymentsExcelFile(result.data, `paiements-depuis-${startDate}`);
+  const [paymentsRes, presencesRes, members] = await Promise.all([
+    fetch(`/api/payments/export/from/${startDate}`),
+    fetch(`/api/daily-presences/export/from/${startDate}`),
+    fetchAllMembers(),
+  ]);
+  if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
+  if (!presencesRes.ok) throw new Error('Erreur lors de la récupération des visites');
+  const paymentsResult = await paymentsRes.json();
+  const presencesResult = await presencesRes.json();
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presencesResult.data, `paiements-depuis-${startDate}`);
 }
 
 export async function exportPaymentsRangeToExcel(startDate: string, endDate: string) {
-  const response = await fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`);
-  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
-  const result = await response.json();
-  generatePaymentsExcelFile(result.data, `paiements-${startDate}-au-${endDate}`);
+  const [paymentsRes, presencesRes, members] = await Promise.all([
+    fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`),
+    fetch(`/api/daily-presences/export/range?startDate=${startDate}&endDate=${endDate}`),
+    fetchAllMembers(),
+  ]);
+  if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
+  if (!presencesRes.ok) throw new Error('Erreur lors de la récupération des visites');
+  const paymentsResult = await paymentsRes.json();
+  const presencesResult = await presencesRes.json();
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presencesResult.data, `paiements-${startDate}-au-${endDate}`);
 }
 
 // ============================================

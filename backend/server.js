@@ -1331,6 +1331,8 @@ app.get('/api/orders/export/range', async (req, res) => {
 function formatPaymentExport(payment) {
     return {
         id: payment.id,
+        firstName: payment.member.firstName || '',
+        lastName: payment.member.lastName || '',
         memberName: `${payment.member.firstName || ''} ${payment.member.lastName || ''}`.trim(),
         type: payment.type,
         period: payment.period,
@@ -3180,6 +3182,71 @@ app.delete('/api/daily-presence/:id', async (req, res) => {
             return res.status(404).json({ error: 'Presence not found' });
         }
         res.status(500).json({ error: 'Failed to delete daily presence' });
+    }
+});
+
+function formatPresenceExport(presence) {
+    return {
+        id: presence.id,
+        firstName: presence.member.firstName || '',
+        lastName: presence.member.lastName || '',
+        arrivedAt: presence.arrivedAt,
+    };
+}
+
+// GET /api/daily-presences/export — Toutes les présences (historique complet)
+app.get('/api/daily-presences/export', async (req, res) => {
+    try {
+        const presences = await prisma.dailyPresence.findMany({
+            include: {
+                member: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { arrivedAt: 'desc' },
+        });
+        res.json(presences.map(formatPresenceExport));
+    } catch (err) {
+        console.error('Error fetching daily presences for export:', err);
+        res.status(500).json({ error: 'Failed to fetch daily presences for export', message: err.message });
+    }
+});
+
+// GET /api/daily-presences/export/from/:date — Présences depuis une date
+app.get('/api/daily-presences/export/from/:date', async (req, res) => {
+    try {
+        const startDate = new Date(req.params.date);
+        if (isNaN(startDate.getTime())) return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        startDate.setHours(0, 0, 0, 0);
+        const presences = await prisma.dailyPresence.findMany({
+            where: { arrivedAt: { gte: startDate } },
+            include: { member: { select: { id: true, firstName: true, lastName: true } } },
+            orderBy: { arrivedAt: 'desc' },
+        });
+        res.json({ startDate, count: presences.length, data: presences.map(formatPresenceExport) });
+    } catch (err) {
+        console.error('Error fetching daily presences for export:', err);
+        res.status(500).json({ error: 'Failed to fetch daily presences for export', message: err.message });
+    }
+});
+
+// GET /api/daily-presences/export/range — Présences entre deux dates
+app.get('/api/daily-presences/export/range', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        if (!startDate || !endDate) return res.status(400).json({ error: 'startDate and endDate are required' });
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        const presences = await prisma.dailyPresence.findMany({
+            where: { arrivedAt: { gte: start, lte: end } },
+            include: { member: { select: { id: true, firstName: true, lastName: true } } },
+            orderBy: { arrivedAt: 'desc' },
+        });
+        res.json({ startDate: start, endDate: end, count: presences.length, data: presences.map(formatPresenceExport) });
+    } catch (err) {
+        console.error('Error fetching daily presences for export:', err);
+        res.status(500).json({ error: 'Failed to fetch daily presences for export', message: err.message });
     }
 });
 
