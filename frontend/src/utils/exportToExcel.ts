@@ -26,6 +26,10 @@ export type ExportBalanceData = {
   totalOrders: number;
   memberSince: string;
   status: string;
+  dateOfBirth: string | null;
+  postalCode: string | null;
+  gender: 'HOMME' | 'FEMME' | null;
+  notes: string | null;
 };
 
 type BalanceExportResponse = {
@@ -220,8 +224,14 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
   // Créer les lignes pour l'export
   const balanceRows = data.map(user => ({
     'Nom Prénom': user.fullName,
+    'Date de naissance': user.dateOfBirth
+      ? new Date(user.dateOfBirth).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '',
+    'Code postal': user.postalCode || '',
+    'Sexe': user.gender ? (GENDER_LABELS[user.gender] || user.gender) : '',
     'Balance': formatPrice(user.balance),
     'Nombre de commandes': user.totalOrders,
+    'Commentaire': user.notes || '',
   }));
 
   const balanceSheet = XLSX.utils.json_to_sheet(balanceRows);
@@ -229,16 +239,20 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
   // Largeur des colonnes
   balanceSheet['!cols'] = [
     { wch: 30 },  // Nom Prénom
+    { wch: 18 },  // Date de naissance
+    { wch: 14 },  // Code postal
+    { wch: 10 },  // Sexe
     { wch: 15 },  // Balance
     { wch: 20 },  // Nombre de commandes
+    { wch: 40 },  // Commentaire
   ];
 
-  // Appliquer le format monétaire à la colonne Balance (colonne B - index 1)
+  // Appliquer le format monétaire à la colonne Balance (colonne E - index 4)
   const balanceRange = XLSX.utils.decode_range(balanceSheet['!ref'] || 'A1');
   for (let R = balanceRange.s.r + 1; R <= balanceRange.e.r; ++R) {
-    const cellB = XLSX.utils.encode_cell({ r: R, c: 1 });
-    if (balanceSheet[cellB] && typeof balanceSheet[cellB].v === 'number') {
-      balanceSheet[cellB].z = '#,##0.00 "€"';
+    const cellE = XLSX.utils.encode_cell({ r: R, c: 4 });
+    if (balanceSheet[cellE] && typeof balanceSheet[cellE].v === 'number') {
+      balanceSheet[cellE].z = '#,##0.00 "€"';
     }
   }
 
@@ -276,6 +290,11 @@ const PAYMENT_MODE_LABELS: Record<string, string> = {
 const MEMBER_PAYMENT_TYPE_LABELS: Record<string, string> = {
   FORFAIT: 'Forfait séances',
   ENTREE: 'Abonnement',
+};
+
+const GENDER_LABELS: Record<string, string> = {
+  HOMME: 'Homme',
+  FEMME: 'Femme',
 };
 
 function generatePaymentsExcelFile(data: ExportPaymentData[], filename: string) {

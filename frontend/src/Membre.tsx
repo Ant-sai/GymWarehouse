@@ -13,6 +13,7 @@ export type User = {
   sessionCount?: number | null;
   dateOfBirth?: string | null;
   postalCode?: string | null;
+  gender?: "HOMME" | "FEMME" | null;
   notes?: string | null;
   role: "USER" | "TRAINER";
   balance: number;
@@ -38,6 +39,7 @@ export default function MembersPage() {
     balance: "",
     dateOfBirth: "",
     postalCode: "",
+    gender: "" as "" | "HOMME" | "FEMME",
     notes: "",
   });
 
@@ -48,6 +50,7 @@ export default function MembersPage() {
   const [editLastName, setEditLastName] = useState("");
   const [editDateOfBirth, setEditDateOfBirth] = useState("");
   const [editPostalCode, setEditPostalCode] = useState("");
+  const [editGender, setEditGender] = useState<"" | "HOMME" | "FEMME">("");
   const [editNotes, setEditNotes] = useState("");
 
   // Fonction pour formater le nom complet
@@ -125,10 +128,11 @@ async function handleAddUser(e?: React.FormEvent) {
         balance: Number(form.balance || 0),
         dateOfBirth: form.dateOfBirth || null,
         postalCode: form.postalCode || null,
+        gender: form.gender || null,
         notes: form.notes || null,
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
@@ -149,9 +153,10 @@ async function handleAddUser(e?: React.FormEvent) {
       balance: "",
       dateOfBirth: "",
       postalCode: "",
+      gender: "",
       notes: "",
     });
-   
+
   } catch (err) {
     console.error('Erreur lors de l\'ajout du membre:', err);
     const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
@@ -186,6 +191,7 @@ async function handleAddUser(e?: React.FormEvent) {
           balance: newBalance,
           dateOfBirth: editDateOfBirth || null,
           postalCode: editPostalCode || null,
+          gender: editGender || null,
           notes: editNotes || null,
         }),
       });
@@ -208,6 +214,7 @@ async function handleAddUser(e?: React.FormEvent) {
       setEditBalance("");
       setEditDateOfBirth("");
       setEditPostalCode("");
+      setEditGender("");
       setEditNotes("");
 
     } catch (err) {
@@ -224,6 +231,7 @@ async function handleAddUser(e?: React.FormEvent) {
     setEditBalance(user.balance.toString());
     setEditDateOfBirth(user.dateOfBirth ? user.dateOfBirth.split("T")[0] : "");
     setEditPostalCode(user.postalCode || "");
+    setEditGender(user.gender || "");
     setEditNotes(user.notes || "");
   }
 
@@ -524,6 +532,18 @@ async function handleAddUser(e?: React.FormEvent) {
                   </div>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sexe</label>
+                  <select
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value as "" | "HOMME" | "FEMME")}
+                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Non renseigné</option>
+                    <option value="HOMME">Homme</option>
+                    <option value="FEMME">Femme</option>
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire</label>
                   <textarea
                     value={editNotes}
@@ -624,6 +644,18 @@ async function handleAddUser(e?: React.FormEvent) {
                     className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     placeholder="1000"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Sexe</label>
+                  <select
+                    value={form.gender}
+                    onChange={(e) => setForm({ ...form, gender: e.target.value as "" | "HOMME" | "FEMME" })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Non renseigné</option>
+                    <option value="HOMME">Homme</option>
+                    <option value="FEMME">Femme</option>
+                  </select>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700">Commentaire</label>

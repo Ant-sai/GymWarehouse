@@ -19,6 +19,7 @@ model User {
   sessionCount        Int?            @map("session_count")
   dateOfBirth         DateTime?       @map("date_of_birth") @db.Date
   postalCode          String?         @map("postal_code") @db.VarChar(20)
+  gender              Gender?
   notes               String?         @db.Text
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
@@ -220,6 +221,11 @@ model DailyPresence {
 enum Role {
   TRAINER
   USER
+}
+
+enum Gender {
+  HOMME
+  FEMME
 }
 
 enum PaymentType {
