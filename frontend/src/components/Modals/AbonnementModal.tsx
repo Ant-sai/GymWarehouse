@@ -173,7 +173,7 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
                       setAbonnementDate(base.toISOString().split("T")[0]);
                       setSelectedDuration(months);
                       const p = subscriptionDurations.find(d => d.duration === months)?.price;
-                      setAbonnementPrice(p !== undefined ? String(p) : "");
+                      setAbonnementPrice(p ? String(p) : "");
                     }}
                     className={`flex flex-col items-center px-2 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       selectedDuration === months

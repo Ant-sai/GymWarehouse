@@ -126,7 +126,7 @@ export function ForfaitModal({ users, initialUser, onClose }: Props) {
                     onClick={() => {
                       setForfaitSessions(n);
                       const p = sessionPassPrices.find(p => p.sessions === n)?.price;
-                      setForfaitPrice(p !== undefined ? String(p) : "");
+                      setForfaitPrice(p ? String(p) : "");
                     }}
                     className={`flex flex-col items-center py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       forfaitSessions === n
