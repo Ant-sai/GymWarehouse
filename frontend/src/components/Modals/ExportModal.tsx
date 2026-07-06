@@ -41,8 +41,10 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
         else await exportPaymentsRangeToExcel(startDate, endDate);
       }
       onClose();
-    } catch {
-      alert('Erreur lors de l\'export des données');
+    } catch (err) {
+      console.error('Erreur export:', err);
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'export des données';
+      alert(message);
     } finally {
       setLoading(false);
     }

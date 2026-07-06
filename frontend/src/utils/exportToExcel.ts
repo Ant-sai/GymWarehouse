@@ -343,7 +343,7 @@ function buildMembersSheet(members: ExportMemberData[]) {
     'Nom': m.lastName || '',
     'Prénom': m.firstName || '',
     'Rôle': ROLE_LABELS[m.role] || m.role,
-    'Solde': formatPrice(m.balance),
+    'Solde': formatPrice(Number(m.balance)),
     'Fin abonnement': formatDateFr(m.subscriptionEndDate),
     'Nb séances': m.sessionCount ?? '',
     'Date de naissance': formatDateFr(m.dateOfBirth),
