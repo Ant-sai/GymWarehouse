@@ -16,7 +16,7 @@ function getFullName(user: { firstName?: string | null; lastName?: string | null
   return parts.length > 0 ? parts.join(" ") : "Utilisateur sans nom";
 }
 
-export function AbonnementModal({ users, initialUser, onClose }: Props) {
+export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Props) {
   const navigate = useNavigate();
   const [abonnementUser, setAbonnementUser] = useState<User | null>(initialUser ?? null);
   const [abonnementUserSearch, setAbonnementUserSearch] = useState(initialUser ? getFullName(initialUser) : "");
@@ -61,6 +61,7 @@ export function AbonnementModal({ users, initialUser, onClose }: Props) {
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
+      onSuccess?.();
       navigate("/commandes");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Impossible de mettre à jour l'abonnement");
