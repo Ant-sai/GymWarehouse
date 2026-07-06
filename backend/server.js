@@ -123,7 +123,7 @@ process.on('SIGTERM', gracefulShutdown);
 //Create a user
 app.post('/api/users', async (req, res) => {
     try {
-        const { firstName, lastName, role, balance, dateOfBirth, postalCode, gender, notes } = req.body;
+        const { firstName, lastName, role, balance, dateOfBirth, postalCode, gender, phone, email, notes } = req.body;
 
         const user = await prisma.user.create({
             data: {
@@ -134,9 +134,11 @@ app.post('/api/users', async (req, res) => {
                 dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
                 postalCode: postalCode ?? null,
                 gender: gender ?? null,
+                phone: phone ?? null,
+                email: email ?? null,
                 notes: notes ?? null,
             },
-            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, dateOfBirth: true, postalCode: true, gender: true, notes: true, createdAt: true, updatedAt: true },
+            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, dateOfBirth: true, postalCode: true, gender: true, phone: true, email: true, notes: true, createdAt: true, updatedAt: true },
         });
         res.status(201).json(user);
     } catch (err) {
@@ -161,6 +163,8 @@ app.get('/api/users', async (req, res) => {
                 dateOfBirth: true,
                 postalCode: true,
                 gender: true,
+                phone: true,
+                email: true,
                 notes: true,
                 createdAt: true,
                 updatedAt: true,
@@ -195,7 +199,7 @@ app.get('/api/users/:id', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, role, balance, dateOfBirth, postalCode, gender, notes } = req.body;
+        const { firstName, lastName, role, balance, dateOfBirth, postalCode, gender, phone, email, notes } = req.body;
         const user = await prisma.user.update({
             where: { id: Number(id), },
             data: {
@@ -206,9 +210,11 @@ app.put('/api/users/:id', async (req, res) => {
                 dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
                 postalCode: postalCode ?? null,
                 gender: gender ?? null,
+                phone: phone ?? null,
+                email: email ?? null,
                 notes: notes ?? null,
             },
-            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, dateOfBirth: true, postalCode: true, gender: true, notes: true, createdAt: true, updatedAt: true },
+            select: { id: true, firstName: true, lastName: true, role: true, balance: true, subscriptionEndDate: true, sessionCount: true, dateOfBirth: true, postalCode: true, gender: true, phone: true, email: true, notes: true, createdAt: true, updatedAt: true },
         });
         res.json(user);
     } catch (err) {

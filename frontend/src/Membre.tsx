@@ -14,6 +14,8 @@ export type User = {
   dateOfBirth?: string | null;
   postalCode?: string | null;
   gender?: "HOMME" | "FEMME" | null;
+  phone?: string | null;
+  email?: string | null;
   notes?: string | null;
   role: "USER" | "TRAINER";
   balance: number;
@@ -40,6 +42,8 @@ export default function MembersPage() {
     dateOfBirth: "",
     postalCode: "",
     gender: "" as "" | "HOMME" | "FEMME",
+    phone: "",
+    email: "",
     notes: "",
   });
 
@@ -51,12 +55,23 @@ export default function MembersPage() {
   const [editDateOfBirth, setEditDateOfBirth] = useState("");
   const [editPostalCode, setEditPostalCode] = useState("");
   const [editGender, setEditGender] = useState<"" | "HOMME" | "FEMME">("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
   // Fonction pour formater le nom complet
   const getFullName = (user: User) => {
     const parts = [user.firstName, user.lastName].filter(Boolean);
     return parts.length > 0 ? parts.join(" ") : "Non renseigné";
+  };
+
+  // Fonction pour formater les infos complémentaires (genre, naissance, code postal)
+  const getSubInfo = (user: User) => {
+    const parts: string[] = [];
+    if (user.gender) parts.push(user.gender === "HOMME" ? "Homme" : "Femme");
+    if (user.dateOfBirth) parts.push(new Date(user.dateOfBirth).toLocaleDateString('fr-FR'));
+    if (user.postalCode) parts.push(user.postalCode);
+    return parts.join(" • ");
   };
 
   // Fonction pour filtrer les utilisateurs selon le terme de recherche
@@ -129,6 +144,8 @@ async function handleAddUser(e?: React.FormEvent) {
         dateOfBirth: form.dateOfBirth || null,
         postalCode: form.postalCode || null,
         gender: form.gender || null,
+        phone: form.phone || null,
+        email: form.email || null,
         notes: form.notes || null,
       }),
     });
@@ -154,6 +171,8 @@ async function handleAddUser(e?: React.FormEvent) {
       dateOfBirth: "",
       postalCode: "",
       gender: "",
+      phone: "",
+      email: "",
       notes: "",
     });
 
@@ -192,6 +211,8 @@ async function handleAddUser(e?: React.FormEvent) {
           dateOfBirth: editDateOfBirth || null,
           postalCode: editPostalCode || null,
           gender: editGender || null,
+          phone: editPhone || null,
+          email: editEmail || null,
           notes: editNotes || null,
         }),
       });
@@ -215,6 +236,8 @@ async function handleAddUser(e?: React.FormEvent) {
       setEditDateOfBirth("");
       setEditPostalCode("");
       setEditGender("");
+      setEditPhone("");
+      setEditEmail("");
       setEditNotes("");
 
     } catch (err) {
@@ -232,6 +255,8 @@ async function handleAddUser(e?: React.FormEvent) {
     setEditDateOfBirth(user.dateOfBirth ? user.dateOfBirth.split("T")[0] : "");
     setEditPostalCode(user.postalCode || "");
     setEditGender(user.gender || "");
+    setEditPhone(user.phone || "");
+    setEditEmail(user.email || "");
     setEditNotes(user.notes || "");
   }
 
@@ -345,12 +370,13 @@ async function handleAddUser(e?: React.FormEvent) {
         {/* Table header */}
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-9 gap-6 px-4 text-sm font-medium text-gray-700 mb-4">
+            <div className="grid grid-cols-10 gap-6 px-4 text-sm font-medium text-gray-700 mb-4">
               <div>Nom complet</div>
               <div>Rôle</div>
               <div>Solde</div>
               <div>Date d'abonnement</div>
               <div>Nb entrées</div>
+              <div>Contact</div>
               <div className="col-span-2">Commentaire</div>
               <div className="col-span-2">Actions</div>
             </div>
@@ -384,9 +410,14 @@ async function handleAddUser(e?: React.FormEvent) {
               {filteredUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-9 items-center text-black hover:shadow-md transition-shadow"
+                  className="bg-white rounded-lg p-4 shadow-sm grid grid-cols-10 items-center text-black hover:shadow-md transition-shadow"
                 >
-                  <div className="truncate font-medium">{getFullName(user)}</div>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{getFullName(user)}</div>
+                    {getSubInfo(user) && (
+                      <div className="truncate text-xs text-gray-400">{getSubInfo(user)}</div>
+                    )}
+                  </div>
                   <div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       user.role === "TRAINER" 
@@ -424,6 +455,11 @@ async function handleAddUser(e?: React.FormEvent) {
                     ) : (
                       <span className="text-gray-400 text-xs">—</span>
                     )}
+                  </div>
+                  <div className="text-xs text-gray-600 min-w-0">
+                    {user.phone && <div className="truncate">{user.phone}</div>}
+                    {user.email && <div className="truncate" title={user.email}>{user.email}</div>}
+                    {!user.phone && !user.email && <span className="text-gray-400">—</span>}
                   </div>
                   <div className="col-span-2 text-sm text-gray-600 truncate" title={user.notes || ""}>
                     {user.notes || <span className="text-gray-400 text-xs">—</span>}
@@ -531,17 +567,39 @@ async function handleAddUser(e?: React.FormEvent) {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sexe</label>
+                    <select
+                      value={editGender}
+                      onChange={(e) => setEditGender(e.target.value as "" | "HOMME" | "FEMME")}
+                      className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Non renseigné</option>
+                      <option value="HOMME">Homme</option>
+                      <option value="FEMME">Femme</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">GSM</label>
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="0470 00 00 00"
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Sexe</label>
-                  <select
-                    value={editGender}
-                    onChange={(e) => setEditGender(e.target.value as "" | "HOMME" | "FEMME")}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Adresse mail</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
                     className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="">Non renseigné</option>
-                    <option value="HOMME">Homme</option>
-                    <option value="FEMME">Femme</option>
-                  </select>
+                    placeholder="exemple@email.com"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire</label>
@@ -656,6 +714,26 @@ async function handleAddUser(e?: React.FormEvent) {
                     <option value="HOMME">Homme</option>
                     <option value="FEMME">Femme</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">GSM</label>
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="0470 00 00 00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="exemple@email.com"
+                  />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700">Commentaire</label>

@@ -20,6 +20,8 @@ model User {
   dateOfBirth         DateTime?       @map("date_of_birth") @db.Date
   postalCode          String?         @map("postal_code") @db.VarChar(20)
   gender              Gender?
+  phone               String?         @db.VarChar(30)
+  email               String?         @db.VarChar(255)
   notes               String?         @db.Text
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
