@@ -98,17 +98,13 @@ async function recalculateFollowingDays(startDate) {
     }
 }
 
-// 💰 Calcule les revenus (espèces / QR / crédit) d'un jour à partir des commandes
-// ET des paiements de forfaits/abonnements (qui ne créent pas de commande)
+// 💰 Calcule les revenus (espèces / QR / crédit) d'un jour à partir des commandes.
+// Les paiements de forfaits/abonnements (table Payment) n'impactent volontairement
+// pas le fond de caisse, quel que soit leur mode de paiement.
 async function computeDayRevenue(client, dayStart, dayEnd) {
-    const [orders, payments] = await Promise.all([
-        client.order.findMany({
-            where: { date: { gte: dayStart, lte: dayEnd } },
-        }),
-        client.payment.findMany({
-            where: { createdAt: { gte: dayStart, lte: dayEnd } },
-        }),
-    ]);
+    const orders = await client.order.findMany({
+        where: { date: { gte: dayStart, lte: dayEnd } },
+    });
 
     let cashRevenue = 0;
     let qrRevenue = 0;
@@ -131,63 +127,7 @@ async function computeDayRevenue(client, dayStart, dayEnd) {
         }
     });
 
-    payments.forEach(payment => {
-        const amount = payment.price !== null ? Number(payment.price) : 0;
-        if (payment.paymentMode === 'CASH') {
-            cashRevenue += amount;
-        } else if (payment.paymentMode === 'QRCODE') {
-            qrRevenue += amount;
-        }
-    });
-
     return { cashRevenue, qrRevenue, creditRevenue };
-}
-
-// 🔁 Recalcule et enregistre le rapport du jour pour une date donnée.
-// Utilisé par les routes qui affectent la caisse du jour sans passer par une commande
-// (ex: paiements de forfaits/abonnements), pour que le rapport déjà existant reste à jour.
-async function syncDailyReportForDate(client, date) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-
-    const dayStart = new Date(normalizedDate);
-    const dayEnd = new Date(normalizedDate);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const { cashRevenue, qrRevenue, creditRevenue } = await computeDayRevenue(client, dayStart, dayEnd);
-
-    const existingReport = await client.dailyReport.findUnique({ where: { date: normalizedDate } });
-
-    if (existingReport) {
-        const trou = Number(existingReport.trou) || 0;
-        const retrait = Number(existingReport.retrait) || 0;
-        const endingCash = Number(existingReport.startingCash) + cashRevenue + trou + retrait;
-
-        await client.dailyReport.update({
-            where: { date: normalizedDate },
-            data: { cashRevenue, qrRevenue, creditRevenue, endingCash },
-        });
-    } else {
-        const previousReport = await client.dailyReport.findFirst({
-            where: { date: { lt: normalizedDate } },
-            orderBy: { date: 'desc' },
-        });
-        const startingCash = previousReport ? Number(previousReport.endingCash) : 0;
-        const endingCash = startingCash + cashRevenue;
-
-        await client.dailyReport.create({
-            data: {
-                date: normalizedDate,
-                startingCash,
-                cashRevenue,
-                qrRevenue,
-                creditRevenue,
-                trou: 0,
-                retrait: 0,
-                endingCash,
-            },
-        });
-    }
 }
 
 app.listen(PORT, () => {
@@ -434,7 +374,6 @@ app.post('/api/session-passes', async (req, res) => {
                     comment: null,
                 },
             });
-            await syncDailyReportForDate(prisma, new Date());
         }
 
         res.status(201).json({ newSessionCount: updatedUser.sessionCount, sessions });
@@ -484,7 +423,6 @@ app.post('/api/abonnement-payments', async (req, res) => {
                     comment: null,
                 },
             });
-            await syncDailyReportForDate(prisma, new Date());
         }
 
         res.status(201).json({ user: updatedUser });
