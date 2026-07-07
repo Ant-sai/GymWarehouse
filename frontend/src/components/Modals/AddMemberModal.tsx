@@ -1,4 +1,4 @@
-// src/components/Commandes/Modals/AddMemberModal.tsx
+// src/components/Modals/AddMemberModal.tsx
 
 import React, { useState } from 'react';
 import type { User } from '../../types/commandes.types';
@@ -9,15 +9,25 @@ interface AddMemberModalProps {
   onAdd: (userData: Partial<User>) => Promise<User>;
 }
 
+const emptyForm = {
+  firstName: '',
+  lastName: '',
+  role: 'USER' as 'USER' | 'TRAINER',
+  balance: '',
+  dateOfBirth: '',
+  postalCode: '',
+  gender: '' as '' | 'HOMME' | 'FEMME',
+  phone: '',
+  email: '',
+  notes: '',
+};
+
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   isOpen,
   onClose,
   onAdd
 }) => {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<'USER' | 'TRAINER'>('USER');
-  const [balance, setBalance] = useState('');
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
   if (!isOpen) return null;
@@ -25,8 +35,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!firstName.trim() && !lastName.trim()) {
+    if (!form.firstName.trim() && !form.lastName.trim()) {
       alert('Au moins le prénom ou le nom est obligatoire');
       return;
     }
@@ -35,17 +44,19 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
 
     try {
       await onAdd({
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        role,
-        balance: Number(balance || 0)
-      });      
-      // Réinitialiser le formulaire
-      setFirstName('');
-      setLastName('');
-      setRole('USER');
-      setBalance('');
-      
+        firstName: form.firstName || undefined,
+        lastName: form.lastName || undefined,
+        role: form.role,
+        balance: Number(form.balance || 0),
+        dateOfBirth: form.dateOfBirth || null,
+        postalCode: form.postalCode || null,
+        gender: form.gender || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        notes: form.notes || null,
+      });
+
+      setForm(emptyForm);
       onClose();
     } catch (err) {
       console.error('Erreur:', err);
@@ -57,40 +68,34 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   };
 
   const handleClose = () => {
-    setFirstName('');
-    setLastName('');
-    setRole('USER');
-    setBalance('');
+    setForm(emptyForm);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black/40" 
+      <div
+        className="absolute inset-0 bg-black/40"
         onClick={handleClose}
       />
 
       {/* Modal */}
       <form
         onSubmit={handleSubmit}
-        className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50"
+        className="relative bg-white rounded-lg p-6 w-[720px] shadow-lg z-50"
       >
         <h3 className="text-xl font-semibold mb-4 text-black">
           Ajouter un membre
         </h3>
 
-        <div className="space-y-4">
-          {/* Rôle */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Rôle *
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Rôle *</label>
             <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'USER' | 'TRAINER')}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value as 'USER' | 'TRAINER' })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               required
             >
               <option value="USER">Utilisateur</option>
@@ -98,46 +103,94 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             </select>
           </div>
 
-          {/* Prénom */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Prénom
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Prénom</label>
             <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Prénom (optionnel)"
             />
           </div>
-
-          {/* Nom */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nom
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Nom</label>
             <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Nom (optionnel)"
             />
           </div>
-
-          {/* Solde initial */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Solde initial
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Solde initial</label>
             <input
               type="number"
               step="0.01"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              value={form.balance}
+              onChange={(e) => setForm({ ...form, balance: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date de naissance</label>
+            <input
+              type="date"
+              value={form.dateOfBirth}
+              onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Code postal</label>
+            <input
+              type="text"
+              value={form.postalCode}
+              onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="1000"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Sexe</label>
+            <select
+              value={form.gender}
+              onChange={(e) => setForm({ ...form, gender: e.target.value as '' | 'HOMME' | 'FEMME' })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Non renseigné</option>
+              <option value="HOMME">Homme</option>
+              <option value="FEMME">Femme</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">GSM</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="0470 00 00 00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="exemple@email.com"
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700">Commentaire</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+              placeholder="Commentaire (optionnel)"
+              rows={3}
             />
           </div>
         </div>

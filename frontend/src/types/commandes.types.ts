@@ -11,6 +11,14 @@ export type User = {
   balance: number;
   subscriptionEndDate?: string | null;
   sessionCount?: number | null;
+  dateOfBirth?: string | null;
+  postalCode?: string | null;
+  gender?: "HOMME" | "FEMME" | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type Product = {

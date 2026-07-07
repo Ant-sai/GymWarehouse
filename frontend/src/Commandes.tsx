@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
 import { DailyPresenceSidebar } from './components/DailyPresenceSidebar';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
+import { AddMemberModal } from './components/Modals/AddMemberModal';
 import { TrouModal } from './components/Modals/TrouModal';
 import { ExportModal } from './components/Modals/ExportModal';
 import { RetraitModal } from './components/Modals/RetraitModal';
@@ -63,12 +64,6 @@ export default function DailyOrdersPage() {
   });
 
   const [showAddMemberForm, setShowAddMemberForm] = useState(false);
-  const [newMemberForm, setNewMemberForm] = useState({
-    firstName: "",
-    lastName: "",
-    role: "USER" as "USER" | "TRAINER",
-    balance: "",
-  });
 
   const [refundPaymentMethod, setRefundPaymentMethod] = useState<"CASH" | "QRCODE" | null>(null);
 
@@ -236,54 +231,27 @@ export default function DailyOrdersPage() {
     }
   }
 
-  async function handleAddMember(e?: React.FormEvent) {
-    e?.preventDefault();
-    setSaving(true);
+  async function handleAddMember(userData: Partial<User>): Promise<User> {
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    });
 
-    try {
-      if (!newMemberForm.firstName?.trim() && !newMemberForm.lastName?.trim()) {
-        throw new Error("Au moins le prénom ou le nom est obligatoire");
-      }
-
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          firstName: newMemberForm.firstName || null,
-          lastName: newMemberForm.lastName || null,
-          role: newMemberForm.role,
-          balance: Number(newMemberForm.balance || 0),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
-      }
-
-      const newUser = await response.json();
-      await fetchUsers();
-
-      // Sélectionner le nouveau membre dans le modal de commande
-      setInitialUser(newUser);
-
-      setShowAddMemberForm(false);
-      setNewMemberForm({
-        firstName: "",
-        lastName: "",
-        role: "USER",
-        balance: "",
-      });
-
-    } catch (err) {
-      console.error('Erreur lors de l\'ajout du membre:', err);
-      const errorMessage = err instanceof Error ? err.message : "Impossible d'ajouter le membre.";
-      alert(errorMessage);
-    } finally {
-      setSaving(false);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
     }
+
+    const newUser = await response.json();
+    await fetchUsers();
+
+    // Sélectionner le nouveau membre dans le modal de commande
+    setInitialUser(newUser);
+
+    return newUser;
   }
 
 
@@ -1040,91 +1008,12 @@ export default function DailyOrdersPage() {
           </div>
         )}
 
-        {/* Modal d'ajout rapide de membre */}
-        {showAddMemberForm && (
-          <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddMemberForm(false)} />
-            <form
-              onSubmit={handleAddMember}
-              className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50"
-            >
-              <h3 className="text-xl font-semibold mb-4 text-black">Ajouter un membre</h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Rôle *</label>
-                  <select
-                    value={newMemberForm.role}
-                    onChange={(e) => setNewMemberForm({ ...newMemberForm, role: e.target.value as "USER" | "TRAINER" })}
-                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="USER">Utilisateur</option>
-                    <option value="TRAINER">Entraîneur</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
-                  <input
-                    value={newMemberForm.firstName}
-                    onChange={(e) => setNewMemberForm({ ...newMemberForm, firstName: e.target.value })}
-                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="Prénom (optionnel)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
-                  <input
-                    value={newMemberForm.lastName}
-                    onChange={(e) => setNewMemberForm({ ...newMemberForm, lastName: e.target.value })}
-                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="Nom (optionnel)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Solde initial</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newMemberForm.balance}
-                    onChange={(e) => setNewMemberForm({ ...newMemberForm, balance: e.target.value })}
-                    className="block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddMemberForm(false);
-                    setNewMemberForm({
-                      firstName: "",
-                      lastName: "",
-                      role: "USER",
-                      balance: "",
-                    });
-                  }}
-                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  disabled={saving}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Ajout..." : "Ajouter le membre"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        {/* Modal d'ajout de membre (module partagé avec la page Membres) */}
+        <AddMemberModal
+          isOpen={showAddMemberForm}
+          onClose={() => setShowAddMemberForm(false)}
+          onAdd={handleAddMember}
+        />
 
         {/* Modal des commandes en stand-by */}
         {showStandbyList && (
