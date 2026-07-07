@@ -464,7 +464,7 @@ async function handleAddUser(e?: React.FormEvent) {
                   <div className="col-span-2 text-sm text-gray-600 truncate" title={user.notes || ""}>
                     {user.notes || <span className="text-gray-400 text-xs">—</span>}
                   </div>
-                  <div className="col-span-2 flex items-center gap-1 flex-wrap">
+                  <div className="col-span-2 flex items-center gap-3 flex-wrap">
                     <button
                       onClick={() => { setModalUser(user); setShowForfait(true); }}
                       className="px-2 py-1 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
