@@ -303,7 +303,6 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
           <div className="absolute inset-0 bg-black/40" onClick={() => { setShowChoiceModal(false); setPendingUser(null); }} />
           <div className="relative bg-white rounded-lg p-5 w-64 shadow-lg z-50">
             <p className="text-sm font-medium text-gray-800 mb-1">{getFullName(pendingUser)}</p>
-            <p className="text-xs text-gray-500 mb-4">Abonnement actif + séances disponibles.<br />Comment enregistrer cette présence ?</p>
             <div className="flex gap-2">
               <button
                 type="button"

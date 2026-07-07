@@ -42,6 +42,8 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
   async function handleSave() {
     if (!abonnementUser) { alert("Veuillez sélectionner un membre"); return; }
     if (!abonnementDate) { alert("Veuillez sélectionner une durée"); return; }
+    if (abonnementPrice === "" || isNaN(Number(abonnementPrice)) || Number(abonnementPrice) < 0) { alert("Veuillez indiquer le prix"); return; }
+    if (!abonnementPayment) { alert("Veuillez sélectionner le mode de paiement"); return; }
 
     setSaving(true);
     try {
@@ -51,8 +53,8 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
         body: JSON.stringify({
           memberId: abonnementUser.id,
           subscriptionEndDate: new Date(abonnementDate).toISOString(),
-          amount: abonnementPrice !== "" ? Number(abonnementPrice) : undefined,
-          paymentMethod: abonnementPayment ?? undefined,
+          amount: Number(abonnementPrice),
+          paymentMethod: abonnementPayment,
         }),
       });
 
@@ -216,7 +218,7 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                   <span className="text-sm text-gray-500">€</span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement <span className="text-gray-400 font-normal">(optionnel)</span></p>
+                  <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement *</p>
                   <div className="grid grid-cols-2 gap-2">
                     {(["CASH", "QRCODE"] as const).map(method => (
                       <button key={method} type="button"
@@ -253,7 +255,7 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
             Annuler
           </button>
           <button onClick={handleSave}
-            disabled={saving || !abonnementUser || !abonnementDate}
+            disabled={saving || !abonnementUser || !abonnementDate || abonnementPrice === "" || !abonnementPayment}
             className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed">
             {saving ? "Enregistrement..." : "Confirmer"}
           </button>

@@ -36,6 +36,8 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
   async function handleSave() {
     if (!forfaitUser) { alert("Veuillez sélectionner un membre"); return; }
     if (!forfaitSessions) { alert("Veuillez sélectionner un forfait"); return; }
+    if (forfaitPrice === "" || isNaN(Number(forfaitPrice)) || Number(forfaitPrice) < 0) { alert("Veuillez indiquer le prix"); return; }
+    if (!forfaitPayment) { alert("Veuillez sélectionner le mode de paiement"); return; }
 
     setSaving(true);
     try {
@@ -45,8 +47,8 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
         body: JSON.stringify({
           memberId: forfaitUser.id,
           sessions: forfaitSessions,
-          amount: forfaitPrice !== "" ? Number(forfaitPrice) : undefined,
-          paymentMethod: forfaitPayment ?? undefined,
+          amount: Number(forfaitPrice),
+          paymentMethod: forfaitPayment,
         }),
       });
 
@@ -160,7 +162,7 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
                 <span className="text-sm text-gray-500">€</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement <span className="text-gray-400 font-normal">(optionnel)</span></p>
+                <p className="text-sm font-medium text-gray-700 mb-1">Mode de paiement *</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(["CASH", "QRCODE"] as const).map(method => (
                     <button key={method} type="button"
@@ -186,7 +188,7 @@ export function ForfaitModal({ users, initialUser, onClose, onSuccess }: Props) 
             Annuler
           </button>
           <button onClick={handleSave}
-            disabled={saving || !forfaitUser || !forfaitSessions}
+            disabled={saving || !forfaitUser || !forfaitSessions || forfaitPrice === "" || !forfaitPayment}
             className="px-4 py-2 rounded bg-[#1E2A47] text-white hover:bg-[#2A3B5A] disabled:opacity-50 disabled:cursor-not-allowed">
             {saving ? "Enregistrement..." : "Confirmer"}
           </button>

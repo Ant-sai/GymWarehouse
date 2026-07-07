@@ -347,6 +347,12 @@ app.post('/api/session-passes', async (req, res) => {
         if (!memberId || !sessions) {
             return res.status(400).json({ error: 'memberId et sessions sont requis' });
         }
+        if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) < 0) {
+            return res.status(400).json({ error: 'Le prix est requis' });
+        }
+        if (paymentMethod !== 'CASH' && paymentMethod !== 'QRCODE') {
+            return res.status(400).json({ error: 'Le mode de paiement (CASH ou QRCODE) est requis' });
+        }
 
         const member = await prisma.user.findUnique({
             where: { id: Number(memberId) },
@@ -362,19 +368,16 @@ app.post('/api/session-passes', async (req, res) => {
             select: { id: true, firstName: true, lastName: true, sessionCount: true },
         });
 
-        // Enregistrer un paiement si un montant est fourni
-        if (amount !== undefined && amount !== null && Number(amount) >= 0) {
-            await prisma.payment.create({
-                data: {
-                    memberId: Number(memberId),
-                    type: 'FORFAIT',
-                    period: String(sessions),
-                    paymentMode: paymentMethod || 'CASH',
-                    price: Number(amount),
-                    comment: null,
-                },
-            });
-        }
+        await prisma.payment.create({
+            data: {
+                memberId: Number(memberId),
+                type: 'FORFAIT',
+                period: String(sessions),
+                paymentMode: paymentMethod,
+                price: Number(amount),
+                comment: null,
+            },
+        });
 
         res.status(201).json({ newSessionCount: updatedUser.sessionCount, sessions });
     } catch (err) {
@@ -395,6 +398,12 @@ app.post('/api/abonnement-payments', async (req, res) => {
         if (!memberId || !subscriptionEndDate) {
             return res.status(400).json({ error: 'memberId et subscriptionEndDate sont requis' });
         }
+        if (amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) < 0) {
+            return res.status(400).json({ error: 'Le prix est requis' });
+        }
+        if (paymentMethod !== 'CASH' && paymentMethod !== 'QRCODE') {
+            return res.status(400).json({ error: 'Le mode de paiement (CASH ou QRCODE) est requis' });
+        }
 
         const member = await prisma.user.findUnique({ where: { id: Number(memberId) }, select: { id: true } });
         if (!member) return res.status(404).json({ error: 'Membre introuvable' });
@@ -410,20 +419,17 @@ app.post('/api/abonnement-payments', async (req, res) => {
             select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true },
         });
 
-        // Enregistrer un paiement si un montant est fourni
-        if (amount !== undefined && amount !== null && Number(amount) >= 0) {
-            const expiryLabel = parsedDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-            await prisma.payment.create({
-                data: {
-                    memberId: Number(memberId),
-                    type: 'ENTREE',
-                    period: expiryLabel,
-                    paymentMode: paymentMethod || 'CASH',
-                    price: Number(amount),
-                    comment: null,
-                },
-            });
-        }
+        const expiryLabel = parsedDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        await prisma.payment.create({
+            data: {
+                memberId: Number(memberId),
+                type: 'ENTREE',
+                period: expiryLabel,
+                paymentMode: paymentMethod,
+                price: Number(amount),
+                comment: null,
+            },
+        });
 
         res.status(201).json({ user: updatedUser });
     } catch (err) {
