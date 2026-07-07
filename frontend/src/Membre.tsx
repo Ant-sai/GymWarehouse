@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import PrimeroseVector from './assets/PrimeroseVector.svg';
 import { ForfaitModal } from "./components/Modals/ForfaitModal";
 import { AbonnementModal } from "./components/Modals/AbonnementModal";
@@ -9,6 +9,7 @@ import type { User } from "./types/commandes.types";
 export type { User };
 
 export default function MembersPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,6 +218,12 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-[#1E2A47]">Membres</h1>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/commandes")}
+              className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
+            >
+              Accueil
+            </button>
             <button
               onClick={() => setShowForm(true)}
               className="bg-[#F5EDE3] text-[#333333] px-4 py-2 rounded-lg shadow-sm hover:bg-[#E8D5C4]"
