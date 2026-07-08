@@ -302,7 +302,7 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => { setShowChoiceModal(false); setPendingUser(null); }} />
           <div className="relative bg-white rounded-lg p-5 w-64 shadow-lg z-50">
-            <p className="text-lg font-medium text-gray-800 mb-1 text-center">{getFullName(pendingUser)}</p>
+            <p className="text-lg font-medium text-gray-800 mb-4 text-center">{getFullName(pendingUser)}</p>
             <div className="flex gap-2">
               <button
                 type="button"
