@@ -271,6 +271,7 @@ function generateBalancesExcelFile(result: BalanceExportResponse) {
 
 export type ExportPaymentData = {
   id: number;
+  memberId: number;
   firstName: string;
   lastName: string;
   memberName: string;
@@ -280,6 +281,9 @@ export type ExportPaymentData = {
   price: number | null;
   comment: string | null;
   createdAt: string;
+  subscriptionStartDate: string | null;
+  subscriptionEndDate: string | null;
+  durationMonths: number | null;
 };
 
 export type ExportMemberData = {
@@ -297,13 +301,6 @@ export type ExportMemberData = {
   email: string | null;
   notes: string | null;
   createdAt: string;
-};
-
-export type ExportPresenceData = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  arrivedAt: string;
 };
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
@@ -328,6 +325,12 @@ const ROLE_LABELS: Record<string, string> = {
   TRAINER: 'Entraîneur',
 };
 
+function durationLabel(months: number | null | undefined) {
+  if (months === null || months === undefined) return '';
+  if (months >= 999) return 'Domiciliation';
+  return `${months} mois`;
+}
+
 function formatDateFr(value: string | null | undefined, withTime = false) {
   if (!value) return '';
   return new Date(value).toLocaleDateString('fr-FR', withTime
@@ -336,7 +339,7 @@ function formatDateFr(value: string | null | undefined, withTime = false) {
 }
 
 // ============================================
-// FEUILLE 1 : Membres
+// FEUILLE : Membres
 // ============================================
 function buildMembersSheet(members: ExportMemberData[]) {
   const rows = members.map(m => ({
@@ -364,27 +367,88 @@ function buildMembersSheet(members: ExportMemberData[]) {
 }
 
 // ============================================
-// FEUILLE 2 : Forfaits & Abonnements (séances/subscriptions)
+// FEUILLE : Abonnements & Séances — résumé par membre
 // ============================================
-function buildSubscriptionsSheet(payments: ExportPaymentData[]) {
+function buildSubscriptionsSummarySheet(payments: ExportPaymentData[], members: ExportMemberData[]) {
+  const membersById = new Map(members.map(m => [m.id, m]));
+  const paymentsByMember = new Map<number, ExportPaymentData[]>();
+  payments.forEach(p => {
+    if (!paymentsByMember.has(p.memberId)) paymentsByMember.set(p.memberId, []);
+    paymentsByMember.get(p.memberId)!.push(p);
+  });
+
+  const rows = Array.from(paymentsByMember.entries()).map(([memberId, memberPayments]) => {
+    const member = membersById.get(memberId);
+    const entreePayments = memberPayments
+      .filter(p => p.type === 'ENTREE')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const forfaitPayments = memberPayments.filter(p => p.type === 'FORFAIT');
+    const latestEntree = entreePayments[0];
+
+    const totalSessionsPurchased = forfaitPayments.reduce((sum, p) => sum + (parseInt(p.period, 10) || 0), 0);
+    const sessionsRemaining = member?.sessionCount ?? null;
+    const sessionsTaken = forfaitPayments.length > 0 || sessionsRemaining !== null
+      ? Math.max(0, totalSessionsPurchased - (sessionsRemaining ?? 0))
+      : null;
+
+    const totalAbonnement = entreePayments.reduce((sum, p) => sum + (p.price ?? 0), 0);
+    const totalSeances = forfaitPayments.reduce((sum, p) => sum + (p.price ?? 0), 0);
+
+    return {
+      'Nom': memberPayments[0].lastName || '',
+      'Prénom': memberPayments[0].firstName || '',
+      'Date début abonnement': formatDateFr(latestEntree?.subscriptionStartDate),
+      'Date fin abonnement': formatDateFr(member?.subscriptionEndDate ?? latestEntree?.subscriptionEndDate),
+      'Durée abonnement': durationLabel(latestEntree?.durationMonths),
+      'Date de création abonnement': formatDateFr(latestEntree?.createdAt),
+      'Nb séances restantes': sessionsRemaining ?? '',
+      'Nb séances prises': sessionsTaken ?? '',
+      'Total abonnement': formatPrice(totalAbonnement),
+      'Total séances': formatPrice(totalSeances),
+      'Total général': formatPrice(totalAbonnement + totalSeances),
+    };
+  });
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [
+    { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
+    { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+  ];
+
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+  for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+    [8, 9, 10].forEach(c => {
+      const cell = XLSX.utils.encode_cell({ r: R, c });
+      if (sheet[cell] && typeof sheet[cell].v === 'number') {
+        sheet[cell].z = '#,##0.00 "€"';
+      }
+    });
+  }
+  return sheet;
+}
+
+// ============================================
+// FEUILLE : Abonnements & Séances — historique des paiements
+// ============================================
+function buildSubscriptionsHistorySheet(payments: ExportPaymentData[]) {
   const rows = payments.map(p => ({
     'Nom': p.lastName || '',
     'Prénom': p.firstName || '',
     'Type': MEMBER_PAYMENT_TYPE_LABELS[p.type] || p.type,
-    'Date de début': formatDateFr(p.createdAt),
-    'Date de fin': '',
-    'Durée d\'abonnement': '',
+    'Date début abonnement': p.type === 'ENTREE' ? formatDateFr(p.subscriptionStartDate) : '',
+    'Date fin abonnement': p.type === 'ENTREE' ? formatDateFr(p.subscriptionEndDate) : '',
+    'Durée abonnement': p.type === 'ENTREE' ? durationLabel(p.durationMonths) : '',
+    'Nb séances': p.type === 'FORFAIT' ? (parseInt(p.period, 10) || 0) : '',
     'Date de création': formatDateFr(p.createdAt),
-    'Durée / Détail': p.period,
-    'Montant': p.price !== null ? formatPrice(p.price) : '',
+    'Prix': p.price !== null ? formatPrice(p.price) : '',
     'Mode de paiement': PAYMENT_MODE_LABELS[p.paymentMode] || p.paymentMode,
     'Commentaire': p.comment || '',
   }));
 
   const sheet = XLSX.utils.json_to_sheet(rows);
   sheet['!cols'] = [
-    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
-    { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 12 }, { wch: 18 }, { wch: 30 },
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
+    { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 18 }, { wch: 30 },
   ];
 
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
@@ -397,53 +461,15 @@ function buildSubscriptionsSheet(payments: ExportPaymentData[]) {
   return sheet;
 }
 
-// ============================================
-// FEUILLE 3 : Visites
-// ============================================
-function buildVisitsSheet(presences: ExportPresenceData[]) {
-  const rows = presences.map(p => ({
-    'Nom': p.lastName || '',
-    'Prénom': p.firstName || '',
-    'Date de visite': formatDateFr(p.arrivedAt, true),
-  }));
-
-  const sheet = XLSX.utils.json_to_sheet(rows);
-  sheet['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 20 }];
-  return sheet;
-}
-
-// ============================================
-// FEUILLE 4 : Fréquentation journalière (agrégat des visites)
-// ============================================
-function buildDailyAttendanceSheet(presences: ExportPresenceData[]) {
-  const countByDay = new Map<string, number>();
-  presences.forEach(p => {
-    const day = new Date(p.arrivedAt).toISOString().split('T')[0];
-    countByDay.set(day, (countByDay.get(day) || 0) + 1);
-  });
-
-  const sortedDays = Array.from(countByDay.keys()).sort();
-  const rows = sortedDays.map(day => ({
-    'Date': new Date(day).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    'Nombre de visites': countByDay.get(day) || 0,
-  }));
-
-  const sheet = XLSX.utils.json_to_sheet(rows);
-  sheet['!cols'] = [{ wch: 14 }, { wch: 18 }];
-  return sheet;
-}
-
 function generateSubscriptionsWorkbook(
   payments: ExportPaymentData[],
   members: ExportMemberData[],
-  presences: ExportPresenceData[],
   filename: string
 ) {
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members), 'Members');
-  XLSX.utils.book_append_sheet(workbook, buildSubscriptionsSheet(payments), 'Subscriptions & Sessions');
-  XLSX.utils.book_append_sheet(workbook, buildVisitsSheet(presences), 'Visits');
-  XLSX.utils.book_append_sheet(workbook, buildDailyAttendanceSheet(presences), 'Daily Attendance');
+  XLSX.utils.book_append_sheet(workbook, buildSubscriptionsSummarySheet(payments, members), 'Abonnements & Séances');
+  XLSX.utils.book_append_sheet(workbook, buildSubscriptionsHistorySheet(payments), 'Historique paiements');
+  XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members), 'Membres');
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
@@ -454,42 +480,33 @@ async function fetchAllMembers(): Promise<ExportMemberData[]> {
 }
 
 export async function exportAllPaymentsToExcel() {
-  const [paymentsRes, presencesRes, members] = await Promise.all([
+  const [paymentsRes, members] = await Promise.all([
     fetch('/api/payments/export'),
-    fetch('/api/daily-presences/export'),
     fetchAllMembers(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
-  if (!presencesRes.ok) throw new Error('Erreur lors de la récupération des visites');
   const payments: ExportPaymentData[] = await paymentsRes.json();
-  const presences: ExportPresenceData[] = await presencesRes.json();
-  generateSubscriptionsWorkbook(payments, members, presences, 'tous-les-paiements');
+  generateSubscriptionsWorkbook(payments, members, 'tous-les-paiements');
 }
 
 export async function exportPaymentsFromDateToExcel(startDate: string) {
-  const [paymentsRes, presencesRes, members] = await Promise.all([
+  const [paymentsRes, members] = await Promise.all([
     fetch(`/api/payments/export/from/${startDate}`),
-    fetch(`/api/daily-presences/export/from/${startDate}`),
     fetchAllMembers(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
-  if (!presencesRes.ok) throw new Error('Erreur lors de la récupération des visites');
   const paymentsResult = await paymentsRes.json();
-  const presencesResult = await presencesRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, presencesResult.data, `paiements-depuis-${startDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, `paiements-depuis-${startDate}`);
 }
 
 export async function exportPaymentsRangeToExcel(startDate: string, endDate: string) {
-  const [paymentsRes, presencesRes, members] = await Promise.all([
+  const [paymentsRes, members] = await Promise.all([
     fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`),
-    fetch(`/api/daily-presences/export/range?startDate=${startDate}&endDate=${endDate}`),
     fetchAllMembers(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
-  if (!presencesRes.ok) throw new Error('Erreur lors de la récupération des visites');
   const paymentsResult = await paymentsRes.json();
-  const presencesResult = await presencesRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, presencesResult.data, `paiements-${startDate}-au-${endDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, `paiements-${startDate}-au-${endDate}`);
 }
 
 // ============================================

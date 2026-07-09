@@ -393,7 +393,7 @@ app.post('/api/session-passes', async (req, res) => {
 // POST /api/abonnement-payments — Met à jour l'abonnement (sans création de commande)
 app.post('/api/abonnement-payments', async (req, res) => {
     try {
-        const { memberId, subscriptionEndDate, amount, paymentMethod } = req.body;
+        const { memberId, subscriptionStartDate, subscriptionEndDate, durationMonths, amount, paymentMethod } = req.body;
 
         if (!memberId || !subscriptionEndDate) {
             return res.status(400).json({ error: 'memberId et subscriptionEndDate sont requis' });
@@ -413,6 +413,14 @@ app.post('/api/abonnement-payments', async (req, res) => {
             return res.status(400).json({ error: 'Format de date invalide' });
         }
 
+        let parsedStartDate = null;
+        if (subscriptionStartDate) {
+            parsedStartDate = new Date(subscriptionStartDate);
+            if (isNaN(parsedStartDate.getTime())) {
+                return res.status(400).json({ error: 'Format de date de début invalide' });
+            }
+        }
+
         const updatedUser = await prisma.user.update({
             where: { id: Number(memberId) },
             data: { subscriptionEndDate: parsedDate },
@@ -428,6 +436,9 @@ app.post('/api/abonnement-payments', async (req, res) => {
                 paymentMode: paymentMethod,
                 price: Number(amount),
                 comment: null,
+                subscriptionStartDate: parsedStartDate,
+                subscriptionEndDate: parsedDate,
+                durationMonths: durationMonths !== undefined && durationMonths !== null ? Number(durationMonths) : null,
             },
         });
 
@@ -1341,6 +1352,7 @@ app.get('/api/orders/export/range', async (req, res) => {
 function formatPaymentExport(payment) {
     return {
         id: payment.id,
+        memberId: payment.memberId,
         firstName: payment.member.firstName || '',
         lastName: payment.member.lastName || '',
         memberName: `${payment.member.firstName || ''} ${payment.member.lastName || ''}`.trim(),
@@ -1350,6 +1362,9 @@ function formatPaymentExport(payment) {
         price: payment.price !== null ? Number(payment.price) : null,
         comment: payment.comment || null,
         createdAt: payment.createdAt,
+        subscriptionStartDate: payment.subscriptionStartDate,
+        subscriptionEndDate: payment.subscriptionEndDate,
+        durationMonths: payment.durationMonths,
     };
 }
 

@@ -27,6 +27,7 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
     return "";
   });
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
+  const [subscriptionStartDate, setSubscriptionStartDate] = useState<string>("");
   const [abonnementPrice, setAbonnementPrice] = useState<string>("");
   const [abonnementPayment, setAbonnementPayment] = useState<"CASH" | "QRCODE" | null>(null);
   const [saving, setSaving] = useState(false);
@@ -52,7 +53,9 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           memberId: abonnementUser.id,
+          subscriptionStartDate: subscriptionStartDate ? new Date(subscriptionStartDate).toISOString() : null,
           subscriptionEndDate: new Date(abonnementDate).toISOString(),
+          durationMonths: selectedDuration,
           amount: Number(abonnementPrice),
           paymentMethod: abonnementPayment,
         }),
@@ -131,7 +134,7 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                   <div className="flex justify-between items-center mb-1">
                     <div className="font-medium text-black">{getFullName(abonnementUser)}</div>
                     <button type="button"
-                      onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); setSelectedDuration(null); setAbonnementPrice(""); setAbonnementPayment(null); }}
+                      onClick={() => { setAbonnementUser(null); setAbonnementUserSearch(""); setAbonnementDate(""); setSubscriptionStartDate(""); setSelectedDuration(null); setAbonnementPrice(""); setAbonnementPayment(null); }}
                       className="text-xs text-gray-400 hover:text-gray-600 underline">
                       Changer
                     </button>
@@ -166,14 +169,18 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                     onClick={() => {
                       if (months === 999) {
                         setAbonnementDate("2099-12-31");
+                        setSubscriptionStartDate(new Date().toISOString().split("T")[0]);
                         setSelectedDuration(999);
                         return;
                       }
                       const hasActive = abonnementUser?.subscriptionEndDate && new Date(abonnementUser.subscriptionEndDate) >= new Date();
-                      const base = hasActive ? new Date(abonnementUser!.subscriptionEndDate!) : new Date();
+                      const start = hasActive ? new Date(abonnementUser!.subscriptionEndDate!) : new Date();
+                      if (hasActive) start.setDate(start.getDate() + 1);
+                      const base = new Date(start);
                       base.setMonth(base.getMonth() + months);
                       base.setDate(base.getDate() - 1);
                       setAbonnementDate(base.toISOString().split("T")[0]);
+                      setSubscriptionStartDate(start.toISOString().split("T")[0]);
                       setSelectedDuration(months);
                       const p = subscriptionDurations.find(d => d.duration === months)?.price;
                       setAbonnementPrice(p ? String(p) : "");
@@ -197,7 +204,7 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
 
             {selectedDuration !== null && (
               <button type="button"
-                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); setAbonnementPrice(""); setAbonnementPayment(null); }}
+                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); setSubscriptionStartDate(""); setAbonnementPrice(""); setAbonnementPayment(null); }}
                 className="text-xs text-gray-400 hover:text-gray-600 mb-3">
                 ✕ Changer la durée
               </button>

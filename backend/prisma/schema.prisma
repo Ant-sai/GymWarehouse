@@ -255,15 +255,18 @@ enum MovementType {
 }
 
 model Payment {
-  id          Int         @id @default(autoincrement())
-  memberId    Int         @map("member_id")
-  type        MemberPaymentType
-  period      String      @db.VarChar(100)
-  paymentMode MemberPaymentMode @default(CASH) @map("payment_mode")
-  price       Decimal?    @db.Decimal(10, 2)
-  comment     String?     @db.Text
-  createdAt   DateTime    @default(now()) @map("created_at")
-  member      User        @relation(fields: [memberId], references: [id])
+  id                    Int         @id @default(autoincrement())
+  memberId              Int         @map("member_id")
+  type                  MemberPaymentType
+  period                String      @db.VarChar(100)
+  paymentMode           MemberPaymentMode @default(CASH) @map("payment_mode")
+  price                 Decimal?    @db.Decimal(10, 2)
+  comment               String?     @db.Text
+  createdAt             DateTime    @default(now()) @map("created_at")
+  subscriptionStartDate DateTime?   @map("subscription_start_date") @db.Date
+  subscriptionEndDate   DateTime?   @map("subscription_end_date") @db.Date
+  durationMonths        Int?        @map("duration_months")
+  member                User        @relation(fields: [memberId], references: [id])
 
   @@index([memberId], map: "payments_memberId_fkey")
   @@index([createdAt], map: "payments_createdAt_idx")
