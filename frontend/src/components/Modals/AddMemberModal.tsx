@@ -13,7 +13,6 @@ const emptyForm = {
   firstName: '',
   lastName: '',
   role: 'USER' as 'USER' | 'TRAINER',
-  balance: '',
   dateOfBirth: '',
   postalCode: '',
   gender: '' as '' | 'HOMME' | 'FEMME',
@@ -47,7 +46,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         firstName: form.firstName || undefined,
         lastName: form.lastName || undefined,
         role: form.role,
-        balance: Number(form.balance || 0),
         dateOfBirth: form.dateOfBirth || null,
         postalCode: form.postalCode || null,
         gender: form.gender || null,
@@ -83,115 +81,81 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
       {/* Modal */}
       <form
         onSubmit={handleSubmit}
-        className="relative bg-white rounded-lg p-6 w-[720px] shadow-lg z-50"
+        className="relative bg-white rounded-lg p-4 w-[380px] shadow-lg z-50"
       >
-        <h3 className="text-xl font-semibold mb-4 text-black">
+        <h3 className="text-lg font-semibold mb-3 text-black">
           Ajouter un membre
         </h3>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Rôle *</label>
-            <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as 'USER' | 'TRAINER' })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              required
-            >
-              <option value="USER">Utilisateur</option>
-              <option value="TRAINER">Entraîneur</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Prénom</label>
+            <label className="block text-xs font-medium text-gray-700">Prénom</label>
             <input
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Prénom (optionnel)"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nom</label>
+            <label className="block text-xs font-medium text-gray-700">Nom</label>
             <input
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Nom (optionnel)"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Solde initial</label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.balance}
-              onChange={(e) => setForm({ ...form, balance: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="0.00"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Date de naissance</label>
+            <label className="block text-xs font-medium text-gray-700">Date de naissance</label>
             <input
               type="date"
               value={form.dateOfBirth}
               onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Code postal</label>
+            <label className="block text-xs font-medium text-gray-700">Code postal</label>
             <input
               type="text"
               value={form.postalCode}
               onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="1000"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Sexe</label>
+            <label className="block text-xs font-medium text-gray-700">GSM</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="0470 00 00 00"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700">Adresse mail</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="exemple@email.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700">Sexe</label>
             <select
               value={form.gender}
               onChange={(e) => setForm({ ...form, gender: e.target.value as '' | 'HOMME' | 'FEMME' })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Non renseigné</option>
               <option value="HOMME">Homme</option>
               <option value="FEMME">Femme</option>
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">GSM</label>
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="0470 00 00 00"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="exemple@email.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Commentaire</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-              placeholder="Commentaire (optionnel)"
-              rows={3}
-            />
           </div>
         </div>
 
