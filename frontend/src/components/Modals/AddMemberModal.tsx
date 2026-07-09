@@ -89,7 +89,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
           Ajouter un membre
         </h3>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Rôle *</label>
             <select
@@ -183,7 +183,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
               placeholder="exemple@email.com"
             />
           </div>
-          <div className="col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700">Commentaire</label>
             <textarea
               value={form.notes}
