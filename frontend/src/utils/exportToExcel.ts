@@ -328,7 +328,7 @@ const ROLE_LABELS: Record<string, string> = {
 function durationLabel(months: number | null | undefined) {
   if (months === null || months === undefined) return '';
   if (months >= 999) return 'Domiciliation';
-  return `${months} mois`;
+  return `${months}`;
 }
 
 function formatDateFr(value: string | null | undefined, withTime = false) {
