@@ -2171,18 +2171,48 @@ app.put('/api/refunds/:id', async (req, res) => {
 
             const report = await tx.dailyReport.findUnique({ where: { date: orderDate } });
             if (report) {
-                const cashDiff = paymentMethod === 'CASH' ? (existingOrder.paymentMethod === 'CASH' ? amountDiff : refundAmount) : 0;
-                const qrDiff = paymentMethod === 'QRCODE' ? (existingOrder.paymentMethod === 'QRCODE' ? amountDiff : refundAmount) : 0;
-                const oldCashDiff = existingOrder.paymentMethod === 'CASH' && paymentMethod !== 'CASH' ? -oldAmount : 0;
-                const oldQrDiff = existingOrder.paymentMethod === 'QRCODE' && paymentMethod !== 'QRCODE' ? -oldAmount : 0;
+                const dayStart = new Date(orderDate);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(orderDate);
+                dayEnd.setHours(23, 59, 59, 999);
+
+                const { cashRevenue, qrRevenue, creditRevenue } = await computeDayRevenue(tx, dayStart, dayEnd);
+                const endingCash = Number(report.startingCash) + cashRevenue + Number(report.trou) + Number(report.retrait || 0);
 
                 await tx.dailyReport.update({
                     where: { date: orderDate },
                     data: {
-                        cashRevenue: { increment: cashDiff + oldCashDiff },
-                        qrRevenue: { increment: qrDiff + oldQrDiff }
+                        cashRevenue,
+                        qrRevenue,
+                        creditRevenue,
+                        endingCash
                     }
                 });
+
+                // Mettre à jour les jours suivants
+                const nextDate = new Date(orderDate);
+                nextDate.setDate(nextDate.getDate() + 1);
+                nextDate.setHours(0, 0, 0, 0);
+
+                const subsequentReports = await tx.dailyReport.findMany({
+                    where: { date: { gte: nextDate } },
+                    orderBy: { date: 'asc' }
+                });
+
+                let previousEndingCash = endingCash;
+                for (const nextReport of subsequentReports) {
+                    const newEndingCash = Number(previousEndingCash) + Number(nextReport.cashRevenue) + Number(nextReport.trou) + Number(nextReport.retrait || 0);
+
+                    await tx.dailyReport.update({
+                        where: { id: nextReport.id },
+                        data: {
+                            startingCash: previousEndingCash,
+                            endingCash: newEndingCash
+                        }
+                    });
+
+                    previousEndingCash = newEndingCash;
+                }
             }
 
             return { order: updatedOrder, newBalance: updatedUser.balance };
