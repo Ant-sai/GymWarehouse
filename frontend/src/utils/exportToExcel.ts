@@ -325,10 +325,8 @@ const ROLE_LABELS: Record<string, string> = {
   TRAINER: 'Entraîneur',
 };
 
-function durationLabel(months: number | null | undefined) {
-  if (months === null || months === undefined) return '';
-  if (months >= 999) return 'Domiciliation';
-  return `${months}`;
+function durationMonthsValue(months: number | null | undefined): number | '' {
+  return months === null || months === undefined ? '' : months;
 }
 
 function formatDateFr(value: string | null | undefined, withTime = false) {
@@ -399,7 +397,7 @@ function buildSubscriptionsSummarySheet(payments: ExportPaymentData[], members: 
       'Prénom': memberPayments[0].firstName || '',
       'Date début abonnement': formatDateFr(latestEntree?.subscriptionStartDate),
       'Date fin abonnement': formatDateFr(member?.subscriptionEndDate ?? latestEntree?.subscriptionEndDate),
-      'Durée abonnement': durationLabel(latestEntree?.durationMonths),
+      'Durée abonnement': durationMonthsValue(latestEntree?.durationMonths),
       'Date de création abonnement': formatDateFr(latestEntree?.createdAt),
       'Nb séances restantes': sessionsRemaining ?? '',
       'Nb séances prises': sessionsTaken ?? '',
@@ -437,7 +435,7 @@ function buildSubscriptionsHistorySheet(payments: ExportPaymentData[]) {
     'Type': MEMBER_PAYMENT_TYPE_LABELS[p.type] || p.type,
     'Date début abonnement': p.type === 'ENTREE' ? formatDateFr(p.subscriptionStartDate) : '',
     'Date fin abonnement': p.type === 'ENTREE' ? formatDateFr(p.subscriptionEndDate) : '',
-    'Durée abonnement': p.type === 'ENTREE' ? durationLabel(p.durationMonths) : '',
+    'Durée abonnement': p.type === 'ENTREE' ? durationMonthsValue(p.durationMonths) : '',
     'Nb séances': p.type === 'FORFAIT' ? (parseInt(p.period, 10) || 0) : '',
     'Date de création': formatDateFr(p.createdAt),
     'Prix': p.price !== null ? formatPrice(p.price) : '',
