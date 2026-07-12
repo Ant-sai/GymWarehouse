@@ -497,6 +497,121 @@ app.patch('/api/users/:id/subscription', async (req, res) => {
     }
 });
 
+// Update session count directly for a user (admin correction)
+app.patch('/api/users/:id/session-count', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { sessionCount } = req.body;
+
+        if (sessionCount === undefined || sessionCount === null || isNaN(Number(sessionCount)) || Number(sessionCount) < 0) {
+            return res.status(400).json({ error: 'sessionCount doit être un nombre positif' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: Number(id) },
+            select: { id: true },
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur introuvable' });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(id) },
+            data: { sessionCount: Number(sessionCount) },
+            select: { id: true, firstName: true, lastName: true, sessionCount: true },
+        });
+
+        res.json(updatedUser);
+    } catch (err) {
+        console.error('Error updating session count:', err);
+        res.status(500).json({ error: 'Failed to update session count' });
+    }
+});
+
+// -----------------------------------------------
+// --------- Admin payment correction routes -----
+// -----------------------------------------------
+
+// Get payment history for a member (most recent first)
+app.get('/api/payments/member/:memberId', async (req, res) => {
+    try {
+        const { memberId } = req.params;
+        const payments = await prisma.payment.findMany({
+            where: { memberId: Number(memberId) },
+            orderBy: { createdAt: 'desc' },
+        });
+        res.json(payments);
+    } catch (err) {
+        console.error('Error fetching member payments:', err);
+        res.status(500).json({ error: 'Failed to fetch member payments' });
+    }
+});
+
+// Correct a payment record (type, formule, dates, montant)
+app.put('/api/payments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { type, period, price, paymentMode, subscriptionStartDate, subscriptionEndDate, durationMonths, comment } = req.body;
+
+        const existing = await prisma.payment.findUnique({ where: { id: Number(id) } });
+        if (!existing) {
+            return res.status(404).json({ error: 'Paiement introuvable' });
+        }
+
+        if (type !== undefined && type !== 'FORFAIT' && type !== 'ENTREE') {
+            return res.status(400).json({ error: 'Type de paiement invalide' });
+        }
+        if (paymentMode !== undefined && paymentMode !== 'CASH' && paymentMode !== 'QRCODE') {
+            return res.status(400).json({ error: 'Mode de paiement invalide' });
+        }
+        if (price !== undefined && price !== null && (isNaN(Number(price)) || Number(price) < 0)) {
+            return res.status(400).json({ error: 'Le montant doit être un nombre positif' });
+        }
+
+        let parsedStart;
+        if (subscriptionStartDate !== undefined) {
+            if (subscriptionStartDate === null || subscriptionStartDate === '') {
+                parsedStart = null;
+            } else {
+                const d = new Date(subscriptionStartDate);
+                if (isNaN(d.getTime())) return res.status(400).json({ error: 'Format de date de début invalide' });
+                parsedStart = d;
+            }
+        }
+
+        let parsedEnd;
+        if (subscriptionEndDate !== undefined) {
+            if (subscriptionEndDate === null || subscriptionEndDate === '') {
+                parsedEnd = null;
+            } else {
+                const d = new Date(subscriptionEndDate);
+                if (isNaN(d.getTime())) return res.status(400).json({ error: 'Format de date de fin invalide' });
+                parsedEnd = d;
+            }
+        }
+
+        const updated = await prisma.payment.update({
+            where: { id: Number(id) },
+            data: {
+                ...(type !== undefined && { type }),
+                ...(period !== undefined && { period: String(period) }),
+                ...(price !== undefined && { price: price === null ? null : Number(price) }),
+                ...(paymentMode !== undefined && { paymentMode }),
+                ...(parsedStart !== undefined && { subscriptionStartDate: parsedStart }),
+                ...(parsedEnd !== undefined && { subscriptionEndDate: parsedEnd }),
+                ...(durationMonths !== undefined && { durationMonths: durationMonths === null ? null : Number(durationMonths) }),
+                ...(comment !== undefined && { comment }),
+            },
+        });
+
+        res.json(updated);
+    } catch (err) {
+        console.error('Error updating payment:', err);
+        res.status(500).json({ error: 'Failed to update payment' });
+    }
+});
+
 // Get all users with their balance for Excel export
 app.get('/api/users/export/balances', async (req, res) => {
     try {
