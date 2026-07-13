@@ -434,14 +434,75 @@ function buildSubscriptionsHistorySheet(payments: ExportPaymentData[]) {
   return sheet;
 }
 
+export type ExportPresenceData = {
+  id: number;
+  memberId: number;
+  firstName: string;
+  lastName: string;
+  arrivedAt: string;
+};
+
+// ============================================
+// FEUILLE : Nombre de visites par jour
+// ============================================
+function buildVisitsCountSheet(presences: ExportPresenceData[]) {
+  const countByDate = new Map<string, { label: string; date: Date; count: number }>();
+
+  presences.forEach(p => {
+    const d = new Date(p.arrivedAt);
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const key = dayStart.toISOString();
+    if (!countByDate.has(key)) {
+      countByDate.set(key, { label: formatDateFr(p.arrivedAt), date: dayStart, count: 0 });
+    }
+    countByDate.get(key)!.count += 1;
+  });
+
+  const rows = Array.from(countByDate.values())
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(({ label, count }) => ({
+      'Date': label,
+      'Nombre de visites': count,
+    }));
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [{ wch: 16 }, { wch: 18 }];
+  return sheet;
+}
+
+// ============================================
+// FEUILLE : Historique des visites (détail par membre)
+// ============================================
+function buildVisitDetailSheet(presences: ExportPresenceData[], members: ExportMemberData[]) {
+  const membersById = new Map(members.map(m => [m.id, m]));
+
+  const rows = presences.map(p => {
+    const member = membersById.get(p.memberId);
+    return {
+      'Nom': p.lastName || '',
+      'Prénom': p.firstName || '',
+      'Date fin abonnement': member ? formatDateFr(member.subscriptionEndDate) : '',
+      'Séance restante': member?.sessionCount ?? '',
+      'Date de venue': formatDateFr(p.arrivedAt, true),
+    };
+  });
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  sheet['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 18 }];
+  return sheet;
+}
+
 function generateSubscriptionsWorkbook(
   payments: ExportPaymentData[],
   members: ExportMemberData[],
+  presences: ExportPresenceData[],
   filename: string
 ) {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, buildSubscriptionsHistorySheet(payments), 'Historique paiements');
   XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members, payments), 'Membres');
+  XLSX.utils.book_append_sheet(workbook, buildVisitsCountSheet(presences), 'Visites par jour');
+  XLSX.utils.book_append_sheet(workbook, buildVisitDetailSheet(presences, members), 'Historique visites');
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
@@ -451,34 +512,57 @@ async function fetchAllMembers(): Promise<ExportMemberData[]> {
   return response.json();
 }
 
+async function fetchAllPresences(): Promise<ExportPresenceData[]> {
+  const response = await fetch('/api/daily-presences/export');
+  if (!response.ok) throw new Error('Erreur lors de la récupération des visites');
+  return response.json();
+}
+
+async function fetchPresencesFromDate(startDate: string): Promise<ExportPresenceData[]> {
+  const response = await fetch(`/api/daily-presences/export/from/${startDate}`);
+  if (!response.ok) throw new Error('Erreur lors de la récupération des visites');
+  const result = await response.json();
+  return result.data;
+}
+
+async function fetchPresencesRange(startDate: string, endDate: string): Promise<ExportPresenceData[]> {
+  const response = await fetch(`/api/daily-presences/export/range?startDate=${startDate}&endDate=${endDate}`);
+  if (!response.ok) throw new Error('Erreur lors de la récupération des visites');
+  const result = await response.json();
+  return result.data;
+}
+
 export async function exportAllPaymentsToExcel() {
-  const [paymentsRes, members] = await Promise.all([
+  const [paymentsRes, members, presences] = await Promise.all([
     fetch('/api/payments/export'),
     fetchAllMembers(),
+    fetchAllPresences(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const payments: ExportPaymentData[] = await paymentsRes.json();
-  generateSubscriptionsWorkbook(payments, members, 'tous-les-paiements');
+  generateSubscriptionsWorkbook(payments, members, presences, 'tous-les-paiements');
 }
 
 export async function exportPaymentsFromDateToExcel(startDate: string) {
-  const [paymentsRes, members] = await Promise.all([
+  const [paymentsRes, members, presences] = await Promise.all([
     fetch(`/api/payments/export/from/${startDate}`),
     fetchAllMembers(),
+    fetchPresencesFromDate(startDate),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const paymentsResult = await paymentsRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, `paiements-depuis-${startDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, `paiements-depuis-${startDate}`);
 }
 
 export async function exportPaymentsRangeToExcel(startDate: string, endDate: string) {
-  const [paymentsRes, members] = await Promise.all([
+  const [paymentsRes, members, presences] = await Promise.all([
     fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`),
     fetchAllMembers(),
+    fetchPresencesRange(startDate, endDate),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const paymentsResult = await paymentsRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, `paiements-${startDate}-au-${endDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, `paiements-${startDate}-au-${endDate}`);
 }
 
 // ============================================

@@ -3198,6 +3198,7 @@ app.delete('/api/daily-presence/:id', async (req, res) => {
 function formatPresenceExport(presence) {
     return {
         id: presence.id,
+        memberId: presence.memberId,
         firstName: presence.member.firstName || '',
         lastName: presence.member.lastName || '',
         arrivedAt: presence.arrivedAt,
