@@ -336,86 +336,61 @@ function formatDateFr(value: string | null | undefined, withTime = false) {
     : { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// ============================================
-// FEUILLE : Membres
-// ============================================
-function buildMembersSheet(members: ExportMemberData[]) {
-  const rows = members.map(m => ({
-    'Nom': m.lastName || '',
-    'Prénom': m.firstName || '',
-    'Rôle': ROLE_LABELS[m.role] || m.role,
-    'Solde': formatPrice(Number(m.balance)),
-    'Fin abonnement': formatDateFr(m.subscriptionEndDate),
-    'Nb séances': m.sessionCount ?? '',
-    'Date de naissance': formatDateFr(m.dateOfBirth),
-    'Code postal': m.postalCode || '',
-    'Sexe': m.gender ? (GENDER_LABELS[m.gender] || m.gender) : '',
-    'GSM': m.phone || '',
-    'Email': m.email || '',
-    'Commentaire': m.notes || '',
-    'Membre depuis': formatDateFr(m.createdAt),
-  }));
-
-  const sheet = XLSX.utils.json_to_sheet(rows);
-  sheet['!cols'] = [
-    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 12 },
-    { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 30 }, { wch: 16 },
-  ];
-  return sheet;
+function subscriptionTypeLabel(durationMonths: number | null | undefined): string {
+  if (durationMonths === null || durationMonths === undefined) return '';
+  return durationMonths >= 999 ? 'Domiciliation' : `${durationMonths} mois`;
 }
 
 // ============================================
-// FEUILLE : Abonnements & Séances — résumé par membre
+// FEUILLE : Membres
 // ============================================
-function buildSubscriptionsSummarySheet(payments: ExportPaymentData[], members: ExportMemberData[]) {
-  const membersById = new Map(members.map(m => [m.id, m]));
+function buildMembersSheet(members: ExportMemberData[], payments: ExportPaymentData[]) {
   const paymentsByMember = new Map<number, ExportPaymentData[]>();
   payments.forEach(p => {
     if (!paymentsByMember.has(p.memberId)) paymentsByMember.set(p.memberId, []);
     paymentsByMember.get(p.memberId)!.push(p);
   });
 
-  const rows = Array.from(paymentsByMember.entries()).map(([memberId, memberPayments]) => {
-    const member = membersById.get(memberId);
-    const entreePayments = memberPayments
+  const rows = members.map(m => {
+    const memberPayments = paymentsByMember.get(m.id) || [];
+    const latestEntree = memberPayments
       .filter(p => p.type === 'ENTREE')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    const forfaitPayments = memberPayments.filter(p => p.type === 'FORFAIT');
-    const latestEntree = entreePayments[0];
-
-    const totalSessionsPurchased = forfaitPayments.reduce((sum, p) => sum + (parseInt(p.period, 10) || 0), 0);
-    const sessionsRemaining = member?.sessionCount ?? null;
-    const sessionsTaken = forfaitPayments.length > 0 || sessionsRemaining !== null
-      ? Math.max(0, totalSessionsPurchased - (sessionsRemaining ?? 0))
-      : null;
-
-    const totalAbonnement = entreePayments.reduce((sum, p) => sum + (p.price ?? 0), 0);
-    const totalSeances = forfaitPayments.reduce((sum, p) => sum + (p.price ?? 0), 0);
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    const latestForfait = memberPayments
+      .filter(p => p.type === 'FORFAIT')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
     return {
-      'Nom': memberPayments[0].lastName || '',
-      'Prénom': memberPayments[0].firstName || '',
-      'Date début abonnement': formatDateFr(latestEntree?.subscriptionStartDate),
-      'Date fin abonnement': formatDateFr(member?.subscriptionEndDate ?? latestEntree?.subscriptionEndDate),
-      'Durée abonnement': durationMonthsValue(latestEntree?.durationMonths),
-      'Date de création abonnement': formatDateFr(latestEntree?.createdAt),
-      'Nb séances restantes': sessionsRemaining ?? '',
-      'Nb séances prises': sessionsTaken ?? '',
-      'Total abonnement': formatPrice(totalAbonnement),
-      'Total séances': formatPrice(totalSeances),
-      'Total général': formatPrice(totalAbonnement + totalSeances),
+      'Nom': m.lastName || '',
+      'Prénom': m.firstName || '',
+      'Rôle': ROLE_LABELS[m.role] || m.role,
+      'Solde': formatPrice(Number(m.balance)),
+      'Fin abonnement': formatDateFr(m.subscriptionEndDate),
+      "Type d'abonnement": subscriptionTypeLabel(latestEntree?.durationMonths),
+      'Prix payé dernier abonnement': latestEntree?.price !== undefined && latestEntree?.price !== null ? formatPrice(latestEntree.price) : '',
+      'Nb séances restantes': m.sessionCount ?? '',
+      'Nb séances prises dernier achat': latestForfait ? (parseInt(latestForfait.period, 10) || 0) : '',
+      'Prix payé dernier achat': latestForfait?.price !== undefined && latestForfait?.price !== null ? formatPrice(latestForfait.price) : '',
+      'Date de naissance': formatDateFr(m.dateOfBirth),
+      'Code postal': m.postalCode || '',
+      'Sexe': m.gender ? (GENDER_LABELS[m.gender] || m.gender) : '',
+      'GSM': m.phone || '',
+      'Email': m.email || '',
+      'Commentaire': m.notes || '',
+      'Membre depuis': formatDateFr(m.createdAt),
     };
   });
 
   const sheet = XLSX.utils.json_to_sheet(rows);
   sheet['!cols'] = [
-    { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
-    { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
+    { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 18 },
+    { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 30 }, { wch: 16 },
   ];
 
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
   for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-    [8, 9, 10].forEach(c => {
+    [6, 9].forEach(c => {
       const cell = XLSX.utils.encode_cell({ r: R, c });
       if (sheet[cell] && typeof sheet[cell].v === 'number') {
         sheet[cell].z = '#,##0.00 "€"';
@@ -426,7 +401,7 @@ function buildSubscriptionsSummarySheet(payments: ExportPaymentData[], members: 
 }
 
 // ============================================
-// FEUILLE : Abonnements & Séances — historique des paiements
+// FEUILLE : Historique des paiements
 // ============================================
 function buildSubscriptionsHistorySheet(payments: ExportPaymentData[]) {
   const rows = payments.map(p => ({
@@ -437,21 +412,21 @@ function buildSubscriptionsHistorySheet(payments: ExportPaymentData[]) {
     'Date fin abonnement': p.type === 'ENTREE' ? formatDateFr(p.subscriptionEndDate) : '',
     'Durée abonnement': p.type === 'ENTREE' ? durationMonthsValue(p.durationMonths) : '',
     'Nb séances': p.type === 'FORFAIT' ? (parseInt(p.period, 10) || 0) : '',
-    'Date de création': formatDateFr(p.createdAt),
     'Prix': p.price !== null ? formatPrice(p.price) : '',
     'Mode de paiement': PAYMENT_MODE_LABELS[p.paymentMode] || p.paymentMode,
     'Commentaire': p.comment || '',
+    'Date de création': formatDateFr(p.createdAt),
   }));
 
   const sheet = XLSX.utils.json_to_sheet(rows);
   sheet['!cols'] = [
     { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
-    { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 18 }, { wch: 30 },
+    { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 30 }, { wch: 16 },
   ];
 
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
   for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-    const cell = XLSX.utils.encode_cell({ r: R, c: 8 });
+    const cell = XLSX.utils.encode_cell({ r: R, c: 7 });
     if (sheet[cell] && typeof sheet[cell].v === 'number') {
       sheet[cell].z = '#,##0.00 "€"';
     }
@@ -465,9 +440,8 @@ function generateSubscriptionsWorkbook(
   filename: string
 ) {
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, buildSubscriptionsSummarySheet(payments, members), 'Abonnements & Séances');
   XLSX.utils.book_append_sheet(workbook, buildSubscriptionsHistorySheet(payments), 'Historique paiements');
-  XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members), 'Membres');
+  XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members, payments), 'Membres');
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
