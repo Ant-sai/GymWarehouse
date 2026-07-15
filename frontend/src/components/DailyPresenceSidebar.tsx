@@ -127,6 +127,7 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
 
     const hasActiveSub = user.subscriptionEndDate != null && new Date(user.subscriptionEndDate) >= new Date();
     const hasSessions = user.sessionCount != null && user.sessionCount > 0;
+    const neverHadSubscription = user.subscriptionEndDate == null;
 
     if (hasActiveSub && hasSessions) {
       setPendingUser(user);
@@ -134,6 +135,13 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
       return;
     }
 
+    // Jamais eu d'abonnement (donc pas "expiré"), uniquement des séances : décompte direct sans demander
+    if (neverHadSubscription && hasSessions) {
+      await submitPresence(user, true);
+      return;
+    }
+
+    // Abonnement expiré mais séances disponibles : on garde le choix actuel
     if (hasSessions && !hasActiveSub) {
       setPendingUser(user);
       setShowRenewChoiceModal(true);
