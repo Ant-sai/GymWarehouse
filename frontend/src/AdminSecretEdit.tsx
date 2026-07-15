@@ -39,6 +39,7 @@ export default function AdminSecretEdit() {
   const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Payment>>({});
   const [savingPaymentId, setSavingPaymentId] = useState<number | null>(null);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
 
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -161,6 +162,34 @@ export default function AdminSecretEdit() {
     }
   }
 
+  async function deletePayment(payment: Payment) {
+    const label = `${payment.type === "FORFAIT" ? "Forfait séances" : "Abonnement"} — ${payment.period}`;
+    if (!window.confirm(`Supprimer définitivement ce paiement (${label}) ? L'abonnement et le nombre de séances du membre seront recalculés. Cette action est irréversible.`)) return;
+
+    setDeletingPaymentId(payment.id);
+    try {
+      const res = await fetch(`/api/payments/${payment.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Erreur HTTP: ${res.status}`);
+      const { user: updatedUser } = await res.json();
+
+      setPayments((list) => list.filter((p) => p.id !== payment.id));
+      if (editingPaymentId === payment.id) setEditingPaymentId(null);
+
+      if (updatedUser) {
+        setSelectedUser((u) => (u ? { ...u, subscriptionEndDate: updatedUser.subscriptionEndDate, sessionCount: updatedUser.sessionCount } : u));
+        setSubscriptionEndDate(toDateInput(updatedUser.subscriptionEndDate));
+        setSessionCount(updatedUser.sessionCount != null ? String(updatedUser.sessionCount) : "0");
+        setUsers((list) => list.map((u) => (u.id === updatedUser.id ? { ...u, subscriptionEndDate: updatedUser.subscriptionEndDate, sessionCount: updatedUser.sessionCount } : u)));
+      }
+
+      flash("Paiement supprimé, abonnement et séances recalculés");
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Échec de la suppression", true);
+    } finally {
+      setDeletingPaymentId(null);
+    }
+  }
+
   const filteredUsers = search && !selectedUser
     ? users.filter((u) => getFullName(u).toLowerCase().includes(search.toLowerCase()))
     : [];
@@ -251,7 +280,6 @@ export default function AdminSecretEdit() {
                   <div className="flex gap-2">
                     <input
                       type="number"
-                      min="0"
                       value={sessionCount}
                       onChange={(e) => setSessionCount(e.target.value)}
                       className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
@@ -354,23 +382,33 @@ export default function AdminSecretEdit() {
                               />
                             </div>
                           </div>
-                          <div className="flex justify-end gap-2 pt-1">
+                          <div className="flex justify-between gap-2 pt-1">
                             <button
                               type="button"
-                              onClick={() => setEditingPaymentId(null)}
-                              className="px-3 py-1 rounded border border-gray-300 text-sm hover:bg-gray-50"
-                              disabled={savingPaymentId === payment.id}
+                              onClick={() => deletePayment(payment)}
+                              disabled={savingPaymentId === payment.id || deletingPaymentId === payment.id}
+                              className="px-3 py-1 rounded border border-red-300 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50"
                             >
-                              Annuler
+                              {deletingPaymentId === payment.id ? "Suppression..." : "Supprimer"}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => savePayment(payment.id)}
-                              disabled={savingPaymentId === payment.id}
-                              className="px-3 py-1 rounded bg-[#1E2A47] text-white text-sm hover:bg-[#2A3B5A] disabled:opacity-50"
-                            >
-                              {savingPaymentId === payment.id ? "Enregistrement..." : "Enregistrer"}
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingPaymentId(null)}
+                                className="px-3 py-1 rounded border border-gray-300 text-sm hover:bg-gray-50"
+                                disabled={savingPaymentId === payment.id}
+                              >
+                                Annuler
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => savePayment(payment.id)}
+                                disabled={savingPaymentId === payment.id}
+                                className="px-3 py-1 rounded bg-[#1E2A47] text-white text-sm hover:bg-[#2A3B5A] disabled:opacity-50"
+                              >
+                                {savingPaymentId === payment.id ? "Enregistrement..." : "Enregistrer"}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -386,13 +424,23 @@ export default function AdminSecretEdit() {
                               )}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => startEditPayment(payment)}
-                            className="text-xs text-blue-600 hover:underline whitespace-nowrap ml-3"
-                          >
-                            Modifier
-                          </button>
+                          <div className="flex items-center gap-3 ml-3 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => startEditPayment(payment)}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deletePayment(payment)}
+                              disabled={deletingPaymentId === payment.id}
+                              className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                            >
+                              {deletingPaymentId === payment.id ? "Suppression..." : "Supprimer"}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

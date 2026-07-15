@@ -37,26 +37,27 @@ function daysUntilExpiry(endDate: string | null): number | null {
   return Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getSubStatus(endDate: string | null): "domi" | "valid" | "expiring" | "expired" | "none" {
-  if (!endDate) return "none";
-  const d = new Date(endDate);
-  if (d.getFullYear() >= 2099) return "domi";
-  const days = daysUntilExpiry(endDate);
-  if (days === null) return "domi";
-  if (days < 0) return "expired";
-  if (days <= 3) return "expiring";
-  return "valid";
-}
+// La couleur dépend du type d'entrée choisi lors du pointage (abonnement ou séance unitaire),
+// pas d'un mélange des deux statuts.
+function getNameColor(p: Presence): string {
+  if (p.usedSession) {
+    // Entrée unitaire : le compteur peut désormais devenir négatif
+    const remaining = p.member.sessionCount;
+    if (remaining == null || remaining < 0) return "text-red-600";
+    if (remaining === 0) return "text-orange-500 underline"; // vient de pointer sa dernière séance
+    return "text-green-700";
+  }
 
-function getNameColor(sessionCount: number | null | undefined, subStatus: string): string {
-  // Vert si abonnement valide ou domiciliation
-  if (subStatus === "valid" || subStatus === "domi") return "text-green-700";
-  // Orange si abonnement expire dans 3 jours ou moins
-  if (subStatus === "expiring") return "text-orange-500";
-  // Vert si séances disponibles (même sans abonnement actif)
-  if (sessionCount != null && sessionCount > 0) return "text-green-700";
-  // Rouge : ni abonnement actif ni séances disponibles
-  return "text-red-600";
+  // Abonnement
+  const endDate = p.member.subscriptionEndDate;
+  if (!endDate) return "text-red-600";
+  const d = new Date(endDate);
+  if (d.getFullYear() >= 2099) return "text-green-700"; // domiciliation
+  const days = daysUntilExpiry(endDate);
+  if (days === null) return "text-green-700";
+  if (days < 0) return "text-red-600";
+  if (days <= 3) return "text-orange-500 underline";
+  return "text-green-700";
 }
 
 function getSubTooltip(endDate: string | null, sessionCount: number | null | undefined): string {
@@ -256,8 +257,7 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
         ) : (
           <ul>
             {presences.map((p) => {
-              const status = getSubStatus(p.member.subscriptionEndDate);
-              const nameColor = getNameColor(p.member.sessionCount, status);
+              const nameColor = getNameColor(p);
               const tooltip = getSubTooltip(p.member.subscriptionEndDate, p.member.sessionCount);
               return (
                 <li

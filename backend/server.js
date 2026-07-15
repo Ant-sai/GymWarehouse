@@ -503,8 +503,8 @@ app.patch('/api/users/:id/session-count', async (req, res) => {
         const { id } = req.params;
         const { sessionCount } = req.body;
 
-        if (sessionCount === undefined || sessionCount === null || isNaN(Number(sessionCount)) || Number(sessionCount) < 0) {
-            return res.status(400).json({ error: 'sessionCount doit être un nombre positif' });
+        if (sessionCount === undefined || sessionCount === null || isNaN(Number(sessionCount))) {
+            return res.status(400).json({ error: 'sessionCount doit être un nombre' });
         }
 
         const user = await prisma.user.findUnique({
@@ -609,6 +609,51 @@ app.put('/api/payments/:id', async (req, res) => {
     } catch (err) {
         console.error('Error updating payment:', err);
         res.status(500).json({ error: 'Failed to update payment' });
+    }
+});
+
+// Delete a payment record (admin correction) — recalcule l'abonnement / le compteur de séances du membre
+app.delete('/api/payments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const existing = await prisma.payment.findUnique({ where: { id: Number(id) } });
+        if (!existing) {
+            return res.status(404).json({ error: 'Paiement introuvable' });
+        }
+
+        const updatedUser = await prisma.$transaction(async (tx) => {
+            await tx.payment.delete({ where: { id: Number(id) } });
+
+            if (existing.type === 'FORFAIT') {
+                // Le compteur de séances est cumulatif : on retire les séances apportées par ce paiement
+                const sessions = parseInt(existing.period, 10) || 0;
+                if (sessions > 0) {
+                    const member = await tx.user.findUnique({ where: { id: existing.memberId }, select: { sessionCount: true } });
+                    const newCount = (member?.sessionCount ?? 0) - sessions;
+                    await tx.user.update({ where: { id: existing.memberId }, data: { sessionCount: newCount } });
+                }
+            } else if (existing.type === 'ENTREE') {
+                // La date de fin d'abonnement reflète le dernier paiement restant, ou aucun abonnement s'il n'en reste plus
+                const remaining = await tx.payment.findFirst({
+                    where: { memberId: existing.memberId, type: 'ENTREE' },
+                    orderBy: { createdAt: 'desc' },
+                });
+                await tx.user.update({
+                    where: { id: existing.memberId },
+                    data: { subscriptionEndDate: remaining?.subscriptionEndDate ?? null },
+                });
+            }
+
+            return tx.user.findUnique({
+                where: { id: existing.memberId },
+                select: { id: true, firstName: true, lastName: true, subscriptionEndDate: true, sessionCount: true },
+            });
+        });
+
+        res.json({ deleted: true, user: updatedUser });
+    } catch (err) {
+        console.error('Error deleting payment:', err);
+        res.status(500).json({ error: 'Failed to delete payment' });
     }
 });
 
