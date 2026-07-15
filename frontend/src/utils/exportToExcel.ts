@@ -338,7 +338,7 @@ function formatDateFr(value: string | null | undefined, withTime = false) {
 
 function subscriptionTypeLabel(durationMonths: number | null | undefined): string {
   if (durationMonths === null || durationMonths === undefined) return '';
-  return durationMonths >= 999 ? 'Domiciliation' : `${durationMonths} mois`;
+  return durationMonths >= 999 ? 'Domiciliation' : `${durationMonths}`;
 }
 
 // ============================================
@@ -440,7 +440,50 @@ export type ExportPresenceData = {
   firstName: string;
   lastName: string;
   arrivedAt: string;
+  usedSession: boolean;
 };
+
+// Reconstruit, pour chaque membre, le solde de séances au fil du temps à partir de
+// l'historique complet (achats de forfaits + visites ayant consommé une séance),
+// pour pouvoir afficher le solde tel qu'il était réellement à chaque visite.
+function buildSessionBalanceLookup(allPayments: ExportPaymentData[], allPresences: ExportPresenceData[]) {
+  const eventsByMember = new Map<number, { at: number; delta: number }[]>();
+
+  const pushEvent = (memberId: number, at: number, delta: number) => {
+    if (!eventsByMember.has(memberId)) eventsByMember.set(memberId, []);
+    eventsByMember.get(memberId)!.push({ at, delta });
+  };
+
+  allPayments
+    .filter(p => p.type === 'FORFAIT')
+    .forEach(p => pushEvent(p.memberId, new Date(p.createdAt).getTime(), parseInt(p.period, 10) || 0));
+
+  allPresences
+    .filter(p => p.usedSession)
+    .forEach(p => pushEvent(p.memberId, new Date(p.arrivedAt).getTime(), -1));
+
+  const timelineByMember = new Map<number, { at: number; balance: number }[]>();
+  eventsByMember.forEach((events, memberId) => {
+    events.sort((a, b) => a.at - b.at);
+    let balance = 0;
+    const timeline = events.map(e => {
+      balance += e.delta;
+      return { at: e.at, balance };
+    });
+    timelineByMember.set(memberId, timeline);
+  });
+
+  return (memberId: number, at: number): number => {
+    const timeline = timelineByMember.get(memberId);
+    if (!timeline) return 0;
+    let result = 0;
+    for (const point of timeline) {
+      if (point.at > at) break;
+      result = point.balance;
+    }
+    return result;
+  };
+}
 
 // ============================================
 // FEUILLE : Nombre de visites par jour
@@ -473,7 +516,11 @@ function buildVisitsCountSheet(presences: ExportPresenceData[]) {
 // ============================================
 // FEUILLE : Historique des visites (détail par membre)
 // ============================================
-function buildVisitDetailSheet(presences: ExportPresenceData[], members: ExportMemberData[]) {
+function buildVisitDetailSheet(
+  presences: ExportPresenceData[],
+  members: ExportMemberData[],
+  balanceAsOf: (memberId: number, at: number) => number
+) {
   const membersById = new Map(members.map(m => [m.id, m]));
 
   const rows = presences.map(p => {
@@ -482,7 +529,7 @@ function buildVisitDetailSheet(presences: ExportPresenceData[], members: ExportM
       'Nom': p.lastName || '',
       'Prénom': p.firstName || '',
       'Date fin abonnement': member ? formatDateFr(member.subscriptionEndDate) : '',
-      'Séance restante': member?.sessionCount ?? '',
+      'Séance restante': balanceAsOf(p.memberId, new Date(p.arrivedAt).getTime()),
       'Date de venue': formatDateFr(p.arrivedAt, true),
     };
   });
@@ -496,19 +543,28 @@ function generateSubscriptionsWorkbook(
   payments: ExportPaymentData[],
   members: ExportMemberData[],
   presences: ExportPresenceData[],
+  allPayments: ExportPaymentData[],
+  allPresences: ExportPresenceData[],
   filename: string
 ) {
+  const balanceAsOf = buildSessionBalanceLookup(allPayments, allPresences);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, buildSubscriptionsHistorySheet(payments), 'Historique paiements');
   XLSX.utils.book_append_sheet(workbook, buildMembersSheet(members, payments), 'Membres');
   XLSX.utils.book_append_sheet(workbook, buildVisitsCountSheet(presences), 'Visites par jour');
-  XLSX.utils.book_append_sheet(workbook, buildVisitDetailSheet(presences, members), 'Historique visites');
+  XLSX.utils.book_append_sheet(workbook, buildVisitDetailSheet(presences, members, balanceAsOf), 'Historique visites');
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
 async function fetchAllMembers(): Promise<ExportMemberData[]> {
   const response = await fetch('/api/users');
   if (!response.ok) throw new Error('Erreur lors de la récupération des membres');
+  return response.json();
+}
+
+async function fetchAllPaymentsRaw(): Promise<ExportPaymentData[]> {
+  const response = await fetch('/api/payments/export');
+  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
   return response.json();
 }
 
@@ -540,29 +596,34 @@ export async function exportAllPaymentsToExcel() {
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const payments: ExportPaymentData[] = await paymentsRes.json();
-  generateSubscriptionsWorkbook(payments, members, presences, 'tous-les-paiements');
+  // Export complet : la plage affichée est déjà l'historique complet
+  generateSubscriptionsWorkbook(payments, members, presences, payments, presences, 'tous-les-paiements');
 }
 
 export async function exportPaymentsFromDateToExcel(startDate: string) {
-  const [paymentsRes, members, presences] = await Promise.all([
+  const [paymentsRes, members, presences, allPayments, allPresences] = await Promise.all([
     fetch(`/api/payments/export/from/${startDate}`),
     fetchAllMembers(),
     fetchPresencesFromDate(startDate),
+    fetchAllPaymentsRaw(),
+    fetchAllPresences(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const paymentsResult = await paymentsRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, `paiements-depuis-${startDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, allPayments, allPresences, `paiements-depuis-${startDate}`);
 }
 
 export async function exportPaymentsRangeToExcel(startDate: string, endDate: string) {
-  const [paymentsRes, members, presences] = await Promise.all([
+  const [paymentsRes, members, presences, allPayments, allPresences] = await Promise.all([
     fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`),
     fetchAllMembers(),
     fetchPresencesRange(startDate, endDate),
+    fetchAllPaymentsRaw(),
+    fetchAllPresences(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const paymentsResult = await paymentsRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, `paiements-${startDate}-au-${endDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, allPayments, allPresences, `paiements-${startDate}-au-${endDate}`);
 }
 
 // ============================================
