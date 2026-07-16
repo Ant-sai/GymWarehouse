@@ -562,9 +562,11 @@ async function fetchAllMembers(): Promise<ExportMemberData[]> {
   return response.json();
 }
 
-async function fetchAllPaymentsRaw(): Promise<ExportPaymentData[]> {
-  const response = await fetch('/api/payments/export');
-  if (!response.ok) throw new Error('Erreur lors de la récupération des paiements');
+// Tous les achats de séances (cash + QR code), utilisé uniquement pour reconstituer le
+// décompte de séances dans "Historique visites" — n'affecte pas la feuille "Historique paiements"
+async function fetchAllSessionPayments(): Promise<ExportPaymentData[]> {
+  const response = await fetch('/api/payments/export/sessions');
+  if (!response.ok) throw new Error('Erreur lors de la récupération des achats de séances');
   return response.json();
 }
 
@@ -589,41 +591,41 @@ async function fetchPresencesRange(startDate: string, endDate: string): Promise<
 }
 
 export async function exportAllPaymentsToExcel() {
-  const [paymentsRes, members, presences] = await Promise.all([
+  const [paymentsRes, members, presences, allSessionPayments] = await Promise.all([
     fetch('/api/payments/export'),
     fetchAllMembers(),
     fetchAllPresences(),
+    fetchAllSessionPayments(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const payments: ExportPaymentData[] = await paymentsRes.json();
-  // Export complet : la plage affichée est déjà l'historique complet
-  generateSubscriptionsWorkbook(payments, members, presences, payments, presences, 'tous-les-paiements');
+  generateSubscriptionsWorkbook(payments, members, presences, allSessionPayments, presences, 'tous-les-paiements');
 }
 
 export async function exportPaymentsFromDateToExcel(startDate: string) {
-  const [paymentsRes, members, presences, allPayments, allPresences] = await Promise.all([
+  const [paymentsRes, members, presences, allSessionPayments, allPresences] = await Promise.all([
     fetch(`/api/payments/export/from/${startDate}`),
     fetchAllMembers(),
     fetchPresencesFromDate(startDate),
-    fetchAllPaymentsRaw(),
+    fetchAllSessionPayments(),
     fetchAllPresences(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const paymentsResult = await paymentsRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, allPayments, allPresences, `paiements-depuis-${startDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, allSessionPayments, allPresences, `paiements-depuis-${startDate}`);
 }
 
 export async function exportPaymentsRangeToExcel(startDate: string, endDate: string) {
-  const [paymentsRes, members, presences, allPayments, allPresences] = await Promise.all([
+  const [paymentsRes, members, presences, allSessionPayments, allPresences] = await Promise.all([
     fetch(`/api/payments/export/range?startDate=${startDate}&endDate=${endDate}`),
     fetchAllMembers(),
     fetchPresencesRange(startDate, endDate),
-    fetchAllPaymentsRaw(),
+    fetchAllSessionPayments(),
     fetchAllPresences(),
   ]);
   if (!paymentsRes.ok) throw new Error('Erreur lors de la récupération des paiements');
   const paymentsResult = await paymentsRes.json();
-  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, allPayments, allPresences, `paiements-${startDate}-au-${endDate}`);
+  generateSubscriptionsWorkbook(paymentsResult.data, members, presences, allSessionPayments, allPresences, `paiements-${startDate}-au-${endDate}`);
 }
 
 // ============================================

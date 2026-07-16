@@ -1543,6 +1543,23 @@ app.get('/api/payments/export', async (req, res) => {
     }
 });
 
+// GET /api/payments/export/sessions — Achats de séances (tous modes de paiement, y compris cash),
+// utilisé uniquement pour reconstituer le décompte de séances dans l'historique des visites.
+// Ne pas utiliser pour l'historique des paiements (qui reste QR code uniquement).
+app.get('/api/payments/export/sessions', async (req, res) => {
+    try {
+        const payments = await prisma.payment.findMany({
+            where: { type: 'FORFAIT' },
+            orderBy: { createdAt: 'desc' },
+            include: { member: { select: { id: true, firstName: true, lastName: true } } },
+        });
+        res.json(payments.map(formatPaymentExport));
+    } catch (err) {
+        console.error('Error fetching session payments for export:', err);
+        res.status(500).json({ error: 'Failed to fetch session payments for export', message: err.message });
+    }
+});
+
 // GET /api/payments/export/from/:date — Paiements depuis une date
 app.get('/api/payments/export/from/:date', async (req, res) => {
     try {
