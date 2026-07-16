@@ -167,6 +167,8 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
       }
     } catch (err) {
       console.error("Error adding presence:", err);
+    } finally {
+      inputRef.current?.focus();
     }
   }
 
