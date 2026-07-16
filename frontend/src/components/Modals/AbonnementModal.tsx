@@ -167,6 +167,15 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                 return (
                   <button key={months} type="button"
                     onClick={() => {
+                      if (selectedDuration === months) {
+                        setSelectedDuration(null);
+                        setAbonnementDate("");
+                        setSubscriptionStartDate("");
+                        setAbonnementPrice("");
+                        setAbonnementPayment(null);
+                        return;
+                      }
+                      setAbonnementPayment(null);
                       if (months === 999) {
                         setAbonnementDate("2099-12-31");
                         setSubscriptionStartDate(new Date().toISOString().split("T")[0]);
@@ -188,11 +197,8 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                     className={`flex flex-col items-center px-2 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       selectedDuration === months
                         ? "border-[#1E2A47] bg-[#1E2A47] text-white"
-                        : selectedDuration !== null
-                        ? "border-gray-200 text-gray-400 cursor-not-allowed"
                         : "border-[#1E2A47] text-[#1E2A47] hover:bg-[#1E2A47] hover:text-white"
-                    }`}
-                    disabled={selectedDuration !== null && selectedDuration !== months}>
+                    }`}>
                     <span>{label}</span>
                     {durPrice !== undefined && (
                       <span className="text-xs mt-0.5 opacity-80">{durPrice > 0 ? `${durPrice} €` : "—"}</span>
@@ -201,14 +207,6 @@ export function AbonnementModal({ users, initialUser, onClose, onSuccess }: Prop
                 );
               })}
             </div>
-
-            {selectedDuration !== null && (
-              <button type="button"
-                onClick={() => { setSelectedDuration(null); setAbonnementDate(""); setSubscriptionStartDate(""); setAbonnementPrice(""); setAbonnementPayment(null); }}
-                className="text-xs text-gray-400 hover:text-gray-600 mb-3">
-                ✕ Changer la durée
-              </button>
-            )}
 
             {selectedDuration !== null && (
               <div className="space-y-3">
