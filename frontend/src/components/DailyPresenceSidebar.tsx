@@ -40,6 +40,9 @@ function daysUntilExpiry(endDate: string | null): number | null {
 // La couleur dépend du type d'entrée choisi lors du pointage (abonnement ou séance unitaire),
 // pas d'un mélange des deux statuts.
 function getNameColor(p: Presence): string {
+  // Avertissement prioritaire : il ne reste plus qu'une séance, même si l'abonnement est encore valide
+  if (p.member.sessionCount === 1) return "text-orange-500";
+
   if (p.usedSession) {
     // Entrée unitaire : le compteur peut désormais devenir négatif
     const remaining = p.member.sessionCount;
