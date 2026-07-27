@@ -129,7 +129,8 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
     setShowDropdown(false);
 
     const hasActiveSub = user.subscriptionEndDate != null && new Date(user.subscriptionEndDate) >= new Date();
-    const hasSessions = user.sessionCount != null && user.sessionCount > 0;
+    // A déjà acheté des séances (même si le solde est retombé à 0 ou en négatif) : on lui laisse quand même le choix "Séance"
+    const hasSessions = user.sessionCount != null;
     const neverHadSubscription = user.subscriptionEndDate == null;
 
     if (hasActiveSub && hasSessions) {
