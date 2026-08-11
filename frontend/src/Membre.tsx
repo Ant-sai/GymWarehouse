@@ -307,10 +307,7 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
               <div>Date d'abonnement</div>
               <div>Nb entrées</div>
               <div>Contact</div>
-              <div className="col-span-4 flex items-center gap-2">
-                <div>Commentaire</div>
-                <div>Actions</div>
-              </div>
+              <div className="col-span-4">Commentaire / Actions</div>
             </div>
 
             {/* Content */}
@@ -395,17 +392,15 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
                     {user.email && <div className="truncate" title={user.email}>{user.email}</div>}
                     {!user.phone && !user.email && <span className="text-gray-400">—</span>}
                   </div>
-                  <div className="col-span-4 flex items-center gap-2">
-                  <div className="text-sm shrink-0" title={user.notes || ""}>
-                    {user.notes ? (
-                      <span className="inline-block px-2 py-1 border-2 border-red-500 rounded text-xs font-bold text-red-600 truncate max-w-[180px]">
+                  <div className="col-span-4 flex items-center gap-3 flex-wrap">
+                    {user.notes && (
+                      <span
+                        className="px-2 py-1 border-2 border-red-500 rounded text-xs font-bold text-red-600 truncate max-w-[180px]"
+                        title={user.notes}
+                      >
                         {user.notes}
                       </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">—</span>
                     )}
-                  </div>
-                  <div className="flex items-center gap-3 flex-wrap">
                     <button
                       onClick={() => { setModalUser(user); setShowForfait(true); }}
                       className="px-2 py-1 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
@@ -449,7 +444,6 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
                         <path d="M14 11v6" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" />
                       </svg>
                     </button>
-                  </div>
                   </div>
                 </div>
               ))}
