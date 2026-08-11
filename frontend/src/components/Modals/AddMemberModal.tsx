@@ -91,6 +91,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
           <div>
             <label className="block text-xs font-medium text-gray-700">Prénom</label>
             <input
+              autoFocus
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -156,6 +157,16 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
               <option value="HOMME">Homme</option>
               <option value="FEMME">Femme</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700">Commentaire</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="mt-0.5 block w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              rows={2}
+              placeholder="Commentaire (optionnel)"
+            />
           </div>
         </div>
 

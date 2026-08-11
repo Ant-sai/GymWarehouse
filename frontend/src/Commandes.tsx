@@ -369,6 +369,7 @@ export default function DailyOrdersPage() {
 
       fetchProducts();
       fetchUsers();
+      fetchDailyClosing(selectedDate);
 
     } catch (err) {
       console.error('Erreur lors de l\'annulation:', err);
@@ -420,6 +421,7 @@ export default function DailyOrdersPage() {
 
       fetchOrders();
       fetchUsers();
+      fetchDailyClosing(selectedDate);
 
     } catch (err) {
       console.error('Erreur lors du remboursement:', err);
