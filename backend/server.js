@@ -265,6 +265,9 @@ app.delete('/api/users/:id', async (req, res) => {
         res.status(204).send();
     } catch (err) {
         console.error('Error deleting user: ', err);
+        if (err.code === 'P2003') {
+            return res.status(409).json({ error: "Impossible de supprimer ce membre : il a des commandes, paiements, présences ou mouvements de caisse liés dans l'historique." });
+        }
         res.status(500).json({ error: 'Failed to delete user' });
     }
 });

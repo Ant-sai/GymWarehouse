@@ -192,7 +192,8 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
       });
 
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
       // Mettre à jour le state local
@@ -392,8 +393,14 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
                     {user.email && <div className="truncate" title={user.email}>{user.email}</div>}
                     {!user.phone && !user.email && <span className="text-gray-400">—</span>}
                   </div>
-                  <div className="col-span-2 text-sm text-gray-600 truncate" title={user.notes || ""}>
-                    {user.notes || <span className="text-gray-400 text-xs">—</span>}
+                  <div className="col-span-2 text-sm min-w-0" title={user.notes || ""}>
+                    {user.notes ? (
+                      <span className="inline-block px-2 py-1 border-2 border-red-500 rounded text-xs font-bold text-red-600 truncate max-w-full">
+                        {user.notes}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
                   </div>
                   <div className="col-span-2 flex items-center gap-3 flex-wrap">
                     <button
