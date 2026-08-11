@@ -368,7 +368,9 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
                                     ? "bg-red-100 text-red-700"
                                     : "bg-green-100 text-green-700"
                                 }`}>
-                                  {new Date(user.subscriptionEndDate).toLocaleDateString('fr-FR')}
+                                  {new Date(user.subscriptionEndDate).getFullYear() >= 2099
+                                    ? "Domiciliation"
+                                    : new Date(user.subscriptionEndDate).toLocaleDateString('fr-FR')}
                                 </span>
                               ) : (
                                 <span className="text-gray-400 text-xs">—</span>
