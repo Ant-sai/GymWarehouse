@@ -307,7 +307,7 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
               <div>Date d'abonnement</div>
               <div>Nb entrées</div>
               <div>Contact</div>
-              <div className="col-span-4 grid grid-cols-2 gap-2">
+              <div className="col-span-4 flex items-center gap-2">
                 <div>Commentaire</div>
                 <div>Actions</div>
               </div>
@@ -395,10 +395,10 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
                     {user.email && <div className="truncate" title={user.email}>{user.email}</div>}
                     {!user.phone && !user.email && <span className="text-gray-400">—</span>}
                   </div>
-                  <div className="col-span-4 grid grid-cols-2 gap-2 items-center">
-                  <div className="text-sm min-w-0" title={user.notes || ""}>
+                  <div className="col-span-4 flex items-center gap-2">
+                  <div className="text-sm shrink-0" title={user.notes || ""}>
                     {user.notes ? (
-                      <span className="inline-block px-2 py-1 border-2 border-red-500 rounded text-xs font-bold text-red-600 truncate max-w-full">
+                      <span className="inline-block px-2 py-1 border-2 border-red-500 rounded text-xs font-bold text-red-600 truncate max-w-[180px]">
                         {user.notes}
                       </span>
                     ) : (
