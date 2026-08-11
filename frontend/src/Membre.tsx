@@ -392,7 +392,7 @@ async function handleAddUser(userData: Partial<User>): Promise<User> {
                     {user.email && <div className="truncate" title={user.email}>{user.email}</div>}
                     {!user.phone && !user.email && <span className="text-gray-400">—</span>}
                   </div>
-                  <div className="col-span-4 flex items-center gap-3 flex-wrap">
+                  <div className="col-span-4 flex items-center justify-end gap-3 flex-wrap">
                     {user.notes && (
                       <span
                         className="px-2 py-1 border-2 border-red-500 rounded text-xs font-bold text-red-600 truncate max-w-[180px]"
