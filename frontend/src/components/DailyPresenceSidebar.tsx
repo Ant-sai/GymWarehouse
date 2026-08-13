@@ -234,7 +234,16 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
             onFocus={() => setShowDropdown(true)}
-            onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+            onBlur={() => {
+              setTimeout(() => setShowDropdown(false), 150);
+              // Toujours ramener le curseur sur ce champ, sauf si l'utilisateur
+              // est en train de saisir un autre champ (formulaire, modal...)
+              setTimeout(() => {
+                const active = document.activeElement as HTMLElement | null;
+                const isOtherField = active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName);
+                if (!isOtherField) inputRef.current?.focus();
+              }, 200);
+            }}
             className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           />
           {showDropdown && filteredUsers.length > 0 && (
