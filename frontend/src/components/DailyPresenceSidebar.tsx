@@ -41,13 +41,13 @@ function daysUntilExpiry(endDate: string | null): number | null {
 // pas d'un mélange des deux statuts.
 function getNameColor(p: Presence): string {
   // Avertissement prioritaire : il ne reste plus qu'une séance, même si l'abonnement est encore valide
-  if (p.member.sessionCount === 1) return "text-orange-500";
+  if (p.member.sessionCount === 1) return "text-orange-400";
 
   if (p.usedSession) {
     // Entrée unitaire : le compteur peut désormais devenir négatif
     const remaining = p.member.sessionCount;
     if (remaining == null || remaining < 0) return "text-red-600";
-    if (remaining === 0) return "text-orange-500 underline"; // vient de pointer sa dernière séance
+    if (remaining === 0) return "text-orange-400 underline"; // vient de pointer sa dernière séance
     return "text-green-700";
   }
 
@@ -59,7 +59,7 @@ function getNameColor(p: Presence): string {
   const days = daysUntilExpiry(endDate);
   if (days === null) return "text-green-700";
   if (days < 0) return "text-red-600";
-  if (days <= 3) return "text-orange-500 underline";
+  if (days <= 3) return "text-orange-400 underline";
   return "text-green-700";
 }
 
@@ -106,6 +106,7 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
 
   useEffect(() => {
     fetchPresences();
+    inputRef.current?.focus();
   }, []);
 
   async function fetchPresences() {
