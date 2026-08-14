@@ -221,15 +221,15 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
   }
 
   return (
-    <aside className="w-[150px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col h-screen sticky top-0 overflow-x-hidden">
+    <aside className="w-[240px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col h-screen sticky top-0 overflow-x-hidden">
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
             Présences
           </h2>
           <span
             title="Membres présents aujourd'hui"
-            className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#1E2A47] text-white text-[11px] font-semibold"
+            className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-[#1E2A47] text-white text-sm font-semibold"
           >
             {presences.length}
           </span>
@@ -252,7 +252,7 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
                 if (!isOtherField) inputRef.current?.focus();
               }, 200);
             }}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            className="w-full border border-gray-300 rounded px-2 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           />
           {showDropdown && filteredUsers.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded shadow-lg max-h-52 overflow-y-auto mt-1">
@@ -261,7 +261,7 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
                   key={user.id}
                   type="button"
                   onMouseDown={() => handleSelectUser(user)}
-                  className="w-full text-left px-2 py-1.5 text-xs hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                  className="w-full text-left px-2 py-2 text-sm hover:bg-blue-50 border-b last:border-b-0 transition-colors"
                 >
                   <div>{user.firstName ?? ""}</div>
                   <div>{user.lastName ?? ""}</div>
@@ -276,16 +276,16 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
           type="button"
           onClick={() => setShowAddModal(true)}
           title="Ajouter un nouveau membre"
-          className="mt-2 w-full text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded py-1 transition-colors flex items-center justify-center gap-1 border border-dashed border-gray-300 hover:border-blue-400"
+          className="mt-2 w-full text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded py-1.5 transition-colors flex items-center justify-center gap-1 border border-dashed border-gray-300 hover:border-blue-400"
         >
-          <span className="text-base leading-none">+</span>
+          <span className="text-lg leading-none">+</span>
           <span>Nouveau membre</span>
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {presences.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-8">Aucune présence</p>
+          <p className="text-sm text-gray-400 text-center py-8">Aucune présence</p>
         ) : (
           <ul>
             {presences.map((p) => {
@@ -294,13 +294,13 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
               return (
                 <li
                   key={p.id}
-                  className="px-2 py-2 flex items-center justify-between group border-b border-gray-100"
+                  className="px-2 py-2.5 flex items-center justify-between group border-b border-gray-100"
                 >
                   <button
                     type="button"
                     title={tooltip}
                     onClick={() => navigate(`/membres?search=${encodeURIComponent(getFullName(p.member))}`)}
-                    className={`text-[10px] flex-1 text-left hover:underline min-w-0 ${nameColor}`}
+                    className={`text-sm flex-1 text-left hover:underline min-w-0 ${nameColor}`}
                   >
                     <div className="truncate">{p.member.firstName ?? ""}</div>
                     <div className="truncate">{p.member.lastName ?? ""}</div>
@@ -309,7 +309,7 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
                     type="button"
                     onClick={() => handleRemove(p)}
                     title="Retirer"
-                    className="ml-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs flex-shrink-0"
+                    className="ml-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-sm flex-shrink-0"
                   >
                     ✕
                   </button>
@@ -320,7 +320,7 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
         )}
       </div>
 
-      <div className="px-3 py-1.5 border-t border-gray-100 text-xs text-gray-400 text-right">
+      <div className="px-3 py-1.5 border-t border-gray-100 text-sm text-gray-400 text-right">
         {presences.length} présence{presences.length !== 1 ? "s" : ""}
       </div>
 

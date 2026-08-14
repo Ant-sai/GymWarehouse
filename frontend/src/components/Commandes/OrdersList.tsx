@@ -53,7 +53,7 @@ export const OrdersList: React.FC<OrdersListProps> = ({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {dayOrders.map((order) => (
             <OrderCard
               key={order.id}
