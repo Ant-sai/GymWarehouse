@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { PageHeader, DailyStatistics, OrdersList } from './components/Commandes';
-import { DailyPresenceSidebar } from './components/DailyPresenceSidebar';
+import { DailyPresenceSidebar, type DailyPresenceSidebarHandle } from './components/DailyPresenceSidebar';
 import { OrderFormModal } from './components/Modals/OrderFormModal';
 import { AddMemberModal } from './components/Modals/AddMemberModal';
 import { TrouModal } from './components/Modals/TrouModal';
@@ -78,6 +78,7 @@ export default function DailyOrdersPage() {
 
   const refundSearchRef = useRef<HTMLInputElement>(null);
   const refundAmountRef = useRef<HTMLInputElement>(null);
+  const presenceSidebarRef = useRef<DailyPresenceSidebarHandle>(null);
 
   useEffect(() => {
     if (showRefundForm) {
@@ -270,6 +271,7 @@ export default function DailyOrdersPage() {
     await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate)]);
     fetchProducts();
     fetchUsers();
+    presenceSidebarRef.current?.focusAddInput();
   }
 
   async function handlePutOnStandby(standbyData: StandbyData) {
@@ -1166,7 +1168,7 @@ export default function DailyOrdersPage() {
           onStockUpdated={fetchProducts}
         />
       </main>
-      <DailyPresenceSidebar users={users} onUserAdded={fetchUsers} />
+      <DailyPresenceSidebar ref={presenceSidebarRef} users={users} onUserAdded={fetchUsers} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { useNavigate } from "react-router-dom";
 import type { User } from "../types/commandes.types";
 import { AddMemberModal } from "./Modals/AddMemberModal";
@@ -21,6 +21,10 @@ type Presence = {
 type Props = {
   users: User[];
   onUserAdded?: () => void;
+};
+
+export type DailyPresenceSidebarHandle = {
+  focusAddInput: () => void;
 };
 
 function getFullName(user: { firstName?: string | null; lastName?: string | null }) {
@@ -92,7 +96,7 @@ function getSubTooltip(endDate: string | null, sessionCount: number | null | und
   return parts.join(" · ");
 }
 
-export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
+export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props>(function DailyPresenceSidebar({ users, onUserAdded }, ref) {
   const [presences, setPresences] = useState<Presence[]>([]);
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -103,6 +107,10 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
   const [pendingUser, setPendingUser] = useState<User | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  useImperativeHandle(ref, () => ({
+    focusAddInput: () => inputRef.current?.focus(),
+  }));
 
   useEffect(() => {
     fetchPresences();
@@ -383,4 +391,4 @@ export function DailyPresenceSidebar({ users, onUserAdded }: Props) {
       )}
     </aside>
   );
-}
+});
