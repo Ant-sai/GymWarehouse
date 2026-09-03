@@ -351,7 +351,9 @@ function buildMembersSheet(members: ExportMemberData[], payments: ExportPaymentD
     paymentsByMember.get(p.memberId)!.push(p);
   });
 
-  const rows = members.map(m => {
+  const sortedMembers = [...members].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const rows = sortedMembers.map(m => {
     const memberPayments = paymentsByMember.get(m.id) || [];
     const latestEntree = memberPayments
       .filter(p => p.type === 'ENTREE')
@@ -502,7 +504,7 @@ function buildVisitsCountSheet(presences: ExportPresenceData[]) {
   });
 
   const rows = Array.from(countByDate.values())
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
     .map(({ label, count }) => ({
       'Date': label,
       'Nombre de visites': count,
