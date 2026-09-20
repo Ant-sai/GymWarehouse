@@ -372,6 +372,7 @@ export default function DailyOrdersPage() {
       fetchProducts();
       fetchUsers();
       fetchDailyClosing(selectedDate);
+      presenceSidebarRef.current?.focusAddInput();
 
     } catch (err) {
       console.error('Erreur lors de l\'annulation:', err);
@@ -420,6 +421,7 @@ export default function DailyOrdersPage() {
       setRefundUserSearch("");
       setRefundNotes("");
       setRefundPaymentMethod(null);
+      presenceSidebarRef.current?.focusAddInput();
 
       fetchOrders();
       fetchUsers();
@@ -513,6 +515,7 @@ export default function DailyOrdersPage() {
       setShowEditForm(false);
       setEditingProduct(null);
       setEditForm({ quantity: "", price: "", trainerPrice: "" });
+      presenceSidebarRef.current?.focusAddInput();
 
     } catch (err) {
       console.error('Erreur lors de la modification du produit:', err);
@@ -574,6 +577,7 @@ export default function DailyOrdersPage() {
       }
       setShowEditRefundForm(false);
       setEditingRefundOrder(null);
+      presenceSidebarRef.current?.focusAddInput();
       await Promise.all([fetchOrders(), fetchDailyClosing(selectedDate), fetchUsers()]);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Impossible de modifier le remboursement";
@@ -664,6 +668,7 @@ export default function DailyOrdersPage() {
             setInitialNotes("");
             setInitialDiscountValue(0);
             setInitialDiscountComment("");
+            presenceSidebarRef.current?.focusAddInput();
           }}
           onCreate={handleCreateOrder}
           onStandby={handlePutOnStandby}
@@ -689,7 +694,7 @@ export default function DailyOrdersPage() {
         {/* Modal modification produit */}
         {showEditForm && editingProduct && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setShowEditForm(false)} />
+            <div className="absolute inset-0 bg-black/30" onClick={() => { setShowEditForm(false); presenceSidebarRef.current?.focusAddInput(); }} />
             <form
               onSubmit={handleEditProduct}
               className="relative bg-white rounded-lg p-6 w-[480px] shadow-lg z-50"
@@ -740,7 +745,7 @@ export default function DailyOrdersPage() {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowEditForm(false)}
+                  onClick={() => { setShowEditForm(false); presenceSidebarRef.current?.focusAddInput(); }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
                 >
@@ -761,7 +766,7 @@ export default function DailyOrdersPage() {
         {/* Modal remboursement */}
         {showRefundForm && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setShowRefundForm(false)} />
+            <div className="absolute inset-0 bg-black/30" onClick={() => { setShowRefundForm(false); presenceSidebarRef.current?.focusAddInput(); }} />
             <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
               <h3 className="text-xl font-semibold mb-6 text-black">Remboursement</h3>
 
@@ -906,6 +911,7 @@ export default function DailyOrdersPage() {
                     setRefundNotes("");
                     setRefundPaymentMethod(null);
                     setRefundUserSearch("");
+                    presenceSidebarRef.current?.focusAddInput();
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
@@ -927,7 +933,7 @@ export default function DailyOrdersPage() {
         {/* Modal modification remboursement */}
         {showEditRefundForm && editingRefundOrder && (
           <div className="fixed inset-0 flex items-center justify-center z-40">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setShowEditRefundForm(false)} />
+            <div className="absolute inset-0 bg-black/30" onClick={() => { setShowEditRefundForm(false); presenceSidebarRef.current?.focusAddInput(); }} />
             <div className="relative bg-white rounded-lg p-6 w-[500px] shadow-lg z-50">
               <h3 className="text-xl font-semibold mb-6 text-black">Modifier le remboursement</h3>
 
@@ -994,7 +1000,7 @@ export default function DailyOrdersPage() {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => { setShowEditRefundForm(false); setEditingRefundOrder(null); }}
+                  onClick={() => { setShowEditRefundForm(false); setEditingRefundOrder(null); presenceSidebarRef.current?.focusAddInput(); }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                   disabled={saving}
                 >
@@ -1022,7 +1028,7 @@ export default function DailyOrdersPage() {
         {/* Modal des commandes en stand-by */}
         {showStandbyList && (
           <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowStandbyList(false)} />
+            <div className="absolute inset-0 bg-black/40" onClick={() => { setShowStandbyList(false); presenceSidebarRef.current?.focusAddInput(); }} />
             <div className="relative bg-white rounded-lg p-6 w-[800px] max-h-[80vh] overflow-y-auto shadow-lg z-50">
               <h3 className="text-xl font-semibold mb-4 text-black">
                 Commandes en stand-by ({standbyOrders.length})
@@ -1099,7 +1105,7 @@ export default function DailyOrdersPage() {
 
               <div className="mt-6 flex justify-end">
                 <button
-                  onClick={() => setShowStandbyList(false)}
+                  onClick={() => { setShowStandbyList(false); presenceSidebarRef.current?.focusAddInput(); }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   Fermer
@@ -1118,6 +1124,7 @@ export default function DailyOrdersPage() {
             onClose={() => {
               setShowEditOrderForm(false);
               setEditingOrder(null);
+              presenceSidebarRef.current?.focusAddInput();
             }}
             onCreate={handleCreateOrder}
             onStandby={handlePutOnStandby}
@@ -1143,7 +1150,7 @@ export default function DailyOrdersPage() {
           isOpen={showTrouModal}
           currentTrou={trouValue}
           date={selectedDate}
-          onClose={() => setShowTrouModal(false)}
+          onClose={() => { setShowTrouModal(false); presenceSidebarRef.current?.focusAddInput(); }}
           onSave={handleSaveTrou}
         />
 
@@ -1152,19 +1159,19 @@ export default function DailyOrdersPage() {
           isOpen={showRetraitModal}
           currentRetrait={retraitValue}
           date={selectedDate}
-          onClose={() => setShowRetraitModal(false)}
+          onClose={() => { setShowRetraitModal(false); presenceSidebarRef.current?.focusAddInput(); }}
           onSave={handleSaveRetrait}
         />
         <ExportModal
           isOpen={showExportModal}
-          onClose={() => setShowExportModal(false)}
+          onClose={() => { setShowExportModal(false); presenceSidebarRef.current?.focusAddInput(); }}
         />
 
         {/* Modal Stock Journalier */}
         <DailyStockModal
           isOpen={showDailyStockModal}
           date={selectedDate}
-          onClose={() => setShowDailyStockModal(false)}
+          onClose={() => { setShowDailyStockModal(false); presenceSidebarRef.current?.focusAddInput(); }}
           onStockUpdated={fetchProducts}
         />
       </main>
