@@ -51,7 +51,7 @@ function getNameColor(p: Presence): string {
     // Entrée unitaire : le compteur peut désormais devenir négatif
     const remaining = p.member.sessionCount;
     if (remaining == null || remaining < 0) return "text-red-600";
-    if (remaining === 0) return "text-orange-400 underline"; // vient de pointer sa dernière séance
+    if (remaining < 3) return "text-orange-400 underline"; // moins de 3 séances restantes, même si un abonnement existe à côté
     return "text-green-700";
   }
 
