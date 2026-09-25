@@ -100,6 +100,7 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
   const [presences, setPresences] = useState<Presence[]>([]);
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChoiceModal, setShowChoiceModal] = useState(false);
   const [showRenewChoiceModal, setShowRenewChoiceModal] = useState(false);
@@ -136,6 +137,13 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
   async function handleSelectUser(user: User) {
     setSearch("");
     setShowDropdown(false);
+    setHighlightedIndex(0);
+
+    // Déjà présent aujourd'hui : pas de doublon
+    if (presences.some((p) => p.memberId === user.id)) {
+      inputRef.current?.focus();
+      return;
+    }
 
     const hasActiveSub = user.subscriptionEndDate != null && new Date(user.subscriptionEndDate) >= new Date();
     // A déjà acheté des séances (même si le solde est retombé à 0 ou en négatif) : on lui laisse quand même le choix "Séance"
@@ -240,11 +248,28 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
             type="text"
             placeholder="Ajouter..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
+            onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); setHighlightedIndex(0); }}
             onFocus={() => setShowDropdown(true)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && filteredUsers.length === 1) {
-                handleSelectUser(filteredUsers[0]);
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (filteredUsers.length > 0) {
+                  setShowDropdown(true);
+                  setHighlightedIndex((i) => (i + 1) % filteredUsers.length);
+                }
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (filteredUsers.length > 0) {
+                  setShowDropdown(true);
+                  setHighlightedIndex((i) => (i - 1 + filteredUsers.length) % filteredUsers.length);
+                }
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (filteredUsers.length > 0) {
+                  handleSelectUser(filteredUsers[highlightedIndex] ?? filteredUsers[0]);
+                }
+              } else if (e.key === "Escape") {
+                setShowDropdown(false);
               }
             }}
             onBlur={() => {
@@ -261,12 +286,15 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
           />
           {showDropdown && filteredUsers.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded shadow-lg max-h-52 overflow-y-auto mt-1">
-              {filteredUsers.map((user) => (
+              {filteredUsers.map((user, idx) => (
                 <button
                   key={user.id}
                   type="button"
                   onMouseDown={() => handleSelectUser(user)}
-                  className="w-full text-left px-2 py-2 text-sm hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                  onMouseEnter={() => setHighlightedIndex(idx)}
+                  className={`w-full text-left px-2 py-2 text-sm border-b last:border-b-0 transition-colors ${
+                    idx === highlightedIndex ? "bg-blue-100" : "hover:bg-blue-50"
+                  }`}
                 >
                   <div>{user.firstName ?? ""}</div>
                   <div>{user.lastName ?? ""}</div>
