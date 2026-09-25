@@ -242,6 +242,11 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
             value={search}
             onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
             onFocus={() => setShowDropdown(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && filteredUsers.length === 1) {
+                handleSelectUser(filteredUsers[0]);
+              }
+            }}
             onBlur={() => {
               setTimeout(() => setShowDropdown(false), 150);
               // Toujours ramener le curseur sur ce champ, sauf si l'utilisateur
