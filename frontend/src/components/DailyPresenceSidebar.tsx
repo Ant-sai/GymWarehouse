@@ -139,12 +139,6 @@ export const DailyPresenceSidebar = forwardRef<DailyPresenceSidebarHandle, Props
     setShowDropdown(false);
     setHighlightedIndex(0);
 
-    // Déjà présent aujourd'hui : pas de doublon
-    if (presences.some((p) => p.memberId === user.id)) {
-      inputRef.current?.focus();
-      return;
-    }
-
     const hasActiveSub = user.subscriptionEndDate != null && new Date(user.subscriptionEndDate) >= new Date();
     // A déjà acheté des séances (même si le solde est retombé à 0 ou en négatif) : on lui laisse quand même le choix "Séance"
     const hasSessions = user.sessionCount != null;
