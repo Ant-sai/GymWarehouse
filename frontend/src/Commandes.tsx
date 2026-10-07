@@ -72,6 +72,7 @@ export default function DailyOrdersPage() {
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [refundNotes, setRefundNotes] = useState("");
   const [refundUserSearch, setRefundUserSearch] = useState("");
+  const [highlightedRefundIndex, setHighlightedRefundIndex] = useState(0);
 
   const [showEditOrderForm, setShowEditOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -617,6 +618,12 @@ export default function DailyOrdersPage() {
     getFullName(user).toLowerCase().includes(refundUserSearch.toLowerCase())
   );
 
+  const selectRefundUser = (user: User) => {
+    setRefundUser(user);
+    setRefundUserSearch(getFullName(user));
+    setHighlightedRefundIndex(0);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <main className="flex-1 min-w-0 p-8 overflow-auto">
@@ -784,7 +791,29 @@ export default function DailyOrdersPage() {
                     value={refundUserSearch}
                     onChange={(e) => {
                       setRefundUserSearch(e.target.value);
+                      setHighlightedRefundIndex(0);
                       if (!e.target.value) {
+                        setRefundUser(null);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        if (filteredRefundUsers.length > 0) {
+                          setHighlightedRefundIndex((i) => (i + 1) % filteredRefundUsers.length);
+                        }
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        if (filteredRefundUsers.length > 0) {
+                          setHighlightedRefundIndex((i) => (i - 1 + filteredRefundUsers.length) % filteredRefundUsers.length);
+                        }
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (filteredRefundUsers.length > 0 && !refundUser) {
+                          selectRefundUser(filteredRefundUsers[highlightedRefundIndex] ?? filteredRefundUsers[0]);
+                        }
+                      } else if (e.key === "Escape") {
+                        setRefundUserSearch("");
                         setRefundUser(null);
                       }
                     }}
@@ -799,15 +828,15 @@ export default function DailyOrdersPage() {
                           Aucun membre trouvé
                         </div>
                       ) : (
-                        filteredRefundUsers.map(user => (
+                        filteredRefundUsers.map((user, idx) => (
                           <button
                             key={user.id}
                             type="button"
-                            onClick={() => {
-                              setRefundUser(user);
-                              setRefundUserSearch(getFullName(user));
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                            onClick={() => selectRefundUser(user)}
+                            onMouseEnter={() => setHighlightedRefundIndex(idx)}
+                            className={`w-full text-left px-3 py-2 border-b last:border-b-0 transition-colors ${
+                              idx === highlightedRefundIndex ? "bg-blue-100" : "hover:bg-blue-50"
+                            }`}
                           >
                             <div className="font-medium">{getFullName(user)}</div>
                             <div className="text-xs text-gray-600">
@@ -911,6 +940,7 @@ export default function DailyOrdersPage() {
                     setRefundNotes("");
                     setRefundPaymentMethod(null);
                     setRefundUserSearch("");
+                    setHighlightedRefundIndex(0);
                     presenceSidebarRef.current?.focusAddInput();
                   }}
                   className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"

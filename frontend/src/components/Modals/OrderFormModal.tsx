@@ -67,6 +67,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [userManuallyCleared, setUserManuallyCleared] = useState(false);
+  const [highlightedUserIndex, setHighlightedUserIndex] = useState(0);
 
   // Refs pour les champs de recherche
   const userSearchRef = useRef<HTMLInputElement>(null);
@@ -162,6 +163,14 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearch.toLowerCase())
   );
+
+  const selectUser = (user: User) => {
+    setSelectedUser(user);
+    setUserSearch('');
+    setShowUserDropdown(false);
+    setHighlightedUserIndex(0);
+    setTimeout(() => productSearchRef.current?.focus(), 0);
+  };
 
   // Gestion du panier
   const addToCart = (product: Product) => {
@@ -306,6 +315,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     setProductSearch("");
     setShowUserDropdown(false);
     setUserManuallyCleared(false);
+    setHighlightedUserIndex(0);
     onClose();
   };
 
@@ -333,8 +343,31 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                   onChange={(e) => {
                     setUserSearch(e.target.value);
                     setShowUserDropdown(true);
+                    setHighlightedUserIndex(0);
                   }}
                   onFocus={() => setShowUserDropdown(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      if (filteredUsers.length > 0) {
+                        setShowUserDropdown(true);
+                        setHighlightedUserIndex((i) => (i + 1) % filteredUsers.length);
+                      }
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      if (filteredUsers.length > 0) {
+                        setShowUserDropdown(true);
+                        setHighlightedUserIndex((i) => (i - 1 + filteredUsers.length) % filteredUsers.length);
+                      }
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (filteredUsers.length > 0) {
+                        selectUser(filteredUsers[highlightedUserIndex] ?? filteredUsers[0]);
+                      }
+                    } else if (e.key === "Escape") {
+                      setShowUserDropdown(false);
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 />
 
@@ -346,17 +379,15 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                         Aucun client trouvé
                       </div>
                     ) : (
-                      filteredUsers.map(user => (
+                      filteredUsers.map((user, idx) => (
                         <button
                           key={user.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setUserSearch('');
-                            setShowUserDropdown(false);
-                            setTimeout(() => productSearchRef.current?.focus(), 0);
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
+                          onClick={() => selectUser(user)}
+                          onMouseEnter={() => setHighlightedUserIndex(idx)}
+                          className={`w-full text-left px-3 py-2 transition-colors text-sm border-b last:border-b-0 ${
+                            idx === highlightedUserIndex ? "bg-blue-100" : "hover:bg-blue-50"
+                          }`}
                         >
                           <div className="flex justify-between items-center">
                             <span>{getFullName(user)}</span>
