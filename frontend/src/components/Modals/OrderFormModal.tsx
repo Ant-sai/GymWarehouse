@@ -68,6 +68,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [userManuallyCleared, setUserManuallyCleared] = useState(false);
   const [highlightedUserIndex, setHighlightedUserIndex] = useState(0);
+  const [highlightedProductIndex, setHighlightedProductIndex] = useState(0);
 
   // Refs pour les champs de recherche
   const userSearchRef = useRef<HTMLInputElement>(null);
@@ -202,6 +203,12 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     productSearchRef.current?.focus();
   };
 
+  const selectProduct = (product: Product) => {
+    addToCart(product);
+    setShowProductDropdown(false);
+    setHighlightedProductIndex(0);
+  };
+
   const updateCartQuantity = (productId: number, quantity: number) => {
     console.log('📝 [updateCartQuantity] Mise à jour quantité:', productId, quantity);
 
@@ -316,6 +323,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
     setShowUserDropdown(false);
     setUserManuallyCleared(false);
     setHighlightedUserIndex(0);
+    setHighlightedProductIndex(0);
     onClose();
   };
 
@@ -476,8 +484,31 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
               onChange={(e) => {
                 setProductSearch(e.target.value);
                 setShowProductDropdown(true);
+                setHighlightedProductIndex(0);
               }}
               onFocus={() => setShowProductDropdown(true)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  if (filteredProducts.length > 0) {
+                    setShowProductDropdown(true);
+                    setHighlightedProductIndex((i) => (i + 1) % filteredProducts.length);
+                  }
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  if (filteredProducts.length > 0) {
+                    setShowProductDropdown(true);
+                    setHighlightedProductIndex((i) => (i - 1 + filteredProducts.length) % filteredProducts.length);
+                  }
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (filteredProducts.length > 0) {
+                    selectProduct(filteredProducts[highlightedProductIndex] ?? filteredProducts[0]);
+                  }
+                } else if (e.key === "Escape") {
+                  setShowProductDropdown(false);
+                }
+              }}
               className="w-full border border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
             />
 
@@ -489,15 +520,15 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({
                     Aucun produit trouvé
                   </div>
                 ) : (
-                  filteredProducts.map(product => (
+                  filteredProducts.map((product, idx) => (
                     <button
                       key={product.id}
                       type="button"
-                      onClick={() => {
-                        addToCart(product);
-                        setShowProductDropdown(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors text-sm border-b last:border-b-0"
+                      onClick={() => selectProduct(product)}
+                      onMouseEnter={() => setHighlightedProductIndex(idx)}
+                      className={`w-full text-left px-3 py-2 transition-colors text-sm border-b last:border-b-0 ${
+                        idx === highlightedProductIndex ? "bg-blue-100" : "hover:bg-blue-50"
+                      }`}
                     >
                       <div className="flex justify-between items-center">
                         <div>
